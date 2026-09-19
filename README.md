@@ -70,9 +70,10 @@ carries its source title, URL and licence.
 
 ### How we comply
 
-A generated path selects from and reorders the curriculum, so we treat it as an adaptation: it carries the
-same licence, and every resource in it carries its source title, URL and licence. We do not sell the tool,
-charge for access, or ship the content into a commercial product.
+A generated path links to and orders the curriculum without reproducing it, so we read it as a collection
+rather than an adaptation. We license it the same way anyway, which is safe under either reading. Every
+resource in an output carries its source title, URL and licence, and we do not sell the tool, charge for
+access, or ship the content into a commercial product.
 
 **This repository is licensed in two parts:** source code under **MIT** (matching the starter template), and
 documentation plus anything derived from the curriculum — the parsed graph, generated paths — under

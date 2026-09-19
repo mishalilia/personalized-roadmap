@@ -128,10 +128,10 @@ curricula other than the one named below.
 | **Personal data** | None in the source. Learner data collected during testing is kept minimal, is not published, and does not enter this repository. |
 | **Preprocessing** | MDX frontmatter and component attributes parsed into a node graph; prerequisite edges added by us; no content redistributed beyond what attribution requires. |
 
-**Licence consequences to resolve before the final submission:** the path we generate is a derivative of
-CC BY-NC-SA material, so share-alike affects the licence of our own output and repository, and the
-non-commercial condition constrains how the business case may be phrased. Tracked as Q-001 in
-[questions.md](questions.md). Licence compliance is graded on this project.
+A generated path links to and orders the material without reproducing it, so we read it as a collection
+rather than an adaptation. We license our own documentation and curriculum-derived artifacts CC BY-NC-SA 4.0
+anyway, which is safe under either reading.
+Tracked as Q-001 in [questions.md](questions.md).
 
 ## 10. Tools, models, free options and hardware
 
