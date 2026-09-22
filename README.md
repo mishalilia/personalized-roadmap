@@ -21,6 +21,7 @@ Planning documents for the 20 September submission; no code yet.
 | [docs/team-rnr.md](docs/team-rnr.md) | Role owners, what each member owns, reviewers |
 | [docs/ground-rules.md](docs/ground-rules.md) | How the team meets, reviews code and handles data |
 | [docs/questions.md](docs/questions.md) | Open questions, assumptions and decisions we would like feedback on |
+| [docs/test-plan.md](docs/test-plan.md) | Test scenarios mapped to Baseline/Target DoD items, current stage and status of each |
 
 ## The problem
 
