@@ -55,8 +55,7 @@ respectively, not before.
 | Licence attribution correct | `test_every_resource_has_attribution` — every emitted resource object carries `title`, `url`, `licence` | 100% coverage; licence string matches source exactly | planned |
 | Rule-based fallback works with no model | `test_fallback_planner_no_llm` — planner is run with the model client replaced by a stub that raises, and must still return a valid path using only the prerequisite graph and declared difficulty | Valid path returned, `personalization_unavailable` flag set | planned |
 
-## 4. Target test cases (write these once the feature exists — don't block on it)
-
+## 4. Target test cases
 | DoD item | Test | Pass condition | Status |
 |---|---|---|---|
 | Checkpoint questions generated from section content | `test_checkpoint_generation` (data-driven) — generate 10 questions for one module, rated by a team member who knows the topic, per §11.1 of the overview | ≥8/10 rated as actually checking understanding, not generic/pattern-matchable | not started — Target-tier, depends on Baseline planner |
