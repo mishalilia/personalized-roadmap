@@ -29,19 +29,22 @@ Status values: Not checked / Under review / Decided.
   separate document, or per-commit notes.
 - **What we have tried:** Recorded purpose, what was verified and what was changed in the README.
 - **Ask:** Professor
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** TBD — put the record in whatever form is confirmed, and keep it updated.
+- **Status:** Decided
+- **Decision and date:** A section in the README is enough for now; move it to a separate document if it
+  grows, keeping the README readable (professor, 20 September 2026).
+- **Follow-up:** keep the README section short and move it out when it grows.
 
 ### Q-003 — Which model, and does the free tier cover the Baseline?
 
 - **Related DoD item:** Baseline — level inference and path generation
 - **Why it matters:** Every project is required to have a free path
   to Baseline. The choice also affects latency and how stable the output is across repeated runs.
-- **What we have tried:** Nothing measured yet. The first option to try is Google AI Plus. To answer this we generate one full path and measure what
-  it costs in tokens, how long it takes, and how much the result changes between runs.
+- **What we have tried:** Provider documentation checked on 21 September; nothing measured yet. Google AI
+  Plus gives no API quota. Candidates: Gemini API free tier (requests may be used to improve Google's
+  products), Groq free plan, a local model. Next: generate one full path and measure tokens, time and
+  variation between runs.
 - **Ask:** Team decision; assistant if no free option holds
-- **Status:** Not checked
+- **Status:** Under review
 - **Decision and date:** —
 - **Follow-up:** TBD — pin the chosen model in the configuration and record its limits and the fallback in
   the README.

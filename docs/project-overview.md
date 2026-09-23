@@ -124,7 +124,7 @@ curricula other than the one named below.
 | **Licence** | CC BY-NC-SA 4.0 (attribution, share-alike, non-commercial), confirmed in the repository's LICENSE file |
 | **Access** | Obtained. Public repository, cloned directly; no scraping and no credentials required. |
 | **Shape** | 25 MDX documents (22 of them curriculum content, 3 meta pages), about 165 KB of text, 151 sections, 116 structured resource entries with type, title, url, duration, difficulty and rationale. Resource types: course 36, tutorial 22, video 22, paper 9, article 6, docs 5, practice 4, book 4, guide 4, blog 3, talk 1. Declared difficulty: beginner 44, intermediate 53, advanced 19. |
-| **Version** | To be pinned to a specific tag or commit. The source repository maintains `curriculum-versions.json` and `versioned_docs`, so the version we build against is recorded and reproducible. |
+| **Version** | Pinned to commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026). The source repository maintains `curriculum-versions.json` and `versioned_docs`, so the version we build against is recorded and reproducible. |
 | **Personal data** | None in the source. Learner data collected during testing is kept minimal, is not published, and does not enter this repository. |
 | **Preprocessing** | MDX frontmatter and component attributes parsed into a node graph; prerequisite edges added by us; no content redistributed beyond what attribution requires. |
 
@@ -139,7 +139,7 @@ Tracked as Q-001 in [questions.md](questions.md).
 |---|---|
 | **Language / core** | Python 3.11 |
 | **Starter template** | [module-python-template](https://github.com/humblebeeai/module-python-template) — the core is a library, not a service. No HTTP API or database is introduced until something outside the core needs one. |
-| **LLM** | TBD between a free-tier hosted model (Google AI student offer, 12 months) and an open model run locally or on Colab. Decision criteria: cost of one path generation, latency, and output stability across repeated runs. Tracked as Q-003. |
+| **LLM** | TBD between a free hosted API (Gemini API free tier, Groq) and an open model run locally or on Colab. Decision criteria: cost of one path generation, latency, and output stability across repeated runs. Tracked as Q-003. |
 | **Fallback when the model is unavailable or rate-limited** | Free-tier quotas are counted per model, so the first fallback is a smaller model of the same family; the provider and the models themselves are still TBD (Q-003). If no model is reachable at all, the rule-based planner runs on the prerequisite graph and the difficulty declared in the content, and the learner is told that personalization is unavailable. |
 | **Interface** | The path JSON is the contract. A web interface is a Target item and is built as a client of that JSON. |
 | **Hosting** | TBD (Hugging Face Spaces or Vercel), free tier only. |

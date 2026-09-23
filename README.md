@@ -11,7 +11,7 @@ learner move on.
 Capstone project **S2** — Convergence of Business Administration & Engineering Capstone Design,
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI.
 
-Planning documents for the 20 September submission; no code yet.
+Planning documents only; no code yet.
 
 ## Documents
 
@@ -21,6 +21,8 @@ Planning documents for the 20 September submission; no code yet.
 | [docs/team-rnr.md](docs/team-rnr.md) | Role owners, what each member owns, reviewers |
 | [docs/ground-rules.md](docs/ground-rules.md) | How the team meets, reviews code and handles data |
 | [docs/questions.md](docs/questions.md) | Open questions, assumptions and decisions we would like feedback on |
+| [docs/architecture.md](docs/architecture.md) | C4 Level 1 and Level 2 diagrams |
+| [docs/data-sources.md](docs/data-sources.md) | Data sources, access and limitations |
 | [docs/test-plan.md](docs/test-plan.md) | Test scenarios mapped to Baseline/Target DoD items, current stage and status of each |
 
 ## The problem
@@ -53,7 +55,7 @@ Chosen because the planner, the prerequisite graph and the attribution logic are
 interface is a Target item; the HTTP layer it needs is added then, not before, and no database is planned
 until there is state to keep between sessions.
 
-C4 Level 1 and Level 2 diagrams are due 23 September and will be linked here.
+C4 Level 1 and Level 2 diagrams: [docs/architecture.md](docs/architecture.md).
 
 ## Content source, licence and attribution
 
@@ -62,7 +64,7 @@ C4 Level 1 and Level 2 diagrams are due 23 September and will be linked here.
 | Dataset | HumbleBeeAI Open Curriculum |
 | Source | https://roadmap.humblebee.ai · repository https://github.com/humblebeeai/int.academy-curriculum |
 | Licence | **CC BY-NC-SA 4.0** — attribution required, share-alike applies to derivatives, non-commercial |
-| Version | TBD — to be pinned to a specific commit or curriculum version tag |
+| Version | Commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026 |
 | Personal data | None in the source content |
 | Preprocessing | MDX parsed into a node graph; prerequisite edges authored by this team |
 
@@ -107,7 +109,7 @@ The curriculum is a public repository and needs no credentials:
 
 ```bash
 git clone https://github.com/humblebeeai/int.academy-curriculum
-git checkout <pinned commit — TBD>
+git -C int.academy-curriculum checkout 5c212720af50ffd0a1592ea6c0f812c3af733ed3
 ```
 
 The curriculum stays outside this repository; usage conditions are in the licence section above.

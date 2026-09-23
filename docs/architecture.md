@@ -104,8 +104,6 @@ The language model service is drawn **outside** the system boundary because we c
 - Python version, and whether the Baseline interface is a command line, a script or a notebook.
 - Web UI technology, and where progress is stored (Target only).
 - Which LLM and which free path we use (Q-003 in `questions.md`).
-- Whether we may send curriculum text and learner answers to an external AI service (Q-005).
-- What counts as "human review and approval" of what the learner sees (Q-006).
 - Whether hosting is Hugging Face Spaces or something else (free tier only).
 
 ### Not shown on purpose
