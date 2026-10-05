@@ -1,0 +1,27 @@
+# Open onboarding questions. The questions ask what the learner has done rather than how they rate
+# themselves, because self-reported level is unreliable in both directions.
+
+questions:
+  - id: programming
+    text: Describe your programming experience. Which languages have you used, for how long, and where (study, hobby, job)?
+    placeholder: e.g. Two years of Python at work, mostly data scripts and a small Django app.
+
+  - id: hardest_project
+    text: What is the most complex thing you have built? What was your part in it, and what was hard?
+    placeholder: e.g. A REST API for our team's booking system; I designed the database schema.
+
+  - id: math
+    text: How comfortable are you with linear algebra, probability and statistics? Where did you learn them, and when did you last use them?
+    placeholder: e.g. Took linear algebra at university three years ago and have not used it since.
+
+  - id: tools
+    text: Which of these have you used in practice, and how — the command line, Git, SQL, Docker, a cloud provider?
+    placeholder: e.g. Git and the command line every day, SQL for reports, never Docker.
+
+  - id: machine_learning
+    text: Have you trained or used machine-learning models? Describe what you did, or say that you have not.
+    placeholder: e.g. Trained a scikit-learn classifier in a course project; never used deep learning.
+
+  - id: goal
+    text: What do you want to be able to do when you finish? Be as specific as you can.
+    placeholder: e.g. Build and deploy image-recognition models for quality control in manufacturing.

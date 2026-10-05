@@ -39,10 +39,21 @@ Status values: Not checked / Under review / Decided.
 - **Related DoD item:** Baseline — level inference and path generation
 - **Why it matters:** Every project is required to have a free path
   to Baseline. The choice also affects latency and how stable the output is across repeated runs.
-- **What we have tried:** Provider documentation checked on 21 September; nothing measured yet. Google AI
-  Plus gives no API quota. Candidates: Gemini API free tier (requests may be used to improve Google's
-  products), Groq free plan, a local model. Next: generate one full path and measure tokens, time and
-  variation between runs.
+- **What we have tried:** Provider documentation checked on 21 September; Google AI Plus gives no API quota.
+  Candidates: Gemini API free tier (requests may be used to improve Google's products), Groq free plan, a
+  local model. On 3 October we ran the prototype for P1–P3; a path takes two model calls, level then plan.
+  - Groq, per model: 30 requests/min, 1,000 a day, 8K tokens/min, 200K tokens a day. `openai/gpt-oss-120b`
+    needs 6–8K tokens and about 6 s per path, so one path a minute and 25–30 a day; a second path in the
+    same minute waited 20–40 s. Its answers were always valid JSON. The smaller `openai/gpt-oss-20b`, used
+    once as the fallback, left modules out of its plan.
+  - Gemini, per project and model (AI Studio): `gemini-3.8-flash` 5 requests/min and 20 a day, which is 10
+    paths; `gemini-3.5-flash-lite` 15 a minute and 500 a day. Daily limits reset at midnight Pacific time.
+    `gemini-3.8-flash` took 14–27 s per path and was refused as overloaded (503) on 4 of 10 calls;
+    flash-lite answered instead.
+  - Quality: P1 and P2 differ by 40–45% (0–22% before the prove option), P3 by 62–77% from both. Some
+    decisions look wrong — flash-lite skipped Data Manipulation for P1, who has never used NumPy or Pandas
+    — and `gpt-oss-120b` changed its decision on Systems & Networking for P1 between runs. Variation
+    between runs is not measured yet.
 - **Ask:** Team decision; assistant if no free option holds
 - **Status:** Under review
 - **Decision and date:** —

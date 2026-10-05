@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=77"]  # 77 is the first version that reads `license-files`
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personalized-roadmap"
+description = "Builds a personal learning path through the HumbleBeeAI Open Curriculum."
+readme = "README.md"
+requires-python = ">=3.11"
+license-files = ["LICENSE"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.scripts]
+roadmap = "roadmap.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "roadmap.__version__.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.dynamic.optional-dependencies]
+app = { file = ["requirements/requirements.app.txt"] }
+test = { file = ["requirements/requirements.test.txt"] }
+dev = { file = ["requirements/requirements.dev.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+roadmap = ["prompts/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+extraPaths = ["src", "tests", "app"]  # imported the way pytest and Streamlit import them

@@ -1,0 +1,63 @@
+# Invented learner profiles for demos and tests. None of them is based on a real person.
+# P1 and P2 come from the demo script in the project brief; P3 is the proposal in docs/data-sources.md.
+
+profiles:
+  - id: p1
+    title: "P1 · Experienced backend engineer, goal: computer vision"
+    answers:
+      programming: >-
+        Three years as a backend engineer, mostly Go and Python. Before that a computer science degree
+        where I wrote Java and C.
+      hardest_project: >-
+        I designed and maintain our payment reconciliation service: it ingests bank statements, matches
+        them against the ledger in PostgreSQL and exposes a REST API. The hard part was making the matching
+        idempotent and fast enough for two million rows a day.
+      math: >-
+        I took linear algebra and probability at university but have not used them since, apart from basic
+        statistics for dashboards. Matrix multiplication I remember; eigenvectors are fuzzy.
+      tools: >-
+        Every day: the Linux command line, Git, Docker, PostgreSQL and Kubernetes on AWS. I write our CI
+        pipelines.
+      machine_learning: >-
+        None in practice. I once called an image classification API from one of our services, but I have
+        never trained a model.
+      goal: >-
+        Move into computer vision research: read and reproduce object detection papers, train models myself
+        and eventually publish.
+
+  - id: p2
+    title: "P2 · Beginner after an intro Python course, goal: computer vision"
+    answers:
+      programming: >-
+        I finished an online introductory Python course last month. Before that I had never programmed.
+      hardest_project: >-
+        The final project of the course: a command-line to-do list that saves tasks to a text file. I
+        followed the course instructions; reading and writing the file was the hardest part.
+      math: >-
+        High school maths. I have not studied linear algebra or statistics.
+      tools: >-
+        I ran Python scripts from the terminal during the course. I have not used Git, SQL or Docker.
+      machine_learning: >-
+        No. I have only read articles about AI.
+      goal: >-
+        I want to work on computer vision, for example systems that recognise objects in photos.
+
+  - id: p3
+    title: "P3 · Strong maths, little coding, goal: multilingual speech systems"
+    answers:
+      programming: >-
+        Very little. I wrote short MATLAB scripts for coursework and once started a Python tutorial.
+      hardest_project: >-
+        My master's thesis in applied mathematics: convergence bounds for a stochastic optimisation method,
+        with small numerical experiments in MATLAB that my supervisor set up.
+      math: >-
+        Very comfortable. Linear algebra, probability, statistics and optimisation were the core of my
+        degree, and I use them every day.
+      tools: >-
+        I have used the command line only to start MATLAB. No Git, SQL or Docker.
+      machine_learning: >-
+        I know linear regression, logistic regression and gradient descent from lectures, but I have never
+        trained a model in code.
+      goal: >-
+        Build multilingual speech systems: speech recognition and translation that work for languages with
+        little training data, such as Uzbek.

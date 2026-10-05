@@ -1,0 +1,14 @@
+# The curriculum paths are built through, pinned to one commit so that every path can be reproduced.
+# `python -m roadmap fetch` checks this version out into data/curriculum/ (git-ignored).
+
+repository: https://github.com/humblebeeai/int.academy-curriculum
+version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # full commit hash, 7 September 2026  # pragma: allowlist secret
+docs_dir: docs
+site_url: https://roadmap.humblebee.ai/docs
+
+attribution:
+  title: HumbleBeeAI Open Curriculum
+  author: HumbleBeeAI
+  url: https://roadmap.humblebee.ai
+  licence: CC BY-NC-SA 4.0  # the stricter of the licences the source states; see the README and Q-001
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/

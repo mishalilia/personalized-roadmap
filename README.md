@@ -11,7 +11,8 @@ learner move on.
 Capstone project **S2** — Convergence of Business Administration & Engineering Capstone Design,
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI.
 
-Planning documents only; no code yet.
+Status: the Baseline works as a prototype — questions, a level suggestion the learner can correct, a personal
+path and a web page. Checkpoints (Target) are not built yet.
 
 ## Documents
 
@@ -42,8 +43,10 @@ in completion and retention.
 1. **Onboarding** — open-ended questions about coding background and end goal.
 2. **Level inference** — a model infers the level and states the reasoning; the learner can correct it, and
    the correction is what the planner uses. The inference is a suggestion, never a verdict.
-3. **Path generation** — an ordered route through the real content toward the goal, with every skipped item
-   explicitly marked and justified.
+3. **Path generation** — the curriculum's modules in course order, each marked *study*, *prove* or *skip*
+   with a reason. *Prove* is offered for modules that have a completion checklist: the learner works through
+   the checklist instead and studies the module only if they cannot complete it. The learner can change any
+   decision and confirms the path before using it.
 4. **Checkpoints** *(Target)* — questions generated from the content; progress is gated on them.
 5. **Adaptation** *(Target)* — a failed checkpoint replans the remainder of the path.
 
@@ -55,7 +58,24 @@ Chosen because the planner, the prerequisite graph and the attribution logic are
 interface is a Target item; the HTTP layer it needs is added then, not before, and no database is planned
 until there is state to keep between sessions.
 
+From the template we took the project layout, the packaging setup and the automatic checks, which run before
+each commit and again on every pull request. Our changes: Python 3.11, the pull-request checks also run the
+tests, and markdownlint is off because its fixes would rewrite documents the whole team edits. Left out:
+PyPI publishing, release automation and the MkDocs site — we publish no package.
+
 C4 Level 1 and Level 2 diagrams: [docs/architecture.md](docs/architecture.md).
+
+| Path | Contents |
+|---|---|
+| `src/roadmap/` | The core library and its command line: curriculum parser, level inference, planner, fallback |
+| `src/roadmap/prompts/` | Model instructions as Markdown, editable without touching code |
+| `app/` | The demo web interface (Streamlit), a client of the core |
+| `config/` | Curriculum pin and attribution, onboarding questions, invented example profiles |
+| `tests/` | Tests; the model is replaced by a stub, the curriculum by a small invented course |
+
+The model makes the judgement calls: the level, and what to do with each module. Code keeps the course order,
+checks that every module got a decision and adds the attribution, so a path never contains a link the model
+made up.
 
 ## Content source, licence and attribution
 
@@ -100,26 +120,67 @@ what is collected, and **no learner data is published in this repository**.
 
 ## Setup
 
-TBD — no code yet. Copy `.env.example` to `.env` for the API key; `requirements.txt` is a placeholder until
-the core module exists.
+Python 3.11 or newer and Git. From the repository root:
+
+```bash
+python -m venv .venv
+```
+
+Activate it (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` elsewhere), then:
+
+```bash
+pip install -e ".[app,test,dev]"
+```
+
+```bash
+pre-commit install
+```
+
+```bash
+python -m roadmap fetch
+```
+
+`pre-commit install` turns the checks on: a commit that contains a key or a password is stopped, code is
+formatted, and commits straight to `main` are refused. Files uploaded through the GitHub website skip these
+checks; the pull request runs them.
+
+To personalize paths, copy `.env.example` to `.env` and add `LLM_API_KEY_GROQ` or `LLM_API_KEY_GOOGLE`.
+`LLM_PROVIDER` chooses one; otherwise the first provider in [config/llm.yaml](config/llm.yaml) with a key is
+used. Without a key the app still runs, but paths follow the course as written.
+
+| Command | What it does |
+|---|---|
+| `streamlit run app/streamlit_app.py` | The demo web interface: build a path, or open a saved one (JSON) without asking a model |
+| `python -m roadmap plan p1` | The path for example profile P1 in the terminal; `--level advanced` overrides the level, `--out out/p1.json` saves the JSON |
+| `python -m roadmap compare` | Paths for all example profiles and how much each pair differs |
+| `pytest` | The tests |
+
+`plan` and `compare` take `--provider google` to switch provider for one run, and `--verbose` to log the time
+and tokens of every model call.
 
 ## How to obtain the data
 
-The curriculum is a public repository and needs no credentials:
+`python -m roadmap fetch` checks the curriculum out into `data/curriculum/` (git-ignored) at the version pinned
+in [config/curriculum.yaml](config/curriculum.yaml). The repository is public and needs no credentials. By
+hand:
 
 ```bash
-git clone https://github.com/humblebeeai/int.academy-curriculum
-git -C int.academy-curriculum checkout 5c212720af50ffd0a1592ea6c0f812c3af733ed3
+git clone https://github.com/humblebeeai/int.academy-curriculum data/curriculum
+```
+
+```bash
+git -C data/curriculum checkout 5c212720af50ffd0a1592ea6c0f812c3af733ed3
 ```
 
 The curriculum stays outside this repository; usage conditions are in the licence section above.
 
 ## Fallback when the model is unavailable or rate-limited
 
-Free-tier quotas are counted per model, so the first fallback is a smaller model of the same family. The
-provider and the models themselves are still TBD (Q-003). If no model is reachable at all, the rule-based
-planner runs — ordering from the prerequisite graph and the difficulty declared in the content — and the
-learner is told that personalization is unavailable.
+If a model is rate-limited, down, or gives a plan that leaves a module out, the next model listed for the
+provider in [config/llm.yaml](config/llm.yaml) is tried; free-tier quotas are counted per model. If no model
+answers, the path is the whole course in its own order and the learner is told that personalization is
+unavailable. Nothing is skipped without a model: a wrong skip does more harm than repeating familiar material.
+Which provider and models to use is still open (Q-003).
 
 ## Example output
 
@@ -129,7 +190,13 @@ committed here once the core works.
 
 ## Test results, known errors and limitations
 
-No runs yet. What we plan to check, and what will count as success:
+`pytest` checks everything code decides — parsing, course order, attribution, the fallback, the learner's
+changes and both web pages — with a stub in place of the model. Three of the tests run on the real
+curriculum: 18 modules, 116 resources, page URLs as on the site.
+
+First model runs, one per profile on 3 October, so not yet results: the paths of P1 and P2 differ by 40–45%,
+and P3 differs from both by 64–69%. Some decisions look wrong and some change between runs; details are in
+Q-003. Still to do, and what counts as success:
 
 - **Different paths for different profiles** — the three example profiles are compared against each other;
   success is a difference large enough to be visible without explanation, measured as the share of nodes
@@ -166,3 +233,6 @@ licence in the source repository's own files, and the content statistics in the 
 parsing the source repository rather than from a model.
 
 Drafts were edited rather than taken as they came.
+
+The prototype code (`src/`, `app/`, `tests/`, `config/`) was written with AI assistance (Claude). Its tests
+were run, and the module URLs it builds were checked against the curriculum site's sitemap.
