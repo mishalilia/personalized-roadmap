@@ -1,1 +1,5 @@
-# Dependencies are pinned with versions once the core module starts.
+# Runtime dependencies of the roadmap core (src/roadmap).
+openai>=1.68,<3.0
+pydantic>=2.7,<3.0
+pydantic-settings>=2.3,<3.0
+pyyaml>=6.0,<7.0

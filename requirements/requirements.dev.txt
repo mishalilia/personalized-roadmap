@@ -1,0 +1,3 @@
+# Checks run before each commit and on each pull request (.pre-commit-config.yaml).
+pyright>=1.1.392,<2.0.0
+pre-commit>=4.0.1,<5.0.0

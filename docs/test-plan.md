@@ -6,19 +6,13 @@ without a way to verify it.
 
 ## 0. Current stage
 
-**No code exists yet** — only planning documents (`docs/project-overview.md`, `docs/team-rnr.md`,
-`docs/ground-rules.md`, `docs/questions.md`) and repo scaffolding (`.env.example`, `.gitignore`,
-`requirements.txt` as a placeholder). This document is written for that stage: every test case below is
-**planned**, not implemented, and each has a `Status` column tracking that. Nothing here is a test report —
-that comes later, in `docs/test-results/`, once tests actually run.
+**Prototype code exists for the Baseline** (`src/roadmap/`, `app/`, `tests/`). The statuses in §3 come from a
+`pytest` run on 3 October 2026; the checks that need a live model have been run once by hand, which is not
+yet a report. Reports go to `docs/test-results/`, created with the first one.
 
 As code lands, update the `Status` column in this file (`planned` → `written` → `passing`) instead of moving
 test cases elsewhere — keeping the plan and its current state in one place is more useful than a separate
 progress tracker.
-
-Two directories this document refers to throughout — `tests/` and `docs/test-results/` — do not exist in
-the repository yet either. They get created with the first fixture file and the first dated report,
-respectively, not before.
 
 ## 1. Scope and principles
 
@@ -46,14 +40,15 @@ respectively, not before.
 
 | DoD item | Test | Pass condition | Status |
 |---|---|---|---|
-| Onboarding questions cover background and goal | `test_onboarding_schema` — validates the question config file loads and each question has a non-empty prompt and expected-answer type | Loads without error; all required onboarding questions are present, including questions covering coding background and learning goal. | planned — config file not yet created |
-| Infers a level from answers, explains reasoning | `test_level_inference_returns_evidence` — mocked and live-call tests assert the response always contains `level`, `evidence`, `confidence` fields | 100% of mocked-response tests pass; live-call smoke test run manually before each milestone | planned — depends on model choice (Q-003) |
-| Level inference correctable | `test_learner_override_replaces_model_level` — planner is called with an explicit override and asserted to plan against the override, not the inferred level | Planner output level == override in all cases | planned |
-| Ordered path from prerequisite graph | `test_topological_order_respects_prerequisites` — for a fixed graph fixture, assert no node appears before any of its prerequisites | 0 violations across the full parsed graph | planned — depends on prerequisite graph being authored |
-| Skipped material explicitly marked and justified | `test_skipped_nodes_have_justification` — every node absent from a generated path appears in a `skipped` list with a non-empty reason string | 100% coverage, no silent omissions | planned |
-| Three profiles produce visibly different paths | `test_profile_paths_differ` — three fixed example profiles (novice/backend-experienced/CV-goal, per §11.2 of the overview) are run through the real planner and the pairwise share of non-overlapping included nodes is computed | Each pair differs by a set threshold (proposed: ≥30% non-overlap) — record the actual number | planned — can write the fixture profiles now, before the planner exists |
-| Licence attribution correct | `test_every_resource_has_attribution` — every emitted resource object carries `title`, `url`, `licence` | 100% coverage; licence string equals `CC BY-NC-SA 4.0` (the source is inconsistent, see Q-001) | planned |
-| Rule-based fallback works with no model | `test_fallback_planner_no_llm` — planner is run with the model client replaced by a stub that raises, and must still return a valid path using only the prerequisite graph and declared difficulty | Valid path returned, `personalization_unavailable` flag set | planned |
+| Onboarding questions cover background and goal | `test_onboarding_schema` — validates the question config file loads and each question has a non-empty prompt and expected-answer type | Loads without error; all required onboarding questions are present, including questions covering coding background and learning goal. | passing — `config/onboarding.yaml`, 6 questions |
+| Infers a level from answers, explains reasoning | `test_level_inference_returns_evidence` — mocked and live-call tests assert the response always contains `level`, `evidence`, `confidence` fields | 100% of mocked-response tests pass; live-call smoke test run manually before each milestone | mocked: passing; live: run by hand for P1–P3 on 3 October with both providers |
+| Level inference correctable | `test_learner_override_replaces_model_level` — planner is called with an explicit override and asserted to plan against the override, not the inferred level | Planner output level == override in all cases | passing |
+| Ordered path from prerequisite graph | `test_topological_order_respects_prerequisites` — for a fixed graph fixture, assert no node appears before any of its prerequisites | 0 violations across the full parsed graph | not written: the prototype keeps the course's own order, and the graph waits for a team decision; `test_path_follows_course_order_whatever_order_the_model_answers_in` passes |
+| Skipped material explicitly marked and justified | `test_skipped_nodes_have_justification` — every node absent from a generated path appears in a `skipped` list with a non-empty reason string | 100% coverage, no silent omissions | passing — every module gets a decision (study, prove or skip); a model answer that leaves one out is rejected |
+| Three profiles produce visibly different paths | `test_profile_paths_differ` — three fixed example profiles (novice/backend-experienced/CV-goal, per §11.2 of the overview) are run through the real planner and the pairwise share of non-overlapping included nodes is computed | Each pair differs by a set threshold (proposed: ≥30% non-overlap) — record the actual number | run once on 3 October, so not yet a result: P1–P2 45% (`gpt-oss-120b`) and 40% (`gemini-3.5-flash-lite`), P3 vs the others 64–69%. A module counts as different when the paths study, prove or skip it differently. Expected decisions per profile are not written yet |
+| Licence attribution correct | `test_every_resource_has_attribution` — every emitted resource object carries `title`, `url`, `licence` | 100% coverage; licence string equals `CC BY-NC-SA 4.0` (the source is inconsistent, see Q-001) | passing in a different form, `test_every_module_in_a_path_carries_its_source`: modules carry title and URL, and the path carries the licence; resources carry title and URL only, since they keep their own licences — to confirm with Data & Research |
+| Path decisions editable and approved before use (course rule for AI output) | `test_learner_can_change_any_planner_decision`, `test_a_change_after_confirmation_needs_a_new_confirmation`, `test_learner_changes_the_path_and_confirms_it` — the learner changes decisions, the planner's suggestion is kept, and the path can be downloaded only after confirmation | Every decision can be changed; any change clears the confirmation | passing |
+| Rule-based fallback works with no model | `test_fallback_planner_no_llm` — planner is run with the model client replaced by a stub that raises, and must still return a valid path using only the prerequisite graph and declared difficulty | Valid path returned, `personalization_unavailable` flag set | passing — without a model the path is the whole course, nothing skipped |
 
 ## 4. Target test cases
 | DoD item | Test | Pass condition | Status |
@@ -83,14 +78,8 @@ submission) once there's something to run.
 
 ## 6. What can be started right now, with no code
 
-- `tests/fixtures/profiles.json` — the three (or more) example learner profiles. These are invented text,
-  not code, and don't depend on anything else existing.
-- `tests/fixtures/curriculum_sample.json` — a small hand-picked slice of the parsed curriculum, once the
-  MDX parsing format is settled, for fast unit tests that don't need the full 151-section graph.
-- The onboarding question set itself (`test_onboarding_schema`'s subject) — a config file, no logic needed.
-
-Writing these now means the first real pytest run, once the planner exists, has fixtures ready rather than
-becoming a second project.
+Done: the example profiles, a small curriculum for fast tests and the onboarding questions are written; §8
+lists where they are.
 
 ## 7. What is explicitly not tested yet
 
@@ -103,9 +92,9 @@ becoming a second project.
 
 | Fixture | Contents | Location | Status |
 |---|---|---|---|
-| Three example learner profiles | Invented, not real-learner data (per overview §7) | `tests/fixtures/profiles.json` | can write now |
-| Curriculum subset | A pinned small slice of the parsed graph | `tests/fixtures/curriculum_sample.json` | blocked on parser format |
-| Mocked LLM responses | Canned `level`/`evidence`/`confidence` and checkpoint-question responses | `tests/fixtures/llm_responses/` | blocked on model choice (Q-003) |
+| Three example learner profiles | Invented, not real-learner data (per overview §7); the web interface offers them too | `config/profiles.yaml` | written |
+| Curriculum subset | A small invented course in the same Docusaurus format, so parser tests need neither the network nor curriculum text | `tests/fixtures/docs/` | written |
+| Mocked LLM responses | Canned `level`/`evidence`/`confidence` and planner responses, given by a stub model in the tests | `tests/helpers.py` (`FakeLLM`) | written for level and planner; checkpoint responses not yet |
 
 Real learner session data (Target item) is never committed — per the ground rules and README, it stays out
 of the repository entirely; only the write-up goes in `docs/test-results/`.
