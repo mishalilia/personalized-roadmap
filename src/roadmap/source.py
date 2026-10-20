@@ -25,7 +25,15 @@ class CurriculumSource(BaseModel):
 def checkout(source: CurriculumSource, target: Path) -> Path:
     """Clone the repository into `target` unless it is there, check out the pinned version, return the docs path."""
     if not (target / ".git").exists():
-        _git("clone", "--quiet", source.repository, str(target))
+        # Some of the course's paths are longer than Windows allows by default.
+        _git(
+            "clone",
+            "--quiet",
+            "-c",
+            "core.longpaths=true",
+            source.repository,
+            str(target),
+        )
     if _git("-C", str(target), "rev-parse", "HEAD") != source.version:
         _git("-C", str(target), "fetch", "--quiet", "origin")
         _git("-C", str(target), "checkout", "--quiet", source.version)

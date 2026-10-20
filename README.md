@@ -184,9 +184,16 @@ Which provider and models to use is still open (Q-003).
 
 ## Example output
 
-A generated path: the included nodes in order with a reason for each, the skipped ones with justification,
-the inferred level and the reasoning behind it, and attribution for every resource. A sample run will be
-committed here once the core works.
+The path for example profile P1, built by `openai/gpt-oss-120b` on 3 October and opened on the saved-path page.
+
+| | |
+|---|---|
+| ![Onboarding answers](docs/images/1-onboarding.jpg) | ![Suggested level and summary](docs/images/2-level-and-summary.jpg) |
+| Onboarding, filled in from P1 | The suggested level with its evidence; how many modules to study, prove or skip |
+| ![A module to prove](docs/images/3-prove.jpg) | ![Modules to study and to skip](docs/images/4-study-and-skip.jpg) |
+| "Prove": the module's checklist instead of studying it | Study and skip, each with a reason |
+| ![A decision changed by the learner](docs/images/5-learner-change.jpg) | ![Confirmed path and attribution](docs/images/6-confirmed-and-attribution.jpg) |
+| The learner changed a skip to study; the planner's suggestion stays visible | The confirmed path can be downloaded; attribution below |
 
 ## Test results, known errors and limitations
 
