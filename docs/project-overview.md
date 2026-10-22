@@ -62,18 +62,17 @@ Three parts of this cannot be built as fixed branching logic:
 
 A Python core that produces a learning path as a structured artifact, plus a thin interface that consumes it.
 
-1. **Content ingestion.** Parse the curriculum repository into a graph of nodes (module, section, resource)
-   with metadata already present in the source: type, title, url, duration, difficulty, rationale.
-2. **Prerequisite graph.** Hand-authored dependency edges between modules, reviewed by the team. The source
-   states prerequisites only in prose, in a "Soft-Landing Prerequisites" table covering command line, problem
-   solving, linear algebra, statistics and NumPy; that table also names public certificate tests and exams
-   for those sections, which we can use to test a learner's level instead of asking for it.
+1. **Content ingestion.** Parse the curriculum repository into modules and their resources, with metadata
+   already present in the source: type, title, url, duration, difficulty, rationale.
+2. **Course order.** The path keeps the order the authors gave the course. The source states prerequisites
+   only in prose; they go to the model as text. (The first plan was a hand-written prerequisite graph; see
+   the changes in [architecture.md](architecture.md).)
 3. **Onboarding.** A short set of open-ended questions on coding background and end goal.
-4. **Level inference.** An LLM maps the answers onto the graph and produces a level estimate **with its
+4. **Level inference.** An LLM reads the answers and produces a level estimate **with its
    reasoning stated**, which the learner can override. The estimate is presented as a suggestion, never a
    verdict.
-5. **Path generation.** An ordered route through the graph toward the stated goal, with every skipped node
-   explicitly marked and justified against the inferred level.
+5. **Path generation.** For every module the model suggests study, prove (the learner likely knows it and
+   checks themselves against its checklist) or skip, each with a reason. The learner can change any of them.
 6. **Checkpoints (Target).** Questions and coding problems generated per section, with progress gated on
    them and the remainder of the path replanned on failure.
 
@@ -84,7 +83,7 @@ The path is emitted as JSON, which any interface reads.
 | | |
 |---|---|
 | **Input** | Learner's answers to onboarding questions (free text: background, experience, end goal); optional explicit corrections to the inferred level; later, checkpoint answers. |
-| **Reference data** | The curriculum graph parsed from a pinned version of the public content repository. |
+| **Reference data** | The modules parsed from a pinned version of the public content repository. |
 | **Output** | An ordered learning path: included nodes in order, each with a reason; skipped nodes with justification; the inferred level with the reasoning behind it; attribution for every referenced resource. Emitted as JSON, rendered for the learner. |
 | **Output (Target)** | Checkpoint questions per section; pass/fail state; a revised remaining path after a failed checkpoint. |
 
@@ -94,7 +93,7 @@ The path is emitted as JSON, which any interface reads.
 |---|---|
 | Onboarding questions covering coding background and end goal | 6-8 open questions, kept in a config file in this repository. |
 | Infers a level from the answers and explains the reasoning, so the learner can correct it | One model call returns the level, the evidence for it and how sure it is. The learner sees that evidence and can change the level; the planner then uses their version. |
-| Generates an ordered path through the real content, with skipped material explicitly marked and justified | Code walks the prerequisite graph and produces the order. The model only judges whether a module is relevant to the goal, and why a skipped one is safe to skip. |
+| Generates an ordered path through the real content, with skipped material explicitly marked and justified | Code keeps the course order and checks that every module has a decision. The model decides study, prove or skip, with a reason for each. |
 | Produces visibly different paths for three clearly different learner profiles | Three example profiles are kept in the repository and their paths are compared automatically, so the difference is measured rather than claimed. They are invented, not built from real people's answers. |
 | Licence attribution correctly implemented | Each item in the output carries its source title, URL and licence. |
 
@@ -126,7 +125,7 @@ curricula other than the one named below.
 | **Shape** | 25 MDX documents (22 of them curriculum content, 3 meta pages), about 165 KB of text, 151 sections, 116 structured resource entries with type, title, url, duration, difficulty and rationale. Resource types: course 36, tutorial 22, video 22, paper 9, article 6, docs 5, practice 4, book 4, guide 4, blog 3, talk 1. Declared difficulty: beginner 44, intermediate 53, advanced 19. |
 | **Version** | Pinned to commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026). The source repository maintains `curriculum-versions.json` and `versioned_docs`, so the version we build against is recorded and reproducible. |
 | **Personal data** | None in the source. Learner data collected during testing is kept minimal, is not published, and does not enter this repository. |
-| **Preprocessing** | MDX frontmatter and component attributes parsed into a node graph; prerequisite edges added by us; no content redistributed beyond what attribution requires. |
+| **Preprocessing** | MDX frontmatter and component attributes parsed into modules, resources, prerequisites and checklists; no content redistributed beyond what attribution requires. |
 
 A generated path links to and orders the material without reproducing it, so we read it as a collection
 rather than an adaptation. We license our own documentation and curriculum-derived artifacts CC BY-NC-SA 4.0
@@ -139,8 +138,8 @@ Tracked as Q-001 in [questions.md](questions.md).
 |---|---|
 | **Language / core** | Python 3.11 |
 | **Starter template** | [module-python-template](https://github.com/humblebeeai/module-python-template) — the core is a library, not a service. No HTTP API or database is introduced until something outside the core needs one. |
-| **LLM** | TBD between a free hosted API (Gemini API free tier, Groq) and an open model run locally or on Colab. Decision criteria: cost of one path generation, latency, and output stability across repeated runs. Tracked as Q-003. |
-| **Fallback when the model is unavailable or rate-limited** | Free-tier quotas are counted per model, so the first fallback is a smaller model of the same family; the provider and the models themselves are still TBD (Q-003). If no model is reachable at all, the rule-based planner runs on the prerequisite graph and the difficulty declared in the content, and the learner is told that personalization is unavailable. |
+| **LLM** | Gemini API free tier (`gemini-3.5-flash-lite`, then `gemini-3.8-flash`), with Groq (`openai/gpt-oss-120b`) as the second provider. Chosen on cost, latency and stability across repeated runs (Q-003). |
+| **Fallback when the model is unavailable or rate-limited** | Free-tier quotas are counted per model, so the first fallback is the provider's next model. If no model answers, the path is the whole course in its own order, and the learner is told that personalization is unavailable. |
 | **Interface** | The path JSON is the contract. A web interface is a Target item and is built as a client of that JSON. |
 | **Hosting** | TBD (Hugging Face Spaces or Vercel), free tier only. |
 | **Hardware** | None beyond team laptops. No GPU required; no model training. |
@@ -154,8 +153,8 @@ Tracked as Q-001 in [questions.md](questions.md).
    (Q-004).
 2. **Whether the corpus supports visibly different paths.** 25 modules may be too coarse a unit; 116
    resources is finer. First test: hand-build paths for the three example profiles before writing the planner.
-3. **The prerequisite graph does not exist in machine-readable form** and must be authored and reviewed by us
-   from the prose prerequisites table and the structure of the curriculum.
+3. **Prerequisites exist only in prose.** We use the course order and give the prose to the model instead of
+   writing a graph by hand.
 4. **Self-reported level is unreliable in both directions.** Testing is stronger than asking, but a long
    test loses the learner before they start. To be settled with real learners.
 5. **How strictly a failed checkpoint blocks progress.** Too strict and learners quit; too loose and

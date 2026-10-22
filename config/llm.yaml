@@ -1,12 +1,12 @@
 # Model providers with an OpenAI-compatible API. Keys stay in .env: LLM_API_KEY_GROQ, LLM_API_KEY_GOOGLE.
 # LLM_PROVIDER (or --provider on the command line) picks one; without it, the first one here with a key is used.
 # Models are tried in order: free-tier quotas are counted per model, so the second one is the fallback.
-# Which provider and models the Baseline uses is still open (Q-003); these are the candidates being measured.
-
-groq:
-  base_url: https://api.groq.com/openai/v1
-  models: [openai/gpt-oss-120b, openai/gpt-oss-20b]
+# The order follows the measurements of 21 October (Q-003, docs/test-results/2026-10-21-model-stability.md).
 
 google:
   base_url: https://generativelanguage.googleapis.com/v1beta/openai/
-  models: [gemini-3.8-flash, gemini-3.5-flash-lite]
+  models: [gemini-3.5-flash-lite, gemini-3.8-flash]
+
+groq:
+  base_url: https://api.groq.com/openai/v1
+  models: [openai/gpt-oss-120b]

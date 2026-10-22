@@ -11,8 +11,8 @@ Status values: Not checked / Under review / Decided.
 - **Related DoD item:** Baseline — licence attribution correctly implemented
 - **Why it matters:** The answer decides how much of this repository share-alike reaches. Attribution is
   required either way, and licence compliance is graded.
-- **Our reading:** A path links to and orders material without reproducing it, which makes it a collection
-  rather than an adaptation; Creative Commons states that a collection does not create adapted material.
+- **Our reading:** A path orders the modules and includes their titles, descriptions and checklists, so it
+  may count as an adaptation rather than a collection. "Prove" needs the checklists, so we keep them.
 - **What we have tried:** Read the licence in the source repository, where it is stated inconsistently (see
   the licence section of the README), and applied the stricter option to ourselves. That is safe under
   either answer.
@@ -52,13 +52,18 @@ Status values: Not checked / Under review / Decided.
     flash-lite answered instead.
   - Quality: P1 and P2 differ by 40–45% (0–22% before the prove option), P3 by 62–77% from both. Some
     decisions look wrong — flash-lite skipped Data Manipulation for P1, who has never used NumPy or Pandas
-    — and `gpt-oss-120b` changed its decision on Systems & Networking for P1 between runs. Variation
-    between runs is not measured yet.
+    — and `gpt-oss-120b` changed its decision on Systems & Networking for P1 between runs.
+  - 21 October, each model 3–5 times per profile with no fallback, scored against the expected decisions
+    ([report](test-results/2026-10-21-model-stability.md)): `gemini-3.5-flash-lite` kept 93% of its decisions
+    across runs and matched 96%; `gpt-oss-120b` kept 76%, and its wrong skips landed in different modules each
+    run; `gemini-3.8-flash` was the most stable but took 35 s a path; `gpt-oss-20b` cut its answer short in 5
+    of 9 paths.
 - **Ask:** Team decision; assistant if no free option holds
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** TBD — pin the chosen model in the configuration and record its limits and the fallback in
-  the README.
+- **Status:** Decided
+- **Decision and date:** `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` as the
+  second provider; `gpt-oss-20b` dropped (22 October 2026). Pinned in `config/llm.yaml`.
+- **Follow-up:** before real learners use it (Target), decide whether their answers may go to the Gemini free
+  tier, which may use requests to improve Google's products.
 
 ### Q-004 — What can checkpoint questions actually be generated from?
 

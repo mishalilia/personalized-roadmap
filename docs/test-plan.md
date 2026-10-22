@@ -7,8 +7,9 @@ without a way to verify it.
 ## 0. Current stage
 
 **Prototype code exists for the Baseline** (`src/roadmap/`, `app/`, `tests/`). The statuses in §3 come from a
-`pytest` run on 3 October 2026; the checks that need a live model have been run once by hand, which is not
-yet a report. Reports go to `docs/test-results/`, created with the first one.
+`pytest` run on 3 October 2026. Model runs are reported in `docs/test-results/`; the first report is from
+21 October. A clean clone was installed and tested on Windows on 20 October: all 50 tests pass, and without a
+key the path falls back to the course order.
 
 As code lands, update the `Status` column in this file (`planned` → `written` → `passing`) instead of moving
 test cases elsewhere — keeping the plan and its current state in one place is more useful than a separate
@@ -16,7 +17,7 @@ progress tracker.
 
 ## 1. Scope and principles
 
-- **Code is tested where code makes the decision** (parsing, prerequisite graph, path ordering,
+- **Code is tested where code makes the decision** (parsing, path ordering,
   attribution). These are ordinary unit tests with deterministic expected output.
 - **The model is tested where the model makes the judgement** (level inference, relevance/skip reasoning,
   checkpoint generation). These cannot have a single "correct" output, so they are tested against
@@ -31,7 +32,7 @@ progress tracker.
 
 | Level | What it covers | Tooling | Needs before it can run |
 |---|---|---|---|
-| Unit | Content parsing, prerequisite graph, path ordering, attribution formatting, fallback planner | `pytest` | The relevant module to exist |
+| Unit | Content parsing, path ordering, attribution formatting, fallback planner | `pytest` | The relevant module to exist |
 | Integration | Onboarding → level inference → path generation, end to end, with the model mocked | `pytest` + fixture LLM responses | The core pipeline wired together |
 | Data-driven / offline eval | Level inference agreement, path difference across profiles, checkpoint question quality, output stability | `pytest` scripts writing results to `docs/test-results/` | A working planner and a model connection |
 | Manual / human-in-the-loop | Skip-justification spot checks, real-learner testing (Target), checkpoint question review | Checklist + write-up, no automation | A runnable path to show a learner |
@@ -43,12 +44,12 @@ progress tracker.
 | Onboarding questions cover background and goal | `test_onboarding_schema` — validates the question config file loads and each question has a non-empty prompt and expected-answer type | Loads without error; all required onboarding questions are present, including questions covering coding background and learning goal. | passing — `config/onboarding.yaml`, 6 questions |
 | Infers a level from answers, explains reasoning | `test_level_inference_returns_evidence` — mocked and live-call tests assert the response always contains `level`, `evidence`, `confidence` fields | 100% of mocked-response tests pass; live-call smoke test run manually before each milestone | mocked: passing; live: run by hand for P1–P3 on 3 October with both providers |
 | Level inference correctable | `test_learner_override_replaces_model_level` — planner is called with an explicit override and asserted to plan against the override, not the inferred level | Planner output level == override in all cases | passing |
-| Ordered path from prerequisite graph | `test_topological_order_respects_prerequisites` — for a fixed graph fixture, assert no node appears before any of its prerequisites | 0 violations across the full parsed graph | not written: the prototype keeps the course's own order, and the graph waits for a team decision; `test_path_follows_course_order_whatever_order_the_model_answers_in` passes |
+| Ordered path from prerequisite graph | `test_topological_order_respects_prerequisites` — for a fixed graph fixture, assert no node appears before any of its prerequisites | 0 violations across the full parsed graph | replaced: there is no graph, the path keeps the course's own order; `test_path_follows_course_order_whatever_order_the_model_answers_in` passes |
 | Skipped material explicitly marked and justified | `test_skipped_nodes_have_justification` — every node absent from a generated path appears in a `skipped` list with a non-empty reason string | 100% coverage, no silent omissions | passing — every module gets a decision (study, prove or skip); a model answer that leaves one out is rejected |
-| Three profiles produce visibly different paths | `test_profile_paths_differ` — three fixed example profiles (novice/backend-experienced/CV-goal, per §11.2 of the overview) are run through the real planner and the pairwise share of non-overlapping included nodes is computed | Each pair differs by a set threshold (proposed: ≥30% non-overlap) — record the actual number | run once on 3 October, so not yet a result: P1–P2 45% (`gpt-oss-120b`) and 40% (`gemini-3.5-flash-lite`), P3 vs the others 64–69%. A module counts as different when the paths study, prove or skip it differently. Expected decisions per profile are not written yet |
+| Three profiles produce visibly different paths | `test_profile_paths_differ` — three fixed example profiles (novice/backend-experienced/CV-goal, per §11.2 of the overview) are run through the real planner and the pairwise share of non-overlapping included nodes is computed | Each pair differs by a set threshold (proposed: ≥30% non-overlap) — record the actual number | passing with `gemini-3.5-flash-lite`, 5 runs per profile on 21 October: P1–P2 40–50%, P1–P3 75–85%, P2–P3 50–54%. With `gpt-oss-120b` one pair of P1 and P2 paths came out identical. A module counts as different when the paths study, prove or skip it differently |
 | Licence attribution correct | `test_every_resource_has_attribution` — every emitted resource object carries `title`, `url`, `licence` | 100% coverage; licence string equals `CC BY-NC-SA 4.0` (the source is inconsistent, see Q-001) | passing in a different form, `test_every_module_in_a_path_carries_its_source`: modules carry title and URL, and the path carries the licence; resources carry title and URL only, since they keep their own licences — to confirm with Data & Research |
 | Path decisions editable and approved before use (course rule for AI output) | `test_learner_can_change_any_planner_decision`, `test_a_change_after_confirmation_needs_a_new_confirmation`, `test_learner_changes_the_path_and_confirms_it` — the learner changes decisions, the planner's suggestion is kept, and the path can be downloaded only after confirmation | Every decision can be changed; any change clears the confirmation | passing |
-| Rule-based fallback works with no model | `test_fallback_planner_no_llm` — planner is run with the model client replaced by a stub that raises, and must still return a valid path using only the prerequisite graph and declared difficulty | Valid path returned, `personalization_unavailable` flag set | passing — without a model the path is the whole course, nothing skipped |
+| Rule-based fallback works with no model | `test_fallback_planner_no_llm` — planner is run with the model client replaced by a stub that raises, and must still return a valid path in the course order | Valid path returned, `personalization_unavailable` flag set | passing — without a model the path is the whole course, nothing skipped |
 
 ## 4. Target test cases
 | DoD item | Test | Pass condition | Status |
@@ -66,13 +67,14 @@ progress tracker.
   explainable from the answers given — logged by hand, not auto-scored.
 - **Skip-justification spot check.** Sample N skip reasons per test run, a team member checks each against
   the learner's stated background. Logged pass/fail with notes.
-- **Output stability.** Run the same fixed profile N times (propose N=10); compute the share of nodes that
-  stay constant across runs. Report the number — this is a measured tolerance, not a binary pass/fail,
-  per §11.6 of the overview.
+- **Output stability.** Run the same fixed profile N times; compute the share of modules whose decision stays
+  the same across runs. Report the number — this is a measured tolerance, not a binary pass/fail, per §11.6
+  of the overview. Run on 21 October with N = 3–5 per model, together with agreement against the
+  [expected decisions](test-results/expected-decisions.md): see
+  [2026-10-21-model-stability.md](test-results/2026-10-21-model-stability.md).
 - **Checkpoint question quality.** See Target table above.
 
-None of these can run before a model is chosen (Q-003) and the planner exists. They go in
-`docs/test-results/` as dated markdown reports, not asserted in CI — an LLM call is non-deterministic and a
+They go in `docs/test-results/` as dated markdown reports, not asserted in CI — an LLM call is non-deterministic and a
 CI failure on a stochastic threshold is noise. Run them on a schedule (e.g. before each milestone
 submission) once there's something to run.
 
