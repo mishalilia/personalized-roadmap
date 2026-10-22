@@ -54,9 +54,8 @@ in completion and retention.
 
 Starter template: [module-python-template](https://github.com/humblebeeai/module-python-template).
 
-Chosen because the planner, the prerequisite graph and the attribution logic are library code. The web
-interface is a Target item; the HTTP layer it needs is added then, not before, and no database is planned
-until there is state to keep between sessions.
+Chosen because the planner and the attribution logic are library code. The Streamlit interface calls the
+library directly, so there is no HTTP layer, and no database until there is state to keep between sessions.
 
 From the template we took the project layout, the packaging setup and the automatic checks, which run before
 each commit and again on every pull request. Our changes: Python 3.11, the pull-request checks also run the
@@ -86,20 +85,20 @@ made up.
 | Licence | **CC BY-NC-SA 4.0** — attribution required, share-alike applies to derivatives, non-commercial |
 | Version | Commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026 |
 | Personal data | None in the source content |
-| Preprocessing | MDX parsed into a node graph; prerequisite edges authored by this team |
+| Preprocessing | MDX parsed into modules, resources, prerequisites and checklists |
 
-Learning content is © HumbleBeeAI, used under CC BY-NC-SA 4.0. Every resource emitted in a generated path
-carries its source title, URL and licence.
+Learning content is © HumbleBeeAI, used under CC BY-NC-SA 4.0. Every module in a generated path carries its
+title and URL, and the path carries the licence.
 
 ### How we comply
 
-A generated path links to and orders the curriculum without reproducing it, so we read it as a collection
-rather than an adaptation. We license it the same way anyway, which is safe under either reading. Every
-resource in an output carries its source title, URL and licence, and we do not sell the tool, charge for
-access, or ship the content into a commercial product.
+A generated path orders the curriculum's modules and includes their titles, descriptions and checklists.
+Whether that makes it an adaptation is open (Q-001), so we license it under CC BY-NC-SA 4.0, which is safe
+under either reading. We do not sell the tool, charge for access, or ship the content into a commercial
+product.
 
 **This repository is licensed in two parts:** source code under **MIT** (matching the starter template), and
-documentation plus anything derived from the curriculum — the parsed graph, generated paths — under
+documentation plus anything derived from the curriculum, such as generated paths, under
 **CC BY-NC-SA 4.0**. Share-alike follows the content into its adaptations, but not into independent software
 that reads it. The curriculum is not copied into this repository; it is fetched from its own repository at a
 pinned version.
@@ -180,13 +179,20 @@ If a model is rate-limited, down, or gives a plan that leaves a module out, the 
 provider in [config/llm.yaml](config/llm.yaml) is tried; free-tier quotas are counted per model. If no model
 answers, the path is the whole course in its own order and the learner is told that personalization is
 unavailable. Nothing is skipped without a model: a wrong skip does more harm than repeating familiar material.
-Which provider and models to use is still open (Q-003).
+Gemini comes first; Groq is used when `LLM_PROVIDER=groq` or there is no Google key (Q-003).
 
 ## Example output
 
-A generated path: the included nodes in order with a reason for each, the skipped ones with justification,
-the inferred level and the reasoning behind it, and attribution for every resource. A sample run will be
-committed here once the core works.
+The path for example profile P1, built by `openai/gpt-oss-120b` on 3 October and opened on the saved-path page.
+
+| | |
+|---|---|
+| ![Onboarding answers](docs/images/1-onboarding.jpg) | ![Suggested level and summary](docs/images/2-level-and-summary.jpg) |
+| Onboarding, filled in from P1 | The suggested level with its evidence; how many modules to study, prove or skip |
+| ![A module to prove](docs/images/3-prove.jpg) | ![Modules to study and to skip](docs/images/4-study-and-skip.jpg) |
+| "Prove": the module's checklist instead of studying it | Study and skip, each with a reason |
+| ![A decision changed by the learner](docs/images/5-learner-change.jpg) | ![Confirmed path and attribution](docs/images/6-confirmed-and-attribution.jpg) |
+| The learner changed a skip to study; the planner's suggestion stays visible | The confirmed path can be downloaded; attribution below |
 
 ## Test results, known errors and limitations
 
@@ -194,33 +200,25 @@ committed here once the core works.
 changes and both web pages — with a stub in place of the model. Three of the tests run on the real
 curriculum: 18 modules, 116 resources, page URLs as on the site.
 
-First model runs, one per profile on 3 October, so not yet results: the paths of P1 and P2 differ by 40–45%,
-and P3 differs from both by 64–69%. Some decisions look wrong and some change between runs; details are in
-Q-003. Still to do, and what counts as success:
+Model runs on 21 October, 3–5 per profile and model ([report](docs/test-results/2026-10-21-model-stability.md)).
+With `gemini-3.5-flash-lite`, 93% of decisions stayed the same across runs and 96% matched the
+[expected decisions](docs/test-results/expected-decisions.md); the paths of P1 and P2 differ by 40–50%. Its
+one repeated error: P1, who has never used NumPy or Pandas, is asked to prove the module that teaches them.
 
-- **Different paths for different profiles** — the three example profiles are compared against each other;
-  success is a difference large enough to be visible without explanation, measured as the share of nodes
-  they do not share.
-- **Level inference** — compared against what learners say about themselves; success is agreement in most
-  cases, with every disagreement explainable from the answers given.
-- **Skipped material** — a sample of skip justifications is checked by hand; success is that they hold up
-  against the learner's stated background.
-- **Stability** — the same profile is run several times; success is that the paths stay within a set
-  tolerance of each other.
-- **Fallback** — the planner produces a valid path with no model available.
+Not tested yet: level inference against what real learners say about themselves (Target).
 
 ## Team
 
 | Name | Role |
 |---|---|
-| Umaraliev Makhmudjon | PM |
+| Li Mikhail | PM, AI / Engineering |
 | Abdulkhaev Akbarjon | Problem & Business |
 | Jalilov Jakhongir Zukhriddin ugli | Data & Research |
-| Li Mikhail | AI / Engineering |
 | Chagai Vladimir | AI / Engineering |
 | Imetov Daniiar | Demo & Presentation |
 
-Student IDs, what each person is responsible for and who reviews their work are in the role sheet:
+Umaraliev Makhmudjon, our first project manager, is on academic leave. Student IDs, what each person is
+responsible for and who reviews their work are in the role sheet:
 [docs/team-rnr.md](docs/team-rnr.md).
 
 ## Use of AI tools

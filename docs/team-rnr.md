@@ -1,14 +1,21 @@
 # Team Roles and Responsibilities
 
-## Umaraliev Makhmudjon — 12235542
+Umaraliev Makhmudjon (12235542), our first project manager, is on academic leave. Li Mikhail took over the
+project manager's duties.
 
-Role: **Project Manager**.
+## Li Mikhail — 12236295
 
-Keeps the schedule and the submission deadlines, assigns work at the weekly meeting, and
-manages the repository. Responsible for the team's documents reaching the professors on time and for the
-repository staying public, readable and linked in the group chat.
+Role: **Project Manager** and **AI / Engineering**.
 
-Reviewed by: Abdulkhaev Akbarjon.
+Keeps the schedule and the submission deadlines, assigns work, and manages the repository: the team's
+documents reach the professors on time, and the repository stays public, readable and linked in the group
+chat.
+
+Builds the core: the parser that reads the curriculum's modules, level inference, the planner and the checks
+on the model's answers, the fallback when no model is available, the path JSON and the web interface. Owns
+the runtime environment and the tests over the deterministic parts.
+
+Reviewed by: Chagai Vladimir.
 
 ## Abdulkhaev Akbarjon — 12225218
 
@@ -24,23 +31,12 @@ Reviewed by: Jalilov Jakhongir Zukhriddin ugli.
 
 Role: **Data & Research**.
 
-Analyses the curriculum content and its structure, authors the prerequisite
-graph, and owns licence compliance: reading CC BY-NC-SA 4.0, deciding what it requires of our repository
-and our output, and checking that attribution is implemented. Agrees the verification criteria with each
-feature owner.
+Analyses the curriculum content and its structure, and owns licence compliance: reading CC BY-NC-SA 4.0,
+deciding what it requires of our repository and our output, and checking that attribution is implemented.
+Maintains the expected decisions the planner is scored against, and checks that checkpoint questions stay
+within what each module covers. Agrees the verification criteria with each feature owner.
 
 Reviewed by: Li Mikhail.
-
-## Li Mikhail — 12236295
-
-Role: **AI / Engineering**.
-
-Builds the core: the parser that turns the curriculum into a node graph, the
-planner that orders a path and enforces prerequisites, level inference, the path JSON that the interface
-reads, and the fallback path when no model is available. Owns the runtime environment and the tests over
-the deterministic parts.
-
-Reviewed by: Chagai Vladimir.
 
 ## Chagai Vladimir — 12235620
 
@@ -60,4 +56,4 @@ Owns the demo video and the presentation material, and keeps the README
 readable for someone who has never seen the project. Builds the demo around the six steps in the project
 brief, including the failed checkpoint that shows the path adapting.
 
-Reviewed by: Umaraliev Makhmudjon.
+Reviewed by: Abdulkhaev Akbarjon.
