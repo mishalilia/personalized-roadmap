@@ -17,6 +17,8 @@ How to judge:
 - Where a module lists prerequisites, they name what earlier modules must teach first. A learner who lacks
   them needs those earlier modules; that is never a reason to skip the module itself.
 - Only modules that list a checklist can be proved.
+- If you are told what the learner has shown since onboarding, such as a checkpoint passed without a mistake,
+  count it as evidence alongside their answers, for that module's content and for what builds on it.
 
 Write each reason to the learner in one or two sentences and tie it to what they wrote or to their goal. The
 reason for a skip says why skipping is safe; the reason for prove names what the learner already knows.

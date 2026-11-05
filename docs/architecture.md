@@ -60,9 +60,11 @@ flowchart TB
         cli["<b>Command line</b><br/>[Container: Python 3.11]<br/>Fetches the curriculum, plans paths for the example profiles, compares them"]
         core["<b>Roadmap Core</b><br/>[Container: Python library]<br/>Parses the curriculum, infers the level, plans the path, checks the model's answer, falls back to the course order"]
         config[("<b>Configuration</b><br/>[Data store: YAML files]<br/>Curriculum version, onboarding questions, example profiles, models")]
+        api["<b>HTTP API</b><br/>[Container: FastAPI, Target]<br/>Level, path, checkpoints and progress rules for the curriculum site; holds the model keys"]
+        checkpoints[("<b>Checkpoints</b><br/>[Data store: YAML files, Target]<br/>Reviewed questions per module")]
         checkout[("<b>Curriculum Checkout</b><br/>[Data store: git working copy]<br/>The course at the pinned commit")]
         pathjson[("<b>Path Output</b><br/>[Data store: JSON files]<br/>Level, decisions with reasons, the learner's changes, attribution")]
-        progress[("<b>Progress Store</b><br/>[Data store: TBD, Target]<br/>Checkpoint results and current position")]
+        progress[("<b>Progress Store</b><br/>[Data store: browser storage and the path file, Target]<br/>Checkpoint results, locked modules, suggestions")]
     end
 
     learner -->|"Uses [HTTP, browser]"| webui
@@ -74,14 +76,19 @@ flowchart TB
     core -->|"Sends prompts and reads JSON answers from [HTTPS, OpenAI-compatible API]"| llm
     webui -->|"Downloads and opens [JSON files]"| pathjson
     cli -->|"Writes [JSON files]"| pathjson
-    webui -.->|"Saves and loads results in"| progress
+    site["<b>Personal path page</b><br/>[Curriculum site, Docusaurus, Target]<br/>Questions, path, checkpoints on module pages"]
+    learner -.->|"Uses [browser]"| site
+    site -.->|"Calls [HTTPS, JSON]"| api
+    api -.->|"Calls [Python]"| core
+    api -.->|"Reads"| checkpoints
+    site -.->|"Keeps the path and progress in"| progress
 
     classDef person fill:#fff3b0,stroke:#333
     classDef ext fill:#dddddd,stroke:#333
     classDef later stroke-dasharray:5 5
     class learner person
     class curriculum,llm ext
-    class progress later
+    class progress,api,checkpoints,site later
 ```
 
 ### What each container does
@@ -94,7 +101,9 @@ flowchart TB
 | Configuration | The pinned curriculum commit, the six onboarding questions, the three invented example profiles, the providers and models in fallback order | YAML files (`config/`) | Baseline |
 | Curriculum Checkout | The course at the pinned commit, read directly from its Docusaurus files | Git working copy in `data/curriculum/`, git-ignored | Baseline |
 | Path Output | The path: level and evidence, each module's suggested and chosen decision with the reason, confirmation time, attribution. Any interface only needs to read it | JSON files | Baseline |
-| Progress Store | Remembers checkpoint results and where the learner is in the path | TBD (local file, SQLite or browser storage) | Target |
+| Progress Store | Remembers checkpoint results and where the learner is in the path. It is the path itself: each module keeps its progress, and the path lists the locked modules and the suggestions after a checkpoint. No accounts, so nothing is stored on a server | The browser's local storage on the curriculum site, and the path JSON the learner downloads | Target |
+| HTTP API | Serves the questions, a level and a path to the curriculum site; serves checkpoint questions without answers, grades attempts and applies the rules of progress. Holds the model keys | FastAPI (`src/roadmap/api.py`) | Target |
+| Checkpoints | Ten questions per module, generated once per curriculum version and reviewed by a person | YAML files (`checkpoints/`) | Target |
 
 ### Key decisions
 
@@ -108,6 +117,8 @@ flowchart TB
 - **No prerequisite graph.** The path follows the course's own order. The curriculum already orders its modules and states its prerequisites as text, and a hand-written graph would need maintenance every time the course changes. The trade-off: we cannot reorder modules for a learner, only include, prove or skip them.
 - **A web interface in Baseline.** We planned a command line for Baseline and a web interface for Target. Streamlit made it no more work than the command line, and a demo is easier to follow in a browser.
 - **"Prove" as a third decision.** Besides study and skip, the model can suggest that the learner proves a module they likely know, using the module's own checklist. In Target, checkpoints will turn this into a real test.
+- **Target: the interface is a page on the curriculum site.** The site is static, so it calls an HTTP API that holds the model keys and runs the core; Streamlit stays as the team's tool for demos and model runs. Progress lives in the learner's browser and the path file: no accounts, so no learner data on a server.
+- **Target: checkpoints are generated once per module, not per learner.** A person reviews them, they cost no model call when a learner takes them, and grading is code. A failed checkpoint locks the modules after it and turns "prove" into "study"; a checkpoint passed without a mistake at the first try lets the model suggest lightening later modules, which the learner accepts or declines.
 - **The model is chosen.** Gemini `gemini-3.5-flash-lite` first, Groq `openai/gpt-oss-120b` as the second provider, both through the same OpenAI-compatible client (Q-003).
 
 ### Open points (TBD)

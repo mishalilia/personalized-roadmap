@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     config_dir: Path = Path("config")
     data_dir: Path = Path("data")
     output_dir: Path = Path("out")  # where saved paths are looked for; git-ignored
+    checkpoints_dir: Path = Path(
+        "checkpoints"
+    )  # reviewed checkpoint questions, one file per module
 
     @property
     def llm_api_keys(self) -> dict[str, SecretStr]:

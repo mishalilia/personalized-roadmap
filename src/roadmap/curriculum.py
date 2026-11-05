@@ -24,6 +24,13 @@ class Resource(BaseModel):
     note: str  # why the curriculum authors recommend it
 
 
+class Topic(BaseModel):
+    """A part of a module, as its authors head it, with the outcomes they list for it."""
+
+    title: str
+    outcomes: list[str] = []
+
+
 class Module(BaseModel):
     """A learning unit of the curriculum, and the unit that a path includes or skips."""
 
@@ -37,6 +44,9 @@ class Module(BaseModel):
     # The authors' completion checklist, as Markdown. A learner who can already do all of
     # it may prove the module instead of studying it.
     checklist: list[str]
+    # The module's parts and their stated outcomes: what a checkpoint asks about. Paths saved before
+    # checkpoints existed have none.
+    topics: list[Topic] = []
 
     @property
     def can_be_proved(self) -> bool:

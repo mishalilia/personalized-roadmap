@@ -21,7 +21,7 @@ from typing import Any
 import yaml
 
 from .config import read_yaml
-from .curriculum import Module, Resource
+from .curriculum import Module, Resource, Topic
 
 _PAGE_SUFFIXES = (".md", ".mdx")
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -124,6 +124,7 @@ def _module(page: _Page, section: list[str], docs_dir: Path, site_url: str) -> M
         resources=[_resource(card) for card in _RESOURCE_CARD.findall(page.body)],
         prerequisites=_prerequisites(page.body),
         checklist=_checklist(page.body),
+        topics=_topics(page.body),
     )
 
 
@@ -137,6 +138,30 @@ def _checklist(body: str) -> list[str]:
     """The tick boxes under a "Checklist" heading, as Markdown so that links stay usable."""
     section = _section_text(body, "Checklist")
     return [_TAG.sub("", item).strip() for item in _CHECKBOX.findall(section)]
+
+
+# Parts of a page that are not taught content.
+_NOT_A_TOPIC = ("checklist", "goal", "prerequisites", "resources", "next steps")
+
+
+def _topics(body: str) -> list[Topic]:
+    """The page's second-level headings with the bullet points under them, as plain text."""
+    text = _CODE_BLOCK.sub("", body)
+    headings = [match for match in _HEADING.finditer(text) if len(match.group(1)) == 2]
+    topics = []
+    for index, match in enumerate(headings):
+        title = _plain_text(match.group(2))
+        if not title or any(word in title.lower() for word in _NOT_A_TOPIC):
+            continue
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        section = text[match.end() : end]
+        outcomes = [
+            _plain_text(item)
+            for item in _BULLET.findall(section)
+            if not item.lstrip().startswith("[")
+        ]
+        topics.append(Topic(title=title, outcomes=outcomes))
+    return topics
 
 
 def _page_id(path: Path, docs_dir: Path) -> str:

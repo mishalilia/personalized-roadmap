@@ -175,6 +175,25 @@ path itself. `API_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:3
 may call it; `API_RATE_LIMIT` and `API_RATE_WINDOW` (default 20 model calls per client an hour) share the
 free-tier quota between learners. The limit is kept in memory, so it holds for one server process.
 
+### Checkpoints and progress (Target)
+
+Each module can have a checkpoint: ten questions in `checkpoints/<module id>.yaml`, generated once and
+reviewed by a person before learners see them (see [checkpoints/README.md](checkpoints/README.md)):
+
+```bash
+python -m roadmap checkpoints engineering-fundamentals/data-manipulation
+```
+
+A learner takes five questions an attempt and passes with four; the API grades the answers, so the browser
+never receives them. A failed checkpoint locks the modules after it until a retake passes, and turns "prove"
+into "study". A checkpoint passed without a mistake at the first try asks the model whether later modules can
+be lightened; the learner accepts or declines each suggestion. Progress lives in the path: in the browser on
+the curriculum site, and in the JSON the learner downloads. There are no accounts, so the lock holds in the
+interface but a learner can bypass it by editing their path.
+
+The two checkpoints in `checkpoints/` are drafts written by Claude during development so the flow can be
+shown; they are not generator output and are not reviewed.
+
 ## How to obtain the data
 
 `python -m roadmap fetch` checks the curriculum out into `data/curriculum/` (git-ignored) at the version pinned
@@ -252,3 +271,9 @@ Drafts were edited rather than taken as they came.
 
 The prototype code (`src/`, `app/`, `tests/`, `config/`) was written with AI assistance (Claude). Its tests
 were run, and the module URLs it builds were checked against the curriculum site's sitemap.
+
+The HTTP API, the checkpoints and progress (`src/roadmap/api.py`, `src/roadmap/checkpoints.py`, the progress
+rules in `src/roadmap/path.py`) and the personal path page for the curriculum site were written with Claude.
+The two draft checkpoints in `checkpoints/` were written by Claude and still need review by someone who knows
+the topic. The tests pass with a stub model; checkpoint generation and the suggestions after a checkpoint have
+not been run with a real model yet.

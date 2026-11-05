@@ -1,4 +1,5 @@
-"""Command line: `python -m roadmap fetch | plan <profile> | compare`, with `--provider` to pick a model provider."""
+"""Command line: `python -m roadmap fetch | plan <profile> | compare | checkpoints <module>...`, with
+`--provider` to pick a model provider."""
 
 import argparse
 import itertools
@@ -6,12 +7,14 @@ import logging
 import sys
 from pathlib import Path
 
+from .checkpoints import CheckpointGenerator, CheckpointStore, Status
 from .config import Settings
 from .curriculum import Level
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, path_difference
 from .service import Roadmap
-from .source import CurriculumSource, checkout
+from .llm import LLMUnavailable, connect
+from .source import CurriculumSource, checkout, load_curriculum
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -70,6 +73,18 @@ def _parser() -> argparse.ArgumentParser:
         help="build the paths of all example profiles and compare them",
     )
     compare.set_defaults(command=_compare)
+
+    generate = commands.add_parser(
+        "checkpoints",
+        parents=[model_options],
+        help="write draft checkpoint questions for modules, to be reviewed",
+    )
+    generate.add_argument("modules", nargs="*", help="module ids, as in a path")
+    generate.add_argument("--all", action="store_true", help="every module")
+    generate.add_argument(
+        "--force", action="store_true", help="also replace reviewed checkpoints"
+    )
+    generate.set_defaults(command=_checkpoints)
     return parser
 
 
@@ -149,6 +164,37 @@ def _summary(path: LearningPath) -> str:
         f"{path.count(Choice.STUDY)} to study, {path.count(Choice.PROVE)} to prove, "
         f"{path.count(Choice.SKIP)} skipped"
     )
+
+
+def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
+    source = CurriculumSource.from_file(settings.curriculum_file)
+    curriculum = load_curriculum(source, settings.curriculum_checkout)
+    modules = {module.id: module for module in curriculum.modules}
+    wanted = list(modules) if args.all else args.modules
+    if not wanted:
+        sys.exit("Name modules to generate checkpoints for, or give --all.")
+    if unknown := [module_id for module_id in wanted if module_id not in modules]:
+        sys.exit(f"Unknown modules: {', '.join(unknown)}")
+    llm = connect(settings)
+    if llm is None:
+        sys.exit("Generating checkpoints needs a model key in .env.")
+    generator = CheckpointGenerator(llm, ", ".join(llm.models))
+    store = CheckpointStore(settings.checkpoints_dir)
+    for module_id in wanted:
+        existing = store.load(module_id)
+        if (
+            existing is not None
+            and existing.status is Status.REVIEWED
+            and not args.force
+        ):
+            print(f"Kept {module_id}: it is reviewed (use --force to replace it)")
+            continue
+        try:
+            checkpoint = generator.generate(modules[module_id], curriculum.version)
+        except LLMUnavailable as error:
+            print(f"No checkpoint for {module_id}: {error}")
+            continue
+        print(f"Draft for {module_id} written to {store.save(checkpoint)}: review it")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,8 @@ from .curriculum import Curriculum, Level
 from .level import LevelAssessment, LevelAssessor
 from .llm import LLMClient, LLMUnavailable, connect
 from .onboarding import Answers, Question, load_questions
-from .path import LearningPath, PathItem
+from .checkpoints import Grade
+from .path import LearningPath, PathItem, Proposal
 from .planner import CourseOrderPlanner, LLMPlanner, Planner
 from .source import CurriculumSource, load_curriculum
 
@@ -64,7 +65,38 @@ class Roadmap:
             personalization_unavailable=items is None,
             curriculum_version=self.curriculum.version,
             attribution=self.curriculum.attribution,
+            answers=answers,
         )
+
+    def after_checkpoint(
+        self, path: LearningPath, module_id: str, grade: Grade
+    ) -> LearningPath:
+        """The path with the learner's checkpoint result. After a checkpoint passed without a mistake
+        at the first try, the model may suggest lightening the modules that follow."""
+        path = path.with_checkpoint_result(
+            module_id, grade.score, grade.total, grade.passed
+        )
+        if not grade.effortless:
+            return path
+        return path.with_proposals(self._lighter_after(path, module_id))
+
+    def _lighter_after(self, path: LearningPath, module_id: str) -> list[Proposal]:
+        if self._planner is None:
+            return []
+        title = path.item(module_id).module.full_title
+        note = f"the learner passed the checkpoint of '{title}' without a mistake at the first try."
+        try:
+            items = self._planner.plan(path.answers, path.level, note)
+        except LLMUnavailable as error:
+            logger.warning("No suggestions after the checkpoint: %s", error)
+            return []
+        ids = [item.module.id for item in path.items]
+        later = set(ids[ids.index(module_id) + 1 :])
+        return [
+            Proposal(module_id=item.module.id, choice=item.choice, reason=item.reason)
+            for item in items
+            if item.module.id in later
+        ]
 
     def _personal_plan(
         self, answers: Answers, level: Level | None

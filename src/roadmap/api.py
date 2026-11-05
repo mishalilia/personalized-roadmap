@@ -19,10 +19,18 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, StringConstraints
 
+from .checkpoints import (
+    PASS_MARK,
+    QUESTIONS_PER_ATTEMPT,
+    Checkpoint,
+    CheckpointStore,
+    Grade,
+    Status,
+)
 from .config import Settings
 from .curriculum import Level
 from .level import LevelAssessment
-from .path import LearningPath
+from .path import LearningPath, PathStateError
 from .service import Roadmap
 from .source import CurriculumSource
 
@@ -73,6 +81,45 @@ class PathRequest(BaseModel):
     )
 
 
+class CheckpointSummary(BaseModel):
+    status: Status
+    questions_per_attempt: int = QUESTIONS_PER_ATTEMPT
+    pass_mark: int = PASS_MARK
+
+
+class AskedQuestion(BaseModel):
+    """A checkpoint question without its answer: grading happens here, not in the browser."""
+
+    id: str
+    topic: str
+    text: str
+    options: list[str]
+
+
+class CheckpointOut(BaseModel):
+    module_id: str
+    status: Status
+    attempt: int
+    pass_mark: int
+    questions: list[AskedQuestion]
+
+
+class AttemptRequest(BaseModel):
+    path: LearningPath
+    attempt: int = Field(ge=0)
+    answers: dict[str, int]
+
+
+class AttemptResponse(BaseModel):
+    grade: Grade
+    path: LearningPath
+
+
+class PathAction(BaseModel):
+    path: LearningPath
+    module_id: str
+
+
 class RateLimiter:
     """At most `limit` calls per client in any `window` seconds. In memory: one server process."""
 
@@ -102,7 +149,9 @@ def create_app(
     source: CurriculumSource,
     allowed_origins: list[str],
     limiter: RateLimiter,
+    checkpoints: dict[str, Checkpoint] | None = None,
 ) -> FastAPI:
+    checkpoints = checkpoints or {}
     app = FastAPI(
         title="Personalized Roadmap API",
         description="Suggested levels and personal paths through the HumbleBeeAI Open Curriculum.",
@@ -127,6 +176,27 @@ def create_app(
         client = request.client.host if request.client else "unknown"
         if not limiter.allow(client):
             raise HTTPException(429, "Too many requests. Try again later.")
+
+    def check_path(path: LearningPath) -> LearningPath:
+        if path.curriculum_version != roadmap.curriculum.version:
+            raise HTTPException(
+                409,
+                "This path was planned for another curriculum version. Plan a new one.",
+            )
+        return path
+
+    def checkpoint_of(module_id: str) -> Checkpoint:
+        if module_id not in checkpoints:
+            raise HTTPException(404, f"No checkpoint for '{module_id}'")
+        return checkpoints[module_id]
+
+    def act(action):  # type: ignore[no-untyped-def]
+        try:
+            return action()
+        except PathStateError as error:
+            raise HTTPException(409, str(error)) from error
+        except KeyError as error:
+            raise HTTPException(404, str(error)) from error
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -162,6 +232,70 @@ def create_app(
             check_answers(body.answers), body.level, body.assessment
         )
 
+    @app.get("/checkpoints")
+    def checkpoint_list() -> dict[str, CheckpointSummary]:
+        """The modules that have a checkpoint."""
+        return {
+            module_id: CheckpointSummary(status=checkpoint.status)
+            for module_id, checkpoint in checkpoints.items()
+        }
+
+    @app.get("/checkpoints/{module_id:path}")
+    def checkpoint(module_id: str, attempt: int = 0) -> CheckpointOut:
+        found = checkpoint_of(module_id)
+        return CheckpointOut(
+            module_id=module_id,
+            status=found.status,
+            attempt=attempt,
+            pass_mark=PASS_MARK,
+            questions=[
+                AskedQuestion(
+                    id=question.id,
+                    topic=question.topic,
+                    text=question.text,
+                    options=question.options,
+                )
+                for question in found.questions_for_attempt(attempt)
+            ],
+        )
+
+    @app.post("/attempts/{module_id:path}")
+    def attempt(
+        module_id: str, body: AttemptRequest, request: Request
+    ) -> AttemptResponse:
+        """Grades an attempt and returns the path with its result: locked modules, a "prove" turned
+        into "study", or suggestions after a checkpoint passed without a mistake."""
+        path = check_path(body.path)
+        found = checkpoint_of(module_id)
+        # The questions of an attempt follow from its number, so the path decides which attempt this is.
+        if body.attempt != act(lambda: path.item(module_id)).attempts:
+            raise HTTPException(
+                409, "This attempt does not follow the path's last one."
+            )
+        try:
+            grade = found.grade(body.attempt, body.answers)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+        if grade.effortless:
+            within_quota(request)  # suggestions after it ask the model
+        updated = act(lambda: roadmap.after_checkpoint(path, module_id, grade))
+        return AttemptResponse(grade=grade, path=updated)
+
+    @app.post("/path/done")
+    def done(body: PathAction) -> LearningPath:
+        """Marks a module without a checkpoint as done."""
+        if body.module_id in checkpoints:
+            raise HTTPException(409, "This module has a checkpoint: pass it instead.")
+        return act(lambda: check_path(body.path).marked_done(body.module_id))
+
+    @app.post("/path/accept")
+    def accept(body: PathAction) -> LearningPath:
+        return act(lambda: check_path(body.path).accept(body.module_id))
+
+    @app.post("/path/decline")
+    def decline(body: PathAction) -> LearningPath:
+        return act(lambda: check_path(body.path).decline(body.module_id))
+
     return app
 
 
@@ -183,11 +317,15 @@ class ApiSettings(Settings):
 @lru_cache(maxsize=1)
 def _app() -> FastAPI:
     settings = ApiSettings()
+    roadmap = Roadmap.from_settings(settings)
     return create_app(
-        roadmap=Roadmap.from_settings(settings),
+        roadmap=roadmap,
         source=CurriculumSource.from_file(settings.curriculum_file),
         allowed_origins=settings.allowed_origins,
         limiter=RateLimiter(settings.api_rate_limit, settings.api_rate_window),
+        checkpoints=CheckpointStore(settings.checkpoints_dir).all_for(
+            roadmap.curriculum
+        ),
     )
 
 
