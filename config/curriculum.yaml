@@ -5,6 +5,9 @@ repository: https://github.com/humblebeeai/int.academy-curriculum
 version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # full commit hash, 7 September 2026  # pragma: allowlist secret
 docs_dir: docs
 site_url: https://roadmap.humblebee.ai/docs
+# The site version with the same content: the site's 2026-10-06 snapshot differs from the pinned commit
+# only in links rewritten to the snapshot. A page on the site uses it to tell which paths fit its pages.
+site_version: "2026-10-06"
 
 attribution:
   title: HumbleBeeAI Open Curriculum

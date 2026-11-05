@@ -19,6 +19,7 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.dynamic.optional-dependencies]
 app = { file = ["requirements/requirements.app.txt"] }
+api = { file = ["requirements/requirements.api.txt"] }
 test = { file = ["requirements/requirements.test.txt"] }
 dev = { file = ["requirements/requirements.dev.txt"] }
 

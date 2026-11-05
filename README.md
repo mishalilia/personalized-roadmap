@@ -157,6 +157,24 @@ used. Without a key the app still runs, but paths follow the course as written.
 `plan` and `compare` take `--provider google` to switch provider for one run, and `--verbose` to log the time
 and tokens of every model call.
 
+### HTTP API for the curriculum site
+
+A page on the curriculum site can plan paths through an HTTP API, so that the model keys stay on a server:
+
+```bash
+pip install -e ".[api]"
+```
+
+```bash
+uvicorn roadmap.api:app --app-dir src --port 8000
+```
+
+`GET /questions` gives the onboarding questions and the curriculum version, `POST /level` a suggested level
+and `POST /path` a path in the same JSON the app downloads. The browser changes decisions and confirms the
+path itself. `API_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:3000`) lists the sites that
+may call it; `API_RATE_LIMIT` and `API_RATE_WINDOW` (default 20 model calls per client an hour) share the
+free-tier quota between learners. The limit is kept in memory, so it holds for one server process.
+
 ## How to obtain the data
 
 `python -m roadmap fetch` checks the curriculum out into `data/curriculum/` (git-ignored) at the version pinned

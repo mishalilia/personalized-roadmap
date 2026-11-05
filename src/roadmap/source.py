@@ -15,6 +15,8 @@ class CurriculumSource(BaseModel):
     version: str  # full commit hash
     docs_dir: str
     site_url: str
+    # The version of the curriculum site with the same content as `version`, where there is one.
+    site_version: str | None = None
     attribution: Attribution
 
     @classmethod
