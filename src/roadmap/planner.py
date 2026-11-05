@@ -117,7 +117,12 @@ def _outline(prompt_id: str, module: Module) -> dict[str, Any]:
         "title": module.full_title,
         "about": module.description,
         "resources": [
-            f"{resource.title} ({resource.difficulty})" for resource in module.resources
+            (
+                f"{resource.title} ({resource.difficulty})"
+                if resource.difficulty
+                else resource.title
+            )
+            for resource in module.resources
         ],
     }
     if module.prerequisites:

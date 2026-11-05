@@ -1,5 +1,5 @@
 module_id: engineering-fundamentals/data-manipulation
-curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210
 status: draft
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
 reviewed_by: null
@@ -102,14 +102,40 @@ questions:
   answer: 2
   explanation: Sorting by price in descending order puts the most expensive first, and `LIMIT 3` keeps three rows.
 - id: q10
-  topic: 5. Software Engineering Tools
-  text: You want to try a risky change to your analysis without touching the working version on `main`. What do
-    you do first?
+  topic: Exploratory Analysis and Visualization
+  text: In a column of incomes, the mean is far larger than the median. What does that most likely tell you?
   options:
-  - Copy the project folder and edit the copy
-  - Create a branch, for example `git switch -c experiment`, and commit there
-  - Edit on `main` and run `git reset` if it fails
-  - Commit on `main` with a message that says it is an experiment
-  answer: 1
-  explanation: A branch keeps the experiment's commits apart from `main`; you merge it if it works and delete it
-    if not.
+  - The distribution is skewed to the right by a few very large values
+  - The data has no outliers
+  - Half of the incomes are above the mean
+  - The column contains missing values
+  answer: 0
+  explanation: A few very large values pull the mean up but barely move the median, so the distribution has a long
+    right tail worth investigating.
+problem:
+  title: Scale each column to 0–1
+  prompt: 'Write `min_max_scale(a)` for a 2-D NumPy array: scale each column so that its smallest value becomes
+    0 and its largest 1, without a Python loop. A column whose values are all equal becomes all zeros.
+
+
+    Example: the column `[1, 3, 2]` becomes `[0, 1, 0.5]`.'
+  starter_code: "import numpy as np\n\n\ndef min_max_scale(a: np.ndarray) -> np.ndarray:\n    \"\"\"Each column\
+    \ scaled to 0..1; a constant column becomes zeros.\"\"\"\n    ..."
+  tests: 'import numpy as np
+
+
+    a = np.array([[1.0, 10.0], [3.0, 10.0], [2.0, 10.0]])
+
+    result = min_max_scale(a)
+
+    assert result.shape == (3, 2), "the shape stays the same"
+
+    assert np.allclose(result[:, 0], [0.0, 1.0, 0.5]), "the first column is scaled"
+
+    assert np.allclose(result[:, 1], 0.0), "a constant column becomes zeros"
+
+    assert np.allclose(min_max_scale(np.array([[0.0], [4.0]]))[:, 0], [0.0, 1.0]), "one column works too"'
+  solution: "import numpy as np\n\n\ndef min_max_scale(a):\n    low = a.min(axis=0)\n    span = a.max(axis=0) -\
+    \ low\n    return np.divide(a - low, span, out=np.zeros_like(a, dtype=float), where=span != 0)"
+  packages:
+  - numpy

@@ -1,0 +1,10 @@
+# Caddy gets and renews HTTPS certificates for both names by itself; their DNS records must point here.
+{$SITE_DOMAIN} {
+	encode gzip
+	reverse_proxy site:80
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}

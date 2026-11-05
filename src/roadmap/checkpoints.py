@@ -11,7 +11,12 @@ copied from the linked third-party material.
 
 from __future__ import annotations
 
+import ast
+import random
 import re
+import subprocess  # nosec B404: only runs a reviewer's own checkpoint files, see verify_problem
+import sys
+import tempfile
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -25,7 +30,9 @@ from .llm import LLMClient, UnusableAnswer
 
 QUESTIONS_PER_ATTEMPT = 5
 PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
-GENERATED_QUESTIONS = 10  # two attempts' worth, so a retake shows other questions
+# Three attempts' worth, so a retake shows other questions. Correct answers are shown only after a pass, and
+# the options are shuffled for each attempt, so a learner cannot pass by remembering earlier attempts.
+GENERATED_QUESTIONS = 15
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 
@@ -58,6 +65,35 @@ class CheckpointQuestion(BaseModel):
         return self
 
 
+class CodingProblem(BaseModel):
+    """A short programming task. The learner's code runs in their browser (Pyodide) against `tests`."""
+
+    title: Text
+    prompt: Text = Field(
+        description="What to write, in Markdown, with an example call."
+    )
+    starter_code: Text = Field(
+        description="A function signature and a docstring, no solution."
+    )
+    tests: Text = Field(
+        description="Plain Python asserts that call the learner's function; no test framework."
+    )
+    solution: Text = Field(description="A reference solution that passes the tests.")
+    # Pyodide packages the code needs, such as numpy; standard library only when empty.
+    packages: list[str] = []
+
+    @model_validator(mode="after")
+    def _python(self) -> CodingProblem:
+        for name in ("starter_code", "tests", "solution"):
+            try:
+                ast.parse(getattr(self, name))
+            except SyntaxError as error:
+                raise ValueError(
+                    f"The problem's {name} is not valid Python: {error}"
+                ) from error
+        return self
+
+
 class Checkpoint(BaseModel):
     module_id: str
     curriculum_version: str
@@ -65,6 +101,8 @@ class Checkpoint(BaseModel):
     generated_by: str  # which model, or who, wrote the questions
     reviewed_by: str | None = None
     questions: list[CheckpointQuestion]
+    # For modules that teach programming: solved after the questions, before the module counts as passed.
+    problem: CodingProblem | None = None
 
     @model_validator(mode="after")
     def _enough_distinct_questions(self) -> Checkpoint:
@@ -82,37 +120,89 @@ class Checkpoint(BaseModel):
         rotated = self.questions[start:] + self.questions[:start]
         return rotated[:QUESTIONS_PER_ATTEMPT]
 
+    def order_of(self, attempt: int, question_id: str) -> list[int]:
+        """The order the options of a question are shown in at this attempt: a fixed shuffle, so the
+        learner sees the same order when they reload, and another one at the next attempt.
+        """
+        order = list(range(4))
+        seed = f"{self.module_id}:{attempt}:{question_id}"
+        random.Random(seed).shuffle(order)  # nosec B311: a display order, not a secret
+        return order
+
+    def asked(self, attempt: int) -> list[AskedQuestion]:
+        """The attempt's questions as the learner sees them: shuffled options, no answer."""
+        return [
+            AskedQuestion(
+                id=question.id,
+                topic=question.topic,
+                text=question.text,
+                options=[
+                    question.options[i] for i in self.order_of(attempt, question.id)
+                ],
+            )
+            for question in self.questions_for_attempt(attempt)
+        ]
+
     def grade(self, attempt: int, answers: dict[str, int]) -> Grade:
+        """`answers` holds the position of each chosen option as shown. A failed attempt says which
+        answers were wrong and what to review, but not the right answers."""
         asked = self.questions_for_attempt(attempt)
         if set(answers) != {question.id for question in asked}:
             raise ValueError("Answer exactly the questions of this attempt")
+        if any(not 0 <= shown <= 3 for shown in answers.values()):
+            raise ValueError("Each answer is the position of one of four options")
+        correct = {
+            question.id: self.order_of(attempt, question.id)[answers[question.id]]
+            == question.answer
+            for question in asked
+        }
+        score = sum(correct.values())
+        passed = score >= PASS_MARK
         feedback = [
             QuestionFeedback(
                 id=question.id,
-                correct=answers[question.id] == question.answer,
-                answer=question.answer,
-                explanation=question.explanation,
+                topic=question.topic,
+                correct=correct[question.id],
+                answer=(
+                    self.order_of(attempt, question.id).index(question.answer)
+                    if passed
+                    else None
+                ),
+                explanation=question.explanation if passed else None,
             )
             for question in asked
         ]
-        score = sum(item.correct for item in feedback)
+        review = [question.topic for question in asked if not correct[question.id]]
         return Grade(
             attempt=attempt,
             score=score,
             total=len(asked),
-            passed=score >= PASS_MARK,
+            passed=passed,
             # Every answer right at the first try: the learner may not need the modules that follow
             # in full either.
             effortless=attempt == 0 and score == len(asked),
+            review_topics=list(dict.fromkeys(review)),
             feedback=feedback,
+            problem_pending=passed and self.problem is not None,
         )
+
+
+class AskedQuestion(BaseModel):
+    """A checkpoint question without its answer: grading happens on the server, not in the browser."""
+
+    id: str
+    topic: str
+    text: str
+    options: list[str]
 
 
 class QuestionFeedback(BaseModel):
     id: str
+    topic: str
     correct: bool
-    answer: int
-    explanation: str
+    # Shown only after a pass: the position of the right option as the learner saw it, and why.
+    answer: int | None = None
+    explanation: str | None = None
 
 
 class Grade(BaseModel):
@@ -122,6 +212,28 @@ class Grade(BaseModel):
     passed: bool
     effortless: bool
     feedback: list[QuestionFeedback]
+    review_topics: list[str] = []  # the topics of the wrong answers, in order
+    problem_pending: bool = False  # passed, and the coding problem is next
+
+
+def verify_problem(problem: CodingProblem, timeout: float = 20) -> str | None:
+    """Runs the reference solution against the tests in a separate Python; None if they pass, else the
+    error. For a reviewer checking a checkpoint on their own machine: the code comes from the checkpoint
+    file, so run it only on files you have read."""
+    with tempfile.TemporaryDirectory() as directory:
+        script = Path(directory) / "check.py"
+        script.write_text(f"{problem.solution}\n\n{problem.tests}\n", encoding="utf-8")
+        try:
+            result = subprocess.run(  # nosec B603: our own interpreter, isolated mode, no shell
+                [sys.executable, "-I", str(script)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=directory,
+            )
+        except subprocess.TimeoutExpired:
+            return f"timed out after {timeout:.0f} s"
+    return None if result.returncode == 0 else result.stderr.strip()[-600:]
 
 
 class CheckpointStore:
@@ -170,6 +282,10 @@ class GeneratedQuestions(BaseModel):
     questions: list[CheckpointQuestion] = Field(
         description=f"Exactly {GENERATED_QUESTIONS} questions."
     )
+    problem: CodingProblem | None = Field(
+        default=None,
+        description="One coding problem if the module teaches programming; null otherwise.",
+    )
 
 
 class CheckpointGenerator:
@@ -193,6 +309,7 @@ class CheckpointGenerator:
             curriculum_version=curriculum_version,
             generated_by=self._model_name,
             questions=questions,
+            problem=response.problem,
         )
 
 
@@ -218,7 +335,9 @@ def module_brief(module: Module) -> str:
         "resources": [
             {
                 "title": resource.title,
-                "difficulty": resource.difficulty.value,
+                "difficulty": (
+                    resource.difficulty.value if resource.difficulty else None
+                ),
                 "authors_note": resource.note,
             }
             for resource in module.resources

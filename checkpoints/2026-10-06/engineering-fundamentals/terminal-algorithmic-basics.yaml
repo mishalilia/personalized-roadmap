@@ -106,3 +106,22 @@ questions:
   - Any `train.py` that Python finds on the computer
   answer: 1
   explanation: A path without a leading `/` is relative to the current folder, here `/home/ana`.
+problem:
+  title: Find the lines that mention a word
+  prompt: 'Write `grep_lines(lines, word)` that returns the line numbers, counted from 1, of the lines that contain
+    `word`, ignoring case: what `grep -n -i word` prints, without the text.
+
+
+    Example: `grep_lines(["Error: disk full", "ok", "error again"], "error")` returns `[1, 3]`.'
+  starter_code: "def grep_lines(lines: list[str], word: str) -> list[int]:\n    \"\"\"Line numbers, from 1, of the\
+    \ lines that contain `word`, ignoring case.\"\"\"\n    ..."
+  tests: 'assert grep_lines(["Error: disk full", "ok", "error again"], "error") == [1, 3], "matches ignore case"
+
+    assert grep_lines([], "x") == [], "no lines, no matches"
+
+    assert grep_lines(["abc", "ABC", "xyz"], "b") == [1, 2], "a match inside a word counts"
+
+    assert grep_lines(["a", "b"], "z") == [], "no line matches"'
+  solution: "def grep_lines(lines, word):\n    word = word.lower()\n    return [number for number, line in enumerate(lines,\
+    \ start=1) if word in line.lower()]"
+  packages: []

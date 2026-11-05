@@ -46,8 +46,9 @@ class Settings(BaseSettings):
         return self.config_dir / "profiles.yaml"
 
     @property
-    def curriculum_checkout(self) -> Path:
-        return self.data_dir / "curriculum"
+    def curricula_dir(self) -> Path:
+        """One shared clone of the curriculum and a checkout per version."""
+        return self.data_dir / "curricula"
 
 
 def read_yaml(path: Path) -> Any:

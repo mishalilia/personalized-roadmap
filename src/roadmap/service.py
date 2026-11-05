@@ -28,10 +28,13 @@ class Roadmap:
         self._fallback: Planner = CourseOrderPlanner(curriculum)
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "Roadmap":
+    def from_settings(cls, settings: Settings, version: str | None = None) -> "Roadmap":
+        """A roadmap for one curriculum version: the newest in the config unless named."""
         source = CurriculumSource.from_file(settings.curriculum_file)
         return cls(
-            curriculum=load_curriculum(source, settings.curriculum_checkout),
+            curriculum=load_curriculum(
+                source, source.version(version), settings.curricula_dir
+            ),
             questions=load_questions(settings.questions_file),
             llm=connect(settings),
         )
@@ -64,6 +67,7 @@ class Roadmap:
             items=items if items is not None else self._fallback.plan(answers, level),
             personalization_unavailable=items is None,
             curriculum_version=self.curriculum.version,
+            curriculum_site_version=self.curriculum.site_version,
             attribution=self.curriculum.attribution,
             answers=answers,
         )
@@ -74,11 +78,28 @@ class Roadmap:
         """The path with the learner's checkpoint result. After a checkpoint passed without a mistake
         at the first try, the model may suggest lightening the modules that follow."""
         path = path.with_checkpoint_result(
-            module_id, grade.score, grade.total, grade.passed
+            module_id, grade.score, grade.total, grade.passed, grade.problem_pending
         )
         if not grade.effortless:
             return path
         return path.with_proposals(self._lighter_after(path, module_id))
+
+    def change_goal(self, path: LearningPath, goal: str) -> LearningPath:
+        """The path replanned for a new goal, keeping what the learner has started. Raises
+        LLMUnavailable when no model answers: without one, the path could only fall back to the whole
+        course, which would undo the learner's own plan."""
+        if self._planner is None:
+            raise LLMUnavailable("No model is configured")
+        started = [
+            f"{item.module.full_title} ({item.progress})"
+            for item in path.items
+            if item.progress != "not_started"
+        ]
+        note = f"the learner changed their goal to: {goal}." + (
+            f" They have already worked on: {'; '.join(started)}." if started else ""
+        )
+        answers = {**path.answers, "goal": goal}
+        return path.with_new_goal(goal, self._planner.plan(answers, path.level, note))
 
     def _lighter_after(self, path: LearningPath, module_id: str) -> list[Proposal]:
         if self._planner is None:

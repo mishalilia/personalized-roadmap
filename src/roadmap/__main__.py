@@ -7,7 +7,9 @@ import logging
 import sys
 from pathlib import Path
 
-from .checkpoints import CheckpointGenerator, CheckpointStore, Status
+from .checkpoints import CheckpointGenerator, CheckpointStore, Status, verify_problem
+from .curriculum import Module
+from .events import EventLog
 from .config import Settings
 from .curriculum import Level
 from .onboarding import LearnerProfile, load_profiles
@@ -36,7 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="roadmap", description="Personal paths through the HumbleBeeAI curriculum."
     )
-    parser.set_defaults(provider=None, verbose=False)
+    parser.set_defaults(provider=None, verbose=False, curriculum=None)
     commands = parser.add_subparsers(required=True)
 
     model_options = argparse.ArgumentParser(add_help=False)
@@ -46,9 +48,14 @@ def _parser() -> argparse.ArgumentParser:
     model_options.add_argument(
         "--verbose", action="store_true", help="log each model call: time and tokens"
     )
+    model_options.add_argument(
+        "--curriculum",
+        help="a curriculum version from config/curriculum.yaml, such as 2026-10-06; "
+        "the newest by default",
+    )
 
     fetch = commands.add_parser(
-        "fetch", help="check out the curriculum at the pinned version"
+        "fetch", help="check out every curriculum version in config/curriculum.yaml"
     )
     fetch.set_defaults(command=_fetch)
 
@@ -80,22 +87,39 @@ def _parser() -> argparse.ArgumentParser:
         help="write draft checkpoint questions for modules, to be reviewed",
     )
     generate.add_argument("modules", nargs="*", help="module ids, as in a path")
+    generate.add_argument(
+        "--verify",
+        action="store_true",
+        help="run each reference solution against its tests instead of generating",
+    )
     generate.add_argument("--all", action="store_true", help="every module")
     generate.add_argument(
         "--force", action="store_true", help="also replace reviewed checkpoints"
     )
     generate.set_defaults(command=_checkpoints)
+
+    report = commands.add_parser(
+        "report",
+        help="where learners who share their progress stop, per module (data/events.sqlite)",
+    )
+    report.add_argument(
+        "--curriculum", help="a curriculum version; the newest by default"
+    )
+    report.set_defaults(command=_report)
     return parser
 
 
 def _fetch(args: argparse.Namespace, settings: Settings) -> None:
     source = CurriculumSource.from_file(settings.curriculum_file)
-    docs_dir = checkout(source, settings.curriculum_checkout)
-    print(f"Curriculum {source.version[:7]} is checked out in {docs_dir}")
+    for version in source.versions:
+        docs_dir = checkout(source, version, settings.curricula_dir)
+        print(
+            f"Curriculum {version.name} ({version.ref[:7]}) is checked out in {docs_dir}"
+        )
 
 
 def _plan(args: argparse.Namespace, settings: Settings) -> None:
-    roadmap = Roadmap.from_settings(settings)
+    roadmap = Roadmap.from_settings(settings, args.curriculum)
     path = _build_path(roadmap, _find_profile(settings, args.profile), args.level)
     _print_path(path)
     if args.out:
@@ -105,7 +129,7 @@ def _plan(args: argparse.Namespace, settings: Settings) -> None:
 
 
 def _compare(args: argparse.Namespace, settings: Settings) -> None:
-    roadmap = Roadmap.from_settings(settings)
+    roadmap = Roadmap.from_settings(settings, args.curriculum)
     paths = {
         profile.id: _build_path(roadmap, profile)
         for profile in load_profiles(settings.profiles_file)
@@ -168,8 +192,13 @@ def _summary(path: LearningPath) -> str:
 
 def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
     source = CurriculumSource.from_file(settings.curriculum_file)
-    curriculum = load_curriculum(source, settings.curriculum_checkout)
+    version = source.version(args.curriculum)
+    curriculum = load_curriculum(source, version, settings.curricula_dir)
     modules = {module.id: module for module in curriculum.modules}
+    store = CheckpointStore(settings.checkpoints_dir / version.name)
+    if args.verify:
+        _verify(store, curriculum.modules)
+        return
     wanted = list(modules) if args.all else args.modules
     if not wanted:
         sys.exit("Name modules to generate checkpoints for, or give --all.")
@@ -179,7 +208,6 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
     if llm is None:
         sys.exit("Generating checkpoints needs a model key in .env.")
     generator = CheckpointGenerator(llm, ", ".join(llm.models))
-    store = CheckpointStore(settings.checkpoints_dir)
     for module_id in wanted:
         existing = store.load(module_id)
         if (
@@ -195,6 +223,41 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
             print(f"No checkpoint for {module_id}: {error}")
             continue
         print(f"Draft for {module_id} written to {store.save(checkpoint)}: review it")
+
+
+def _verify(store: CheckpointStore, modules: list[Module]) -> None:
+    failed = False
+    for module in modules:
+        checkpoint = store.load(module.id)
+        if checkpoint is None or checkpoint.problem is None:
+            continue
+        error = verify_problem(checkpoint.problem)
+        failed = failed or error is not None
+        print(
+            f"{'ok  ' if error is None else 'FAIL'} {module.id}"
+            + (f"\n{error}" if error else "")
+        )
+    if failed:
+        sys.exit(1)
+
+
+def _report(args: argparse.Namespace, settings: Settings) -> None:
+    source = CurriculumSource.from_file(settings.curriculum_file)
+    version = source.version(args.curriculum)
+    curriculum = load_curriculum(source, version, settings.curricula_dir)
+    file = settings.data_dir / "events.sqlite"
+    if not file.exists():
+        sys.exit(f"No events yet: {file} does not exist.")
+    report = EventLog(file).report(
+        curriculum.version, [m.id for m in curriculum.modules]
+    )
+    print(f"{report.paths} shared paths, curriculum {version.name}\n")
+    print(f"{'module':60} {'included':>8} {'finished':>8} {'failed':>7} {'stopped':>7}")
+    for row in report.modules:
+        print(
+            f"{row.module_id:60} {row.included:8} {row.finished:8} {row.failed_once:7} "
+            f"{row.stopped_here:7}"
+        )
 
 
 if __name__ == "__main__":

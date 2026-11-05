@@ -15,7 +15,7 @@ Default rule from the course: public or safe sample data only. No personal data,
 | **Licence** | CC BY-NC-SA 4.0: attribution required, share-alike applies to adaptations, non-commercial only. The source files disagree (some say CC BY-SA). We follow the stricter reading. See Q-001 in `questions.md`. |
 | **How we get it** | `git clone` of the public repository. No scraping, no credentials. |
 | **Access so far** | Yes. The repository is public, and the content statistics in `project-overview.md` come from parsing it. |
-| **Version** | Commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026 |
+| **Version** | The current curriculum, commit [`9fc5573`](https://github.com/humblebeeai/int.academy-curriculum/commit/9fc5573ddbd7be5d5da997a26c49afeafbfe6210) (22 October 2026), for new paths; commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026, the site's October 6 version) for older paths and the model runs of 21 October. Both are listed in `config/curriculum.yaml`. |
 | **Shape** | MDX files with structured metadata. Numbers from our own parsing (see `project-overview.md`): about 25 MDX files, 116 linked resources with type, title, URL, duration, difficulty and rationale. |
 | **Personal data** | None in the source. |
 | **Preprocessing** | Parse MDX frontmatter and component attributes into modules with their resources, prerequisites and checklists. Nothing is redistributed beyond what attribution requires. |
@@ -25,7 +25,10 @@ Default rule from the course: public or safe sample data only. No personal data,
 - Sections contain little original text (median about 75 words), so checkpoint questions cannot come from the text alone. See Q-004.
 - The 116 linked resources belong to third parties under their own licences. We link to them and keep their metadata. We do not copy their content.
 - Prerequisites exist only as prose. The planner gives them to the model as text.
-- The curriculum can change. That is why we pin a commit.
+- The curriculum can change. That is why each version is pinned to a commit, and why paths keep the version
+  they were planned for.
+- The current curriculum states workload for few modules and mostly leaves difficulty and duration out of its
+  resource cards, so time estimates cover only some modules.
 
 ---
 
@@ -63,7 +66,19 @@ Default rule from the course: public or safe sample data only. No personal data,
 
 ---
 
-## 5. Derived data we generate
+## 5. Progress that learners choose to share (Target)
+
+| | |
+|---|---|
+| **What** | For paths whose learner ticks "Share my progress anonymously": a random path id, the curriculum version, and events per module (included in the confirmed path, checkpoint failed, questions passed, finished), with the time. |
+| **What not** | Onboarding answers, level, checkpoint answers, code, names, e-mail or IP addresses. The rate limit sees the IP address in memory only and does not store it. |
+| **Where** | A SQLite file on the API server (`API_EVENTS_FILE`, a Docker volume in `deploy/`). Never in this repository. |
+| **Who sees it** | Whoever holds `API_REPORT_TOKEN`, as counts per module (`GET /report`). |
+| **Default** | Off. Turning it off stops new events; events already sent stay counted, and the page says so. |
+
+---
+
+## 6. Derived data we generate
 
 | Data | How it is made | Licence |
 |---|---|---|
@@ -73,6 +88,7 @@ Paths are written to `out/`, which is not committed: they contain curriculum tex
 
 ---
 
-## 6. Hosting (Target)
+## 7. Hosting (Target)
 
-Free tier only. **TBD** between Hugging Face Spaces and another free option. No paid service is needed for Baseline.
+The team's own VPS: [deploy/](../deploy/README.md) runs the site, the API and Caddy with Docker Compose. Python
+for coding problems loads from the jsDelivr CDN in the learner's browser, unless the site serves its own copy.

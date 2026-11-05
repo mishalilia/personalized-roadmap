@@ -201,3 +201,75 @@ def test_a_path_saved_before_checkpoints_still_opens(curriculum):
 
     assert all(item.progress is Progress.NOT_STARTED for item in opened.items)
     assert opened.locked_module_ids == []
+
+
+def test_passed_questions_with_a_problem_leave_the_module_in_practice_until_it_is_solved(
+    curriculum,
+):
+    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, ALGEBRA: Choice.STUDY})
+
+    practice = path.with_checkpoint_result(
+        TERMINAL, 5, 5, passed=True, problem_pending=True
+    )
+
+    assert practice.item(TERMINAL).progress is Progress.PRACTICE
+    assert not practice.item(TERMINAL).finished
+    assert practice.locked_module_ids == []  # practice does not lock what follows
+    assert (
+        practice.with_problem_solved(TERMINAL).item(TERMINAL).progress
+        is Progress.PASSED
+    )
+    with pytest.raises(PathStateError):
+        path.with_problem_solved(TERMINAL)
+
+
+def test_a_new_goal_keeps_started_modules_and_takes_new_decisions_for_the_rest(
+    curriculum,
+):
+    path = confirmed(
+        curriculum, {TERMINAL: Choice.STUDY, VISION: Choice.STUDY}
+    ).marked_done(TERMINAL)
+    planned = [
+        PathItem.suggestion(module, Choice.SKIP, "New goal.")
+        for module in curriculum.modules
+    ]
+
+    changed = path.with_new_goal("Speech", planned)
+
+    assert changed.item(TERMINAL).choice is Choice.STUDY
+    assert changed.item(TERMINAL).progress is Progress.DONE
+    assert changed.item(VISION).choice is Choice.SKIP
+    assert changed.answers["goal"] == "Speech" and not changed.confirmed
+
+
+def test_the_time_estimate_counts_studied_modules_fully_and_proved_ones_in_part(
+    curriculum,
+):
+    from roadmap import Hours
+
+    with_hours = curriculum.model_copy(
+        update={
+            "modules": [
+                module.model_copy(
+                    update={
+                        "hours": (
+                            Hours(low=10, high=20)
+                            if module.id in (TERMINAL, ALGEBRA)
+                            else None
+                        )
+                    }
+                )
+                for module in curriculum.modules
+            ]
+        }
+    )
+    path = path_with(
+        with_hours,
+        {TERMINAL: Choice.PROVE, ALGEBRA: Choice.STUDY, VISION: Choice.STUDY},
+    )
+
+    estimate = path.time_estimate
+
+    assert (estimate.path_low, estimate.path_high) == (12, 24)
+    assert (estimate.course_low, estimate.course_high) == (20, 40)
+    assert estimate.modules_without_estimate == 1  # vision is included and has none

@@ -83,7 +83,7 @@ made up.
 | Dataset | HumbleBeeAI Open Curriculum |
 | Source | https://roadmap.humblebee.ai · repository https://github.com/humblebeeai/int.academy-curriculum |
 | Licence | **CC BY-NC-SA 4.0** — attribution required, share-alike applies to derivatives, non-commercial |
-| Version | Commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026 |
+| Version | New paths: the current curriculum, commit [`9fc5573`](https://github.com/humblebeeai/int.academy-curriculum/commit/9fc5573ddbd7be5d5da997a26c49afeafbfe6210), 22 October 2026. Still served, and used by the model runs of 21 October: commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026, the site's "October 6, 2026" version |
 | Personal data | None in the source content |
 | Preprocessing | MDX parsed into modules, resources, prerequisites and checklists |
 
@@ -185,27 +185,52 @@ python -m roadmap checkpoints engineering-fundamentals/data-manipulation
 ```
 
 A learner takes five questions an attempt and passes with four; the API grades the answers, so the browser
-never receives them. A failed checkpoint locks the modules after it until a retake passes, and turns "prove"
+never receives them. The options are shuffled for each attempt, and the right answers appear only after a pass:
+a failed attempt names the topics to review instead. Modules that teach programming add a coding problem after
+the questions: the learner's code runs in their browser with Pyodide against the problem's tests, and the
+module counts as passed when they pass (`python -m roadmap checkpoints --verify` checks the reference
+solutions). A failed checkpoint locks the modules after it until a retake passes, and turns "prove"
 into "study". A checkpoint passed without a mistake at the first try asks the model whether later modules can
 be lightened; the learner accepts or declines each suggestion. Progress lives in the path: in the browser on
 the curriculum site, and in the JSON the learner downloads. There are no accounts, so the lock holds in the
 interface but a learner can bypass it by editing their path.
 
-The two checkpoints in `checkpoints/` are drafts written by Claude during development so the flow can be
-shown; they are not generator output and are not reviewed.
+The checkpoints in `checkpoints/` (two modules per curriculum version) are drafts written by Claude during
+development so the flow can be shown; they are not generator output and are not reviewed.
+
+### Goal change, shared progress and time
+
+- **A new goal mid-path.** The learner enters it on the path page; the rest of the path is planned again by
+  the model, modules they have started keep their decision and progress, and they confirm the path again.
+  Without a model the path stays as it is.
+- **Where learners stop.** A learner can choose to share anonymous progress: a random path id, the modules
+  their path includes, and which they finish or fail; never their answers or anything that identifies them.
+  `GET /report` (with `API_REPORT_TOKEN`) or `python -m roadmap report` counts, per module, the shared paths
+  that include it, finish it, fail its checkpoint, and stop at it. See [docs/data-sources.md](docs/data-sources.md).
+- **Time.** The path shows its hours against the whole course's, from the authors' workload estimates or the
+  durations of a module's resources. The current curriculum states few of either, so most of its modules have
+  no estimate; the page says how many.
+
+### Deploying
+
+[deploy/](deploy/README.md) runs the curriculum site, the API and Caddy (HTTPS) on one server with Docker
+Compose.
 
 ## How to obtain the data
 
-`python -m roadmap fetch` checks the curriculum out into `data/curriculum/` (git-ignored) at the version pinned
-in [config/curriculum.yaml](config/curriculum.yaml). The repository is public and needs no credentials. By
-hand:
+`python -m roadmap fetch` clones the curriculum once into `data/curricula/repository/` (git-ignored) and checks
+out every version in [config/curriculum.yaml](config/curriculum.yaml) next to it, one folder per version. The
+repository is public and needs no credentials.
+
+**Curriculum versions.** New paths use the first version in the config, the current curriculum. A path planned
+for another listed version keeps working against that version, and links to that version's pages on the site,
+so learners keep their progress when the course changes. The current curriculum retired several modules
+(`unlisted` pages, which are left out) and states what finishes a module under "Expected output" and "Finish
+this module" rather than in tick boxes; `completion_headings: true` reads those. The October 6 version is read
+exactly as before, so the model runs of 21 October are reproducible with `--curriculum 2026-10-06`:
 
 ```bash
-git clone https://github.com/humblebeeai/int.academy-curriculum data/curriculum
-```
-
-```bash
-git -C data/curriculum checkout 5c212720af50ffd0a1592ea6c0f812c3af733ed3
+python -m roadmap compare --curriculum 2026-10-06
 ```
 
 The curriculum stays outside this repository; usage conditions are in the licence section above.
@@ -275,5 +300,7 @@ were run, and the module URLs it builds were checked against the curriculum site
 The HTTP API, the checkpoints and progress (`src/roadmap/api.py`, `src/roadmap/checkpoints.py`, the progress
 rules in `src/roadmap/path.py`) and the personal path page for the curriculum site were written with Claude.
 The two draft checkpoints in `checkpoints/` were written by Claude and still need review by someone who knows
-the topic. The tests pass with a stub model; checkpoint generation and the suggestions after a checkpoint have
-not been run with a real model yet.
+the topic. The curriculum versions, coding problems, goal change, shared progress, time estimates and
+`deploy/` were written with Claude too. The tests pass with a stub model, and the site flow was checked in a
+browser at desktop and phone width; checkpoint generation, the suggestions after a checkpoint and goal change
+have not been run with a real model yet, and the Docker setup has not been built on a server yet.

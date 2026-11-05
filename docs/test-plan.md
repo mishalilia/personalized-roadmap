@@ -55,9 +55,10 @@ progress tracker.
 | DoD item | Test | Pass condition | Status |
 |---|---|---|---|
 | Checkpoint questions generated from section content | `python -m roadmap checkpoints <module>` generates 10 questions from the module's topics, stated outcomes, resource notes and checklist (Q-004); a team member who knows the topic rates them. Code checks: `test_generated_questions_are_numbered_and_kept_as_a_draft`, `test_a_question_has_four_distinct_options_and_one_answer` | ≥8/10 rated as actually checking understanding, not generic/pattern-matchable | generator built and tested with a stub model; **not yet run with a real model, and no rating yet**. Two draft checkpoints in `checkpoints/` were written by Claude for the demo, not by the generator, and are not reviewed |
-| Progress blocked on failed checkpoint | `test_a_failed_checkpoint_locks_what_follows_until_it_is_passed`, `test_a_failed_attempt_locks_the_rest_and_a_passed_retake_opens_it` — a failed checkpoint locks every later module until a retake passes; the API refuses progress on a locked module | Learner state does not advance past the failed node | passing. The lock lives in the learner's browser (no accounts), so it can be bypassed by editing it; reported as a limitation |
+| Progress blocked on failed checkpoint | `test_a_failed_checkpoint_locks_what_follows_until_it_is_passed`, `test_a_failed_attempt_locks_the_rest_and_a_passed_retake_opens_it` — a failed checkpoint locks every later module until a retake passes; the API refuses progress on a locked module | Learner state does not advance past the failed node | passing. The lock lives in the learner's browser (no accounts), so it can be bypassed by editing it; reported as a limitation. Answers cannot be learned from failed attempts: `test_a_failed_attempt_names_topics_to_review_but_not_the_answers`, `test_options_are_shuffled_the_same_way_within_an_attempt_and_differently_across_attempts` |
 | Path adapts to failure/easy pass | `test_a_failed_prove_becomes_study_and_the_path_stays_confirmed` (failure: code rule), `test_a_perfect_first_checkpoint_brings_lighter_suggestions_for_later_modules` and `test_only_suggestions_that_lighten_a_module_not_started_are_kept` (easy pass: the model suggests, the learner accepts or declines) | Replanned path differs from original in the expected direction | passing with a stub model; the easy-pass suggestions are **not yet tried with a real model** |
 | Real-learner testing | Manual, per [learner-testing.md](learner-testing.md) — ≥5 learners outside the team complete onboarding, receive a path and take a checkpoint; observations logged in `docs/test-results/learner-sessions.md` | 5 sessions logged with what broke, not just "it worked" | not started — protocol written; needs the API and the site hosted |
+| Coding problems in checkpoints | `test_a_coding_problem_follows_the_questions_before_the_module_counts_as_passed`, `test_a_coding_problem_must_be_python_and_its_solution_must_pass_its_tests`; browser scenario: a wrong solution fails with the failed assert, a right one passes the module (Pyodide 0.26.4) | The module passes only after the questions and the problem | passing; checked in a browser on 5 November. Auto-checking runs in the learner's browser, so it is trust-based |
 | Business case quantified | Cross-checked against measured numbers from the corpus/data-driven tests, not estimates | Every number in the business case traces to a test result in this plan | not started |
 
 ## 5. Model-quality tests (data-driven, no fixed expected output)
@@ -85,8 +86,11 @@ lists where they are.
 
 ## 7. What is explicitly not tested yet
 
-- Stretch items — no test written until the team starts one (auto-graded coding problems, mid-path replan,
-  peer recommendation, drop-off analytics).
+- Peer recommendation (Stretch): not started.
+- Stretch items started early, tested in code with a stub model only: mid-path goal change
+  (`test_a_new_goal_replans_what_is_not_started_and_asks_for_confirmation`) and drop-off analytics
+  (`test_only_shared_paths_are_counted_and_the_report_needs_its_token`). Goal change with a real model is not
+  yet tried.
 - Load/performance testing — out of scope for a class project with no expected concurrent load.
 - Security testing beyond "no API key committed" (covered by `.gitignore` + `.env.example`, not a test).
 

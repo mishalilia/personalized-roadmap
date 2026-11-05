@@ -9,6 +9,7 @@ modules that follow; the learner accepts or declines each.
 """
 
 from datetime import UTC, datetime
+from uuid import uuid4
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -48,6 +49,8 @@ WEIGHT = {Choice.STUDY: 2, Choice.PROVE: 1, Choice.SKIP: 0}
 class Progress(StrEnum):
     NOT_STARTED = "not_started"
     DONE = "done"  # the learner marked a module without a checkpoint as done
+    # The questions are passed and the module's coding problem is next; does not lock what follows.
+    PRACTICE = "practice"
     PASSED = "passed"
     FAILED = "failed"  # until the learner passes the checkpoint on a later attempt
 
@@ -102,13 +105,28 @@ class Proposal(BaseModel):
     reason: Reason
 
 
+class TimeEstimate(BaseModel):
+    """Hours for the path and for the whole course, from the modules that state an estimate."""
+
+    path_low: float
+    path_high: float
+    course_low: float
+    course_high: float
+    # Included modules with no estimate: the path's hours leave them out.
+    modules_without_estimate: int
+
+
 class LearningPath(BaseModel):
+    # A random id, so anonymous progress events of one path can be told apart; nothing about the learner.
+    id: str | None = Field(default_factory=lambda: uuid4().hex)
     # The level the path was planned for, after any correction by the learner.
     level: Level | None
     assessment: LevelAssessment | None  # what the model suggested, if it was asked
     items: list[PathItem]  # every module of the course, in course order
     personalization_unavailable: bool
     curriculum_version: str
+    # The curriculum site's name for that version, such as "current", so a page can link to its modules.
+    curriculum_site_version: str | None = None
     attribution: Attribution
     changes: str = CHANGES_NOTICE
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -117,6 +135,8 @@ class LearningPath(BaseModel):
     # The onboarding answers, so the rest of the path can be planned again after a checkpoint.
     answers: Answers = {}
     proposals: list[Proposal] = []
+    # The learner chose to share anonymous progress events (see roadmap.events). Off unless they turn it on.
+    share_progress: bool = False
 
     @property
     def included(self) -> list[PathItem]:
@@ -148,6 +168,30 @@ class LearningPath(BaseModel):
 
     def confirm(self) -> "LearningPath":
         return self.model_copy(update={"confirmed_at": datetime.now(UTC)})
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def time_estimate(self) -> TimeEstimate:
+        """A module to prove counts as a fifth of its hours: the learner works through its checklist."""
+        share = {Choice.STUDY: 1.0, Choice.PROVE: 0.2, Choice.SKIP: 0.0}
+        path_low = path_high = course_low = course_high = 0.0
+        unknown = 0
+        for item in self.items:
+            hours = item.module.hours
+            if hours is None:
+                unknown += item.included
+                continue
+            course_low += hours.low
+            course_high += hours.high
+            path_low += hours.low * share[item.choice]
+            path_high += hours.high * share[item.choice]
+        return TimeEstimate(
+            path_low=round(path_low),
+            path_high=round(path_high),
+            course_low=round(course_low),
+            course_high=round(course_high),
+            modules_without_estimate=unknown,
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -192,15 +236,25 @@ class LearningPath(BaseModel):
         return item
 
     def with_checkpoint_result(
-        self, module_id: str, score: int, total: int, passed: bool
+        self,
+        module_id: str,
+        score: int,
+        total: int,
+        passed: bool,
+        problem_pending: bool = False,
     ) -> "LearningPath":
         """The path after a checkpoint attempt. A failed "prove" becomes "study"; the path stays
-        confirmed, since the rule is the one the learner saw when they confirmed it."""
+        confirmed, since the rule is the one the learner saw when they confirmed it. Passed questions
+        with a coding problem still to solve leave the module in practice."""
         item = self._check_open(module_id)
+        if passed:
+            progress = Progress.PRACTICE if problem_pending else Progress.PASSED
+        else:
+            progress = Progress.FAILED
         update: dict[str, Any] = {
             "attempts": item.attempts + 1,
             "last_score": f"{score}/{total}",
-            "progress": Progress.PASSED if passed else Progress.FAILED,
+            "progress": progress,
         }
         if not passed and item.choice is Choice.PROVE:
             update["choice"] = Choice.STUDY
@@ -210,6 +264,36 @@ class LearningPath(BaseModel):
             )
         proposals = [p for p in self.proposals if p.module_id != module_id]
         return self._replace(item.model_copy(update=update), proposals=proposals)
+
+    def with_problem_solved(self, module_id: str) -> "LearningPath":
+        """The learner's code passed the module's coding problem, after its questions."""
+        item = self._check_open(module_id)
+        if item.progress is not Progress.PRACTICE:
+            raise PathStateError(f"Pass the questions of '{module_id}' first")
+        return self._replace(item.model_copy(update={"progress": Progress.PASSED}))
+
+    def with_new_goal(self, goal: str, items: list[PathItem]) -> "LearningPath":
+        """The path for a new goal: `items` are the planner's new decisions. Modules the learner has
+        started keep their decision and progress; the rest take the new decision. The learner confirms
+        the path again, since the planner changed it."""
+        planned = {item.module.id: item for item in items}
+        kept = [
+            (
+                old
+                if old.progress is not Progress.NOT_STARTED
+                or old.module.id not in planned
+                else planned[old.module.id]
+            )
+            for old in self.items
+        ]
+        return self.model_copy(
+            update={
+                "items": kept,
+                "answers": {**self.answers, "goal": goal},
+                "proposals": [],
+                "confirmed_at": None,
+            }
+        )
 
     def marked_done(self, module_id: str) -> "LearningPath":
         """The learner finished a module that has no checkpoint."""

@@ -12,8 +12,10 @@ from roadmap.checkpoints import (
     CheckpointGenerator,
     CheckpointQuestion,
     CheckpointStore,
+    CodingProblem,
     Status,
     module_brief,
+    verify_problem,
 )
 from roadmap.llm import LLMUnavailable
 
@@ -61,14 +63,22 @@ def test_each_attempt_asks_five_questions_and_a_retake_asks_others():
     assert [q.id for q in found.questions_for_attempt(2)] == first
 
 
+def answers_for(found: Checkpoint, attempt: int, wrong: int = 0) -> dict[str, int]:
+    """Answers as the learner gives them: positions of options as shown; the first `wrong` are wrong."""
+    answers = {}
+    for index, question in enumerate(found.questions_for_attempt(attempt)):
+        right = found.order_of(attempt, question.id).index(question.answer)
+        answers[question.id] = (right + 1) % 4 if index < wrong else right
+    return answers
+
+
 def test_four_of_five_pass_and_only_a_perfect_first_attempt_is_effortless():
     found = checkpoint()
-    asked = [q.id for q in found.questions_for_attempt(0)]
 
-    perfect = found.grade(0, {qid: 0 for qid in asked})
-    one_wrong = found.grade(0, {qid: int(qid == asked[0]) for qid in asked})
-    two_wrong = found.grade(0, {qid: int(qid in asked[:2]) for qid in asked})
-    retake = found.grade(1, {q.id: 0 for q in found.questions_for_attempt(1)})
+    perfect = found.grade(0, answers_for(found, 0))
+    one_wrong = found.grade(0, answers_for(found, 0, wrong=1))
+    two_wrong = found.grade(0, answers_for(found, 0, wrong=2))
+    retake = found.grade(1, answers_for(found, 1))
 
     assert (perfect.score, perfect.passed, perfect.effortless) == (5, True, True)
     assert (one_wrong.score, one_wrong.passed, one_wrong.effortless) == (4, True, False)
@@ -76,6 +86,47 @@ def test_four_of_five_pass_and_only_a_perfect_first_attempt_is_effortless():
     assert (two_wrong.passed, two_wrong.effortless) == (False, False)
     assert retake.passed and not retake.effortless
     assert [item.correct for item in one_wrong.feedback][0] is False
+
+
+def test_options_are_shuffled_the_same_way_within_an_attempt_and_differently_across_attempts():
+    found = checkpoint()
+
+    shown = [found.asked(attempt)[0].options for attempt in (0, 0, 2, 4)]
+
+    assert shown[0] == shown[1]
+    assert sorted(shown[0]) == ["a", "b", "c", "d"]
+    assert len({tuple(options) for options in shown}) > 1
+
+
+def test_a_failed_attempt_names_topics_to_review_but_not_the_answers():
+    found = checkpoint()
+
+    failed = found.grade(0, answers_for(found, 0, wrong=3))
+    passed = found.grade(0, answers_for(found, 0, wrong=1))
+
+    assert all(
+        item.answer is None and item.explanation is None for item in failed.feedback
+    )
+    assert failed.review_topics == ["Shell Basics"]
+    assert all(item.answer is not None and item.explanation for item in passed.feedback)
+
+
+def test_a_coding_problem_must_be_python_and_its_solution_must_pass_its_tests():
+    good = CodingProblem(
+        title="Add",
+        prompt="Write `add`.",
+        starter_code="def add(a, b):\n    ...",
+        tests="assert add(1, 2) == 3",
+        solution="def add(a, b):\n    return a + b",
+    )
+    wrong = good.model_copy(update={"solution": "def add(a, b):\n    return a - b"})
+
+    assert verify_problem(good) is None
+    assert "AssertionError" in (verify_problem(wrong) or "")
+    with pytest.raises(ValidationError):
+        CodingProblem.model_validate(
+            good.model_dump() | {"tests": "assert add(1, 2) =="}
+        )
 
 
 def test_an_attempt_must_answer_exactly_its_own_questions():
@@ -123,12 +174,13 @@ def test_the_store_keeps_one_file_per_module_and_only_the_curriculum_version(
 
 def test_generated_questions_are_numbered_and_kept_as_a_draft(curriculum):
     terminal = curriculum.modules[0]
-    generated = [question(n, answer=n % 4) | {"id": "x"} for n in range(1, 11)]
+    generated = [question(n, answer=n % 4) | {"id": "x"} for n in range(1, 16)]
     llm = FakeLLM({"questions": generated})
 
     found = CheckpointGenerator(llm, "some-model").generate(terminal, "v1")
 
-    assert [q.id for q in found.questions] == [f"q{n}" for n in range(1, 11)]
+    assert [q.id for q in found.questions] == [f"q{n}" for n in range(1, 16)]
+    assert found.problem is None
     assert found.status is Status.DRAFT and found.generated_by == "some-model"
     assert "Move between directories with cd" in llm.prompts[0]
     assert "A short first look at the shell." in llm.prompts[0]  # the authors' note
@@ -148,15 +200,21 @@ def test_the_brief_names_what_the_module_teaches_and_no_resource_links(curriculu
     assert "https://" not in brief
 
 
-def test_the_committed_checkpoints_fit_the_pinned_curriculum():
-    """Every file in checkpoints/ loads and belongs to the version in config/curriculum.yaml."""
+def test_the_committed_checkpoints_fit_their_curriculum_versions():
+    """Every file in checkpoints/<version>/ loads, belongs to that version's commit, and its coding
+    problem's reference solution passes its tests."""
     from roadmap.source import CurriculumSource
 
-    version = CurriculumSource.from_file(ROOT / "config" / "curriculum.yaml").version
+    source = CurriculumSource.from_file(ROOT / "config" / "curriculum.yaml")
     files = list((ROOT / "checkpoints").rglob("*.yaml"))
     assert files
     for file in files:
-        module_id = file.relative_to(ROOT / "checkpoints").with_suffix("").as_posix()
-        found = CheckpointStore(ROOT / "checkpoints").load(module_id)
+        version_name, *parts = (
+            file.relative_to(ROOT / "checkpoints").with_suffix("").parts
+        )
+        module_id = "/".join(parts)
+        found = CheckpointStore(ROOT / "checkpoints" / version_name).load(module_id)
         assert found is not None and found.module_id == module_id
-        assert found.curriculum_version == version
+        assert found.curriculum_version == source.version(version_name).ref
+        if found.problem is not None and not found.problem.packages:
+            assert verify_problem(found.problem) is None, file

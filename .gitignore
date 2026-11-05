@@ -9,12 +9,15 @@ venv/
 
 # Secrets
 .env
+deploy/.env
 .env.local
 *.key
 
 # Data and generated output
 data/raw/
 data/curriculum/
+data/curricula/
+data/*.sqlite
 out/
 *.log
 
