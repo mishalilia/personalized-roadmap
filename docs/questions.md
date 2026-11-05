@@ -11,8 +11,10 @@ Status values: Not checked / Under review / Decided.
 - **Related DoD item:** Baseline — licence attribution correctly implemented
 - **Why it matters:** The answer decides how much of this repository share-alike reaches. Attribution is
   required either way, and licence compliance is graded.
-- **Our reading:** A path orders the modules and includes their titles, descriptions and checklists, so it
-  may count as an adaptation rather than a collection. "Prove" needs the checklists, so we keep them.
+- **Our reading:** A path orders the modules and includes their titles, descriptions, topics and completion
+  criteria, so it may count as an adaptation rather than a collection. "Prove" needs the completion criteria,
+  so we keep them. Checkpoint questions are written from the same material, so the same question applies to
+  them.
 - **What we have tried:** Read the licence in the source repository, where it is stated inconsistently (see
   the licence section of the README), and applied the stricter option to ourselves. That is safe under
   either answer.
@@ -76,7 +78,10 @@ Status values: Not checked / Under review / Decided.
 - **What we have tried:** Measured the corpus as above, and confirmed that `llms-full.txt` cannot replace
   parsing the content: 10,646 characters, 4 URLs, no resource metadata. The check is 10 questions generated
   for one module from repository content only, rated by someone who knows the topic for how many test
-  application rather than recall.
+  application rather than recall. Built on the working answer below: `python -m roadmap checkpoints` gives the
+  model a module's topics, stated outcomes, resource notes and completion criteria, and asks for 15 questions
+  that each name one of the module's topics. Not yet run with a real model; the two draft checkpoints in the
+  repository were written by Claude to show the flow and are not the check.
 - **Working answer:** Generate questions about the topic the section defines. Its heading and structure,
   stated learning outcomes, declared difficulty and the authors' per-resource notes specify what to test; the
   model supplies the subject knowledge. Nothing is copied from third-party sites and it scales across all 126
@@ -85,5 +90,33 @@ Status values: Not checked / Under review / Decided.
 - **Ask:** Team experiment first
 - **Status:** Under review
 - **Decision and date:** —
-- **Follow-up:** TBD — if the approach holds, build the question generation around it; if it does not,
-  narrow the checkpoint scope and say so in the README.
+- **Follow-up:** run the generator on one module, have the questions rated, and decide. If the approach does
+  not hold, narrow the checkpoint scope and say so in the README.
+
+### Q-005 — Is a lock that holds only in the learner's browser enough for the Target?
+
+- **Related DoD item:** Target — progress blocked past a failed checkpoint
+- **Why it matters:** Accounts are out of scope, so the path and its progress live in the learner's browser
+  and in the file they download. The page enforces the lock, and the server refuses progress on a locked
+  module, but a learner who edits their saved path can undo the lock, and a coding problem counts as solved on
+  the browser's word.
+- **What we have tried:** Built the lock in the page and in the API; failed attempts reveal no answers and
+  options are shuffled per attempt, so the questions themselves cannot be learned by retrying.
+- **Ask:** Professor
+- **Status:** Not checked
+- **Decision and date:** —
+- **Follow-up:** if a server-side record is expected, a signed path (the server signs the progress it
+  returns) would detect edits without accounts.
+
+### Q-006 — Expected decisions for the current curriculum
+
+- **Related DoD item:** Baseline — visibly different paths for three profiles; model-quality tests
+- **Why it matters:** New paths use the current curriculum (20 modules, restructured in October), but the
+  expected decisions we score the model against were written for the 18 modules of the October 6 version. Until
+  they are rewritten, the model's quality on the current curriculum is unmeasured.
+- **What we have tried:** Kept the October 6 version served and reproducible (`--curriculum 2026-10-06`), so
+  the results of 21 October still stand for it.
+- **Ask:** Team (Data & Research)
+- **Status:** Not checked
+- **Decision and date:** —
+- **Follow-up:** write the expected decisions for the current version, then repeat the stability runs.

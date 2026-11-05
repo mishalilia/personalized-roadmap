@@ -255,7 +255,7 @@ def test_questions_are_sent_without_answers_and_with_options_shuffled_per_attemp
         TERMINAL: {
             "status": "draft",
             "questions_per_attempt": 5,
-            "pass_mark": 4,
+            "pass_mark": 4,  # nosec B105: a score, not a password
             "has_problem": True,
         }
     }
@@ -418,7 +418,9 @@ def test_only_shared_paths_are_counted_and_the_report_needs_its_token(
 ):
     events = EventLog(tmp_path / "events.sqlite")
     client = client_for(
-        Roadmap(curriculum, questions, llm=None), events=events, token="secret"
+        Roadmap(curriculum, questions, llm=None),
+        events=events,
+        token="secret",  # nosec B106: a test token
     )
     private = confirmed_path(client)
     shared_draft = client.post(
@@ -446,3 +448,20 @@ def test_only_shared_paths_are_counted_and_the_report_needs_its_token(
         client.get("/report", headers={"Authorization": "Bearer wrong"}).status_code
         == 403
     )
+
+
+def test_invented_example_learners_are_offered_for_demos(curriculum, questions):
+    from helpers import ROOT
+
+    from roadmap import load_profiles
+
+    profiles = load_profiles(ROOT / "config" / "profiles.yaml")
+    editions = [Edition(Roadmap(curriculum, questions, llm=None), {})]
+    client = TestClient(
+        create_app(editions, [SITE], RateLimiter(10, window=60), profiles=profiles)
+    )
+
+    body = client.get("/profiles").json()
+
+    assert [profile["id"] for profile in body] == ["p1", "p2", "p3"]
+    assert set(body[0]["answers"]) <= {question.id for question in questions}

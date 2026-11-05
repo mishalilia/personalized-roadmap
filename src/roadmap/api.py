@@ -19,7 +19,6 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 from typing import Annotated, TypeVar
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -40,6 +39,7 @@ from .curriculum import Level
 from .events import EventKind, EventLog, Report
 from .level import LevelAssessment
 from .llm import LLMUnavailable
+from .onboarding import LearnerProfile, load_profiles
 from .path import LearningPath, PathStateError, Progress
 from .service import Roadmap
 from .source import CurriculumSource
@@ -192,8 +192,10 @@ def create_app(
     limiter: RateLimiter,
     events: EventLog | None = None,
     report_token: str | None = None,
+    profiles: list[LearnerProfile] | None = None,
 ) -> FastAPI:
-    """`editions` newest first: new paths use the first."""
+    """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
+    start from."""
     newest = editions[0]
     by_version = {edition.version: edition for edition in editions}
     app = FastAPI(
@@ -285,6 +287,11 @@ def create_app(
             versions=[info(edition) for edition in editions],
             personalization_available=newest.roadmap.personalization_available,
         )
+
+    @app.get("/profiles")
+    def example_profiles() -> list[LearnerProfile]:
+        """Invented example learners, not real people, whose answers a demo can start from."""
+        return profiles or []
 
     @app.post("/level", dependencies=[Depends(within_quota)])
     def level(body: LevelRequest) -> LevelResponse:
@@ -447,9 +454,6 @@ class ApiSettings(Settings):
     api_rate_limit: int = 20  # model-calling requests per client per window
     api_rate_window: int = 3600  # seconds
     api_report_token: str | None = None  # opens GET /report; no report without it
-    api_events_file: Path | None = (
-        None  # where shared progress is kept; data/events.sqlite by default
-    )
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -477,10 +481,9 @@ def _app() -> FastAPI:
         editions=load_editions(settings),
         allowed_origins=settings.allowed_origins,
         limiter=RateLimiter(settings.api_rate_limit, settings.api_rate_window),
-        events=EventLog(
-            settings.api_events_file or settings.data_dir / "events.sqlite"
-        ),
+        events=EventLog(settings.events_file),
         report_token=settings.api_report_token,
+        profiles=load_profiles(settings.profiles_file),
     )
 
 

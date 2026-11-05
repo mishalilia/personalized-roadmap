@@ -25,5 +25,6 @@ USER roadmap
 ENV API_EVENTS_FILE=/app/state/events.sqlite
 EXPOSE 8000
 # One worker: the rate limit is kept in memory. --proxy-headers: behind Caddy, the client is the learner.
+# --no-access-log: the access log would keep learners' IP addresses, which we do not store.
 CMD ["uvicorn", "roadmap.api:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips", "*"]
+     "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]

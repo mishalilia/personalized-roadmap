@@ -74,7 +74,11 @@ one listed for as long as learners may still be working through paths planned fo
 - **One API worker.** The rate limit is kept in memory. More workers would each keep their own count.
 - **The API is not published.** Only Caddy reaches it, which is why uvicorn trusts the client address Caddy
   forwards; the limit then counts per learner, not per proxy. Do not publish port 8000.
+- **No access log.** uvicorn runs with `--no-access-log`, and the Caddyfile has no `log` directive, so
+  learners' IP addresses are not written anywhere (docs/data-sources.md promises that). Errors are still
+  logged: `docker compose logs api`.
 - **Python for coding problems loads from the jsDelivr CDN** in the learner's browser. To serve it from the site
-  instead, copy Pyodide's files into the site's `static/pyodide/` and build with `PYODIDE_URL=/pyodide/`.
+  instead, copy the files of Pyodide 0.26.4 into the site's `static/pyodide/` and set `PYODIDE_URL=/pyodide/`
+  in `.env` before building.
 - **Model data:** learners' answers go to the model provider in `config/llm.yaml`. Before testing with real
   learners, settle Q-003's follow-up (the Gemini free tier may use requests to improve Google's products).

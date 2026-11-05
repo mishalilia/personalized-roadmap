@@ -23,7 +23,7 @@ from roadmap.llm import LLMUnavailable
 def question(number: int, answer: int = 0) -> dict:
     return {
         "id": f"q{number}",
-        "topic": "Shell Basics",
+        "topic": "1. Shell Basics",
         "text": f"Question {number}?",
         "options": ["a", "b", "c", "d"],
         "answer": answer,
@@ -107,7 +107,7 @@ def test_a_failed_attempt_names_topics_to_review_but_not_the_answers():
     assert all(
         item.answer is None and item.explanation is None for item in failed.feedback
     )
-    assert failed.review_topics == ["Shell Basics"]
+    assert failed.review_topics == ["1. Shell Basics"]
     assert all(item.answer is not None and item.explanation for item in passed.feedback)
 
 
@@ -186,6 +186,14 @@ def test_generated_questions_are_numbered_and_kept_as_a_draft(curriculum):
     assert "A short first look at the shell." in llm.prompts[0]  # the authors' note
 
 
+def test_generated_questions_must_name_the_modules_own_topics(curriculum):
+    generated = [question(n) | {"topic": "Something else"} for n in range(1, 16)]
+    llm = FakeLLM({"questions": generated})
+
+    with pytest.raises(LLMUnavailable):
+        CheckpointGenerator(llm, "some-model").generate(curriculum.modules[0], "v1")
+
+
 def test_an_answer_with_the_wrong_number_of_questions_is_rejected(curriculum):
     llm = FakeLLM({"questions": [question(n) for n in range(1, 6)]})
 
@@ -218,3 +226,16 @@ def test_the_committed_checkpoints_fit_their_curriculum_versions():
         assert found.curriculum_version == source.version(version_name).ref
         if found.problem is not None and not found.problem.packages:
             assert verify_problem(found.problem) is None, file
+
+
+def test_a_saved_checkpoint_marks_its_commit_hash_for_the_secret_scanner(
+    tmp_path: Path,
+):
+    store = CheckpointStore(tmp_path)
+    commit = "9fc5573ddbd7be5d5da997a26c49afeafbfe6210"  # pragma: allowlist secret
+    found = checkpoint().model_copy(update={"curriculum_version": commit})
+
+    file = store.save(found)
+
+    assert "# pragma: allowlist secret" in file.read_text().splitlines()[1]
+    assert store.load(found.module_id) == found

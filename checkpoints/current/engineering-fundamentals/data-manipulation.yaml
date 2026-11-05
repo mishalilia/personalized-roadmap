@@ -1,11 +1,11 @@
 module_id: engineering-fundamentals/data-manipulation
-curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
 status: draft
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
 reviewed_by: null
 questions:
 - id: q1
-  topic: 1. NumPy Foundations
+  topic: NumPy Foundations
   text: After `a = np.arange(12).reshape(3, 4)`, what is `a[1:, ::2].shape`?
   options:
   - (3, 2)
@@ -15,7 +15,7 @@ questions:
   answer: 2
   explanation: '`1:` keeps rows 1 and 2, and `::2` keeps columns 0 and 2, so two rows by two columns.'
 - id: q2
-  topic: 2. Pandas & Data Cleaning
+  topic: Pandas and Data Cleaning
   text: The column `df["age"]` has some missing values (NaN). What does `df["age"].mean()` return?
   options:
   - The mean of the values that are present
@@ -26,7 +26,7 @@ questions:
   explanation: Pandas skips missing values by default (`skipna=True`), so the mean is taken over the values that
     are present.
 - id: q3
-  topic: 2. Pandas & Data Cleaning
+  topic: Pandas and Data Cleaning
   text: You want the rows where age is over 30 and the city is Seoul. Which expression does it?
   options:
   - '`df[df["age"] > 30 and df["city"] == "Seoul"]`'
@@ -37,7 +37,7 @@ questions:
   explanation: Conditions on columns combine element by element with `&`, and each needs its own parentheses; `and`
     raises an error on a Series.
 - id: q4
-  topic: 4. SQL
+  topic: SQL
   text: You need the customers with more than five orders. Which query returns them?
   options:
   - '`SELECT customer_id FROM orders WHERE COUNT(*) > 5 GROUP BY customer_id;`'
@@ -48,7 +48,7 @@ questions:
   explanation: '`WHERE` filters rows before grouping and cannot use an aggregate; `HAVING` filters the groups after
     `GROUP BY`.'
 - id: q5
-  topic: 3. Basic Data Visualization with Matplotlib
+  topic: Exploratory Analysis and Visualization
   text: You cleaned a column of house prices and want to see whether it is skewed or has outliers. Which plot shows
     that best?
   options:
@@ -59,7 +59,7 @@ questions:
   answer: 2
   explanation: A histogram shows how values are distributed, so a long tail or isolated bars stand out.
 - id: q6
-  topic: 1. NumPy Foundations
+  topic: NumPy Foundations
   text: What does `a[a > 0].sum()` return for `a = np.array([3, -1, 4, -2])`?
   options:
   - '4'
@@ -69,7 +69,7 @@ questions:
   answer: 1
   explanation: The boolean mask keeps 3 and 4, and their sum is 7.
 - id: q7
-  topic: 2. Pandas & Data Cleaning
+  topic: Pandas and Data Cleaning
   text: Which line gives the average salary in each department?
   options:
   - '`df["salary"].mean()`'
@@ -80,7 +80,7 @@ questions:
   explanation: '`groupby` splits the rows by department and `mean` is taken within each group; the others give one
     number for all rows or fail.'
 - id: q8
-  topic: 4. SQL
+  topic: SQL
   text: You need every customer, including those who never ordered, with their orders where they have any. Which
     join does that?
   options:
@@ -92,7 +92,7 @@ questions:
   explanation: A LEFT JOIN keeps every row of the left table, here customers, and fills the order columns with NULL
     where there is no match.
 - id: q9
-  topic: 4. SQL
+  topic: SQL
   text: Which query returns the three most expensive products?
   options:
   - '`SELECT * FROM products WHERE price = MAX(price) LIMIT 3;`'

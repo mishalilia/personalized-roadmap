@@ -100,7 +100,7 @@ def _parser() -> argparse.ArgumentParser:
 
     report = commands.add_parser(
         "report",
-        help="where learners who share their progress stop, per module (data/events.sqlite)",
+        help="where learners who share their progress stop, per module",
     )
     report.add_argument(
         "--curriculum", help="a curriculum version; the newest by default"
@@ -245,7 +245,7 @@ def _report(args: argparse.Namespace, settings: Settings) -> None:
     source = CurriculumSource.from_file(settings.curriculum_file)
     version = source.version(args.curriculum)
     curriculum = load_curriculum(source, version, settings.curricula_dir)
-    file = settings.data_dir / "events.sqlite"
+    file = settings.events_file
     if not file.exists():
         sys.exit(f"No events yet: {file} does not exist.")
     report = EventLog(file).report(

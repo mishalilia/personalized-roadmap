@@ -4,6 +4,11 @@ Test plan §5: how much each model's decisions change between runs, and how ofte
 [expected decisions](expected-decisions.md). Three example profiles, curriculum 5c21272, prompts as merged in
 PR #1.
 
+The curriculum here is the version the site now calls "October 6, 2026". New paths use the current curriculum
+since 5 November; these results still hold for the October 6 version and can be repeated with
+`--curriculum 2026-10-06`. The planner prompt has gained one line since (evidence shown after onboarding, used
+only when a checkpoint or a goal change asks the model again).
+
 ## How it was run
 
 - Each model on its own, without falling back to another one.

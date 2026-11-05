@@ -2,29 +2,33 @@
 
 > Everyone gets the same learning path, most people abandon it, and nobody finds out whether anything was learned.
 
-An AI system that builds a **personalized path through real technical learning content**
-([roadmap.humblebee.ai](https://roadmap.humblebee.ai)): it infers the learner's level from open-ended
-answers and explains that inference, orders the material toward the learner's goal, marks and justifies what
-was skipped, and — from the Target tier onward — verifies understanding with checkpoints before letting the
-learner move on.
+An AI system that builds a **personal path through a real technical curriculum**, the HumbleBeeAI Open
+Curriculum ([roadmap.humblebee.ai](https://roadmap.humblebee.ai)). It suggests the learner's level from
+open-ended answers and explains why, marks every module to study, prove or skip with a reason, and checks
+understanding with a checkpoint before the learner moves on.
 
 Capstone project **S2** — Convergence of Business Administration & Engineering Capstone Design,
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI.
 
-Status: the Baseline works as a prototype — questions, a level suggestion the learner can correct, a personal
-path and a web page. Checkpoints (Target) are not built yet.
+**Status (5 November 2026).** Baseline and the code of the Target are built: the learner uses a page on the
+curriculum site, backed by an HTTP API. Not done yet: testing with five real learners, the business case,
+review of the checkpoint questions by someone who knows each topic, and runs of the new features with a real
+model. Two Stretch items are built early: goal change mid-path and the report on where learners stop.
 
 ## Documents
 
 | Document | Contents |
 |---|---|
-| [docs/project-overview.md](docs/project-overview.md) | Problem, buyer, why AI, implementation plan, Baseline/Target/Stretch, data, tools, hard parts |
-| [docs/team-rnr.md](docs/team-rnr.md) | Role owners, what each member owns, reviewers |
+| [docs/project-overview.md](docs/project-overview.md) | Problem, buyer, why AI, plan, Baseline/Target/Stretch, data, tools, hard parts |
+| [docs/architecture.md](docs/architecture.md) | C4 Level 1 and Level 2 diagrams and the decisions behind them |
+| [docs/data-sources.md](docs/data-sources.md) | The curriculum, the model, the data learners share, and their limits |
+| [docs/test-plan.md](docs/test-plan.md) | Each Baseline and Target item, the test that checks it and its status |
+| [docs/learner-testing.md](docs/learner-testing.md) | How we test with real learners and write it up |
+| [docs/questions.md](docs/questions.md) | Open questions and what was decided |
+| [docs/team-rnr.md](docs/team-rnr.md) | Roles, what each member owns, reviewers |
 | [docs/ground-rules.md](docs/ground-rules.md) | How the team meets, reviews code and handles data |
-| [docs/questions.md](docs/questions.md) | Open questions, assumptions and decisions we would like feedback on |
-| [docs/architecture.md](docs/architecture.md) | C4 Level 1 and Level 2 diagrams |
-| [docs/data-sources.md](docs/data-sources.md) | Data sources, access and limitations |
-| [docs/test-plan.md](docs/test-plan.md) | Test scenarios mapped to Baseline/Target DoD items, current stage and status of each |
+| [checkpoints/README.md](checkpoints/README.md) | How checkpoints are generated and reviewed |
+| [deploy/README.md](deploy/README.md) | Running the site and the API on one server |
 
 ## The problem
 
@@ -40,22 +44,29 @@ in completion and retention.
 
 ## How it works
 
-1. **Onboarding** — open-ended questions about coding background and end goal.
-2. **Level inference** — a model infers the level and states the reasoning; the learner can correct it, and
-   the correction is what the planner uses. The inference is a suggestion, never a verdict.
-3. **Path generation** — the curriculum's modules in course order, each marked *study*, *prove* or *skip*
-   with a reason. *Prove* is offered for modules that have a completion checklist: the learner works through
-   the checklist instead and studies the module only if they cannot complete it. The learner can change any
-   decision and confirms the path before using it.
-4. **Checkpoints** *(Target)* — questions generated from the content; progress is gated on them.
-5. **Adaptation** *(Target)* — a failed checkpoint replans the remainder of the path.
+1. **Onboarding.** Six open questions about what the learner has done and what they want to do. A demo can
+   start from one of three invented learners instead.
+2. **Level.** A model suggests beginner, intermediate or advanced, with the evidence from the answers and how
+   sure it is. The learner can choose another level; the path is planned for the one they choose.
+3. **Path.** Every module of the curriculum, in course order, marked *study*, *prove* or *skip* with a reason.
+   *Prove* is offered only for modules that state what finishes them: the learner shows they can do it instead
+   of studying the module. The learner can change any decision and confirms the path before using it.
+4. **Checkpoints.** On a module's page, five multiple-choice questions; four right answers pass. Modules that
+   teach programming then give a coding problem, run in the learner's browser against tests. A failed
+   checkpoint locks the modules after it until a retake passes, and turns *prove* into *study*.
+5. **Adaptation.** A checkpoint passed without a mistake at the first try asks the model whether later modules
+   can be lightened; the learner accepts or declines each suggestion. A learner who changes their goal gets
+   the rest of the path planned again, keeping what they have started.
 
-## Architecture and starter template
+The path, with the learner's progress, is kept in their browser and can be downloaded as JSON. There are no
+accounts.
 
-Starter template: [module-python-template](https://github.com/humblebeeai/module-python-template).
+## Architecture
 
-Chosen because the planner and the attribution logic are library code. The Streamlit interface calls the
-library directly, so there is no HTTP layer, and no database until there is state to keep between sessions.
+Starter template: [module-python-template](https://github.com/humblebeeai/module-python-template). The core is
+a Python library with a command line. A small HTTP API (FastAPI) puts it behind the curriculum site, because
+the site is static and cannot hold the model keys. The only database is a SQLite file for the progress events
+learners choose to share.
 
 From the template we took the project layout, the packaging setup and the automatic checks, which run before
 each commit and again on every pull request. Our changes: Python 3.11, the pull-request checks also run the
@@ -66,15 +77,19 @@ C4 Level 1 and Level 2 diagrams: [docs/architecture.md](docs/architecture.md).
 
 | Path | Contents |
 |---|---|
-| `src/roadmap/` | The core library and its command line: curriculum parser, level inference, planner, fallback |
+| `src/roadmap/` | The core and its command line: curriculum parser, level, planner, checkpoints, progress rules, HTTP API |
 | `src/roadmap/prompts/` | Model instructions as Markdown, editable without touching code |
-| `app/` | The demo web interface (Streamlit), a client of the core |
-| `config/` | Curriculum pin and attribution, onboarding questions, invented example profiles |
+| `config/` | Curriculum versions and attribution, onboarding questions, invented example learners, models |
+| `checkpoints/` | Checkpoint questions and coding problems, one file per module and curriculum version |
+| `deploy/` | Docker Compose for the site, the API and HTTPS on one server |
 | `tests/` | Tests; the model is replaced by a stub, the curriculum by a small invented course |
 
-The model makes the judgement calls: the level, and what to do with each module. Code keeps the course order,
-checks that every module got a decision and adds the attribution, so a path never contains a link the model
-made up.
+The learner's page — questions, path, checkpoints on module pages — is React code in the curriculum site
+(Docusaurus), in our fork of HumbleBeeAI's repository, under `src/components/personal-path/`.
+
+The model makes the judgement calls: the level, what to do with each module, and suggestions after a
+checkpoint. Code keeps the course order, checks that every module got a decision, grades checkpoints, applies
+the locks and adds the attribution, so a path never contains a link the model made up.
 
 ## Content source, licence and attribution
 
@@ -83,39 +98,43 @@ made up.
 | Dataset | HumbleBeeAI Open Curriculum |
 | Source | https://roadmap.humblebee.ai · repository https://github.com/humblebeeai/int.academy-curriculum |
 | Licence | **CC BY-NC-SA 4.0** — attribution required, share-alike applies to derivatives, non-commercial |
-| Version | New paths: the current curriculum, commit [`9fc5573`](https://github.com/humblebeeai/int.academy-curriculum/commit/9fc5573ddbd7be5d5da997a26c49afeafbfe6210), 22 October 2026. Still served, and used by the model runs of 21 October: commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3), 7 September 2026, the site's "October 6, 2026" version |
+| Versions | New paths: the current curriculum, commit [`9fc5573`](https://github.com/humblebeeai/int.academy-curriculum/commit/9fc5573ddbd7be5d5da997a26c49afeafbfe6210) (22 October 2026), 20 modules. Still served: commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026), 18 modules, the site's "October 6, 2026" version and the one our model runs of 21 October used |
 | Personal data | None in the source content |
-| Preprocessing | MDX parsed into modules, resources, prerequisites and checklists |
+| Preprocessing | MDX parsed into modules with their resources, prerequisites, topics, completion criteria and workload |
 
-Learning content is © HumbleBeeAI, used under CC BY-NC-SA 4.0. Every module in a generated path carries its
-title and URL, and the path carries the licence.
+Learning content is © HumbleBeeAI, used under CC BY-NC-SA 4.0. Every module in a path carries its title and
+URL, and the path carries the licence; the page shows the attribution under every path.
 
 ### How we comply
 
-A generated path orders the curriculum's modules and includes their titles, descriptions and checklists.
-Whether that makes it an adaptation is open (Q-001), so we license it under CC BY-NC-SA 4.0, which is safe
-under either reading. We do not sell the tool, charge for access, or ship the content into a commercial
-product.
+A path orders the curriculum's modules and includes their titles, descriptions, topics and completion
+criteria; checkpoint questions are written from the same material. Whether that makes them adaptations is open
+(Q-001), so we license them under CC BY-NC-SA 4.0, which is safe under either reading. We do not sell the
+tool, charge for access, or ship the content into a commercial product.
 
 **This repository is licensed in two parts:** source code under **MIT** (matching the starter template), and
-documentation plus anything derived from the curriculum, such as generated paths, under
+documentation plus anything derived from the curriculum, such as paths and checkpoints, under
 **CC BY-NC-SA 4.0**. Share-alike follows the content into its adaptations, but not into independent software
-that reads it. The curriculum is not copied into this repository; it is fetched from its own repository at a
-pinned version.
+that reads it. The curriculum is not copied into this repository; it is fetched from its own repository at
+pinned versions. The personal path page lives in the curriculum's own repository and takes that repository's
+licence.
 
 The source states its licence inconsistently: `LICENSE`, its README and the licensing section of
 `CONTRIBUTING.md` say CC BY-NC-SA 4.0, while one line of `CONTRIBUTING.md` and both `llms.txt` files say
 CC BY-SA 4.0, without the non-commercial term. We follow the stricter reading, which is also what the
-project brief states. Whether a generated path counts as an adaptation is Q-001 in
-[docs/questions.md](docs/questions.md), pending confirmation by the professors; attribution applies either way.
+project brief states. Whether a path counts as an adaptation is Q-001 in [docs/questions.md](docs/questions.md),
+pending confirmation by the professors; attribution applies either way.
 
-The 116 external resources the curriculum links to stay under their own licences — we link to them and keep
-their metadata, and do not copy their content.
+The resources the curriculum links to (175 in the current version) stay under their own licences — we link
+to them and keep their metadata, and do not copy their content.
 
 ## Learner data
 
-Any data collected while testing with real learners is kept to the minimum needed, participants are told
-what is collected, and **no learner data is published in this repository**.
+The answers a learner types go to our API and to the model provider, and are not stored by us; the path stays
+in their browser. A learner can choose to share anonymous progress (which modules they finish, fail or stop
+at); nothing else about them is kept. Data from testing with real learners is kept to the minimum, participants
+are told what is collected, and **no learner data is published in this repository**. Details:
+[docs/data-sources.md](docs/data-sources.md).
 
 ## Setup
 
@@ -128,7 +147,7 @@ python -m venv .venv
 Activate it (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` elsewhere), then:
 
 ```bash
-pip install -e ".[app,test,dev]"
+pip install -e ".[api,test,dev]"
 ```
 
 ```bash
@@ -145,95 +164,93 @@ checks; the pull request runs them.
 
 To personalize paths, copy `.env.example` to `.env` and add `LLM_API_KEY_GROQ` or `LLM_API_KEY_GOOGLE`.
 `LLM_PROVIDER` chooses one; otherwise the first provider in [config/llm.yaml](config/llm.yaml) with a key is
-used. Without a key the app still runs, but paths follow the course as written.
+used. Without a key everything still runs, but paths follow the course as written.
 
-| Command | What it does |
-|---|---|
-| `streamlit run app/streamlit_app.py` | The demo web interface: build a path, or open a saved one (JSON) without asking a model |
-| `python -m roadmap plan p1` | The path for example profile P1 in the terminal; `--level advanced` overrides the level, `--out out/p1.json` saves the JSON |
-| `python -m roadmap compare` | Paths for all example profiles and how much each pair differs |
-| `pytest` | The tests |
+### Run the page locally
 
-`plan` and `compare` take `--provider google` to switch provider for one run, and `--verbose` to log the time
-and tokens of every model call.
-
-### HTTP API for the curriculum site
-
-A page on the curriculum site can plan paths through an HTTP API, so that the model keys stay on a server:
-
-```bash
-pip install -e ".[api]"
-```
+The API, from this repository:
 
 ```bash
 uvicorn roadmap.api:app --app-dir src --port 8000
 ```
 
-`GET /questions` gives the onboarding questions and the curriculum version, `POST /level` a suggested level
-and `POST /path` a path in the same JSON the app downloads. The browser changes decisions and confirms the
-path itself. `API_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:3000`) lists the sites that
-may call it; `API_RATE_LIMIT` and `API_RATE_WINDOW` (default 20 model calls per client an hour) share the
-free-tier quota between learners. The limit is kept in memory, so it holds for one server process.
-
-### Checkpoints and progress (Target)
-
-Each module can have a checkpoint: ten questions in `checkpoints/<module id>.yaml`, generated once and
-reviewed by a person before learners see them (see [checkpoints/README.md](checkpoints/README.md)):
+The site, from our fork of the curriculum repository (needs Node.js 20 or newer):
 
 ```bash
-python -m roadmap checkpoints engineering-fundamentals/data-manipulation
+npm ci
 ```
 
-A learner takes five questions an attempt and passes with four; the API grades the answers, so the browser
-never receives them. The options are shuffled for each attempt, and the right answers appear only after a pass:
-a failed attempt names the topics to review instead. Modules that teach programming add a coding problem after
-the questions: the learner's code runs in their browser with Pyodide against the problem's tests, and the
-module counts as passed when they pass (`python -m roadmap checkpoints --verify` checks the reference
-solutions). A failed checkpoint locks the modules after it until a retake passes, and turns "prove"
-into "study". A checkpoint passed without a mistake at the first try asks the model whether later modules can
-be lightened; the learner accepts or declines each suggestion. Progress lives in the path: in the browser on
-the curriculum site, and in the JSON the learner downloads. There are no accounts, so the lock holds in the
-interface but a learner can bypass it by editing their path.
+```bash
+PERSONAL_PATH_API=http://localhost:8000 npm start
+```
 
-The checkpoints in `checkpoints/` (two modules per curriculum version) are drafts written by Claude during
-development so the flow can be shown; they are not generator output and are not reviewed.
+Then open http://localhost:3000/personal-path. On a server, use [deploy/](deploy/README.md) instead.
 
-### Goal change, shared progress and time
+### Command line
 
-- **A new goal mid-path.** The learner enters it on the path page; the rest of the path is planned again by
-  the model, modules they have started keep their decision and progress, and they confirm the path again.
-  Without a model the path stays as it is.
-- **Where learners stop.** A learner can choose to share anonymous progress: a random path id, the modules
-  their path includes, and which they finish or fail; never their answers or anything that identifies them.
-  `GET /report` (with `API_REPORT_TOKEN`) or `python -m roadmap report` counts, per module, the shared paths
-  that include it, finish it, fail its checkpoint, and stop at it. See [docs/data-sources.md](docs/data-sources.md).
-- **Time.** The path shows its hours against the whole course's, from the authors' workload estimates or the
-  durations of a module's resources. The current curriculum states few of either, so most of its modules have
-  no estimate; the page says how many.
+| Command | What it does |
+|---|---|
+| `python -m roadmap fetch` | Checks out every curriculum version in `config/curriculum.yaml` |
+| `python -m roadmap plan p1` | The path for example learner P1 in the terminal; `--level advanced` overrides the level, `--out p1.json` saves the JSON |
+| `python -m roadmap compare` | Paths for all example learners and how much each pair differs |
+| `python -m roadmap checkpoints <module id>` | A draft checkpoint written by the model, to be reviewed; `--all` for every module, `--verify` runs the coding problems' reference solutions |
+| `python -m roadmap report` | Where learners who share their progress stop, per module |
+| `pytest` | The tests |
 
-### Deploying
+`plan`, `compare`, `checkpoints` and `report` take `--curriculum 2026-10-06` for the older version; `plan`,
+`compare` and `checkpoints` take `--provider google` to switch provider for one run, and `--verbose` to log the
+time and tokens of every model call.
 
-[deploy/](deploy/README.md) runs the curriculum site, the API and Caddy (HTTPS) on one server with Docker
-Compose.
+### The HTTP API
 
-## How to obtain the data
+| Endpoint | What it does |
+|---|---|
+| `GET /questions`, `GET /profiles` | The onboarding questions and curriculum versions; the invented example learners |
+| `POST /level`, `POST /path` | A suggested level; a path for the level the learner chose |
+| `POST /path/confirm`, `POST /path/goal` | Confirm a path; plan the rest of it for a new goal |
+| `GET /checkpoints`, `GET /checkpoints/{module}` | Which modules have a checkpoint; an attempt's questions, without answers |
+| `POST /attempts/{module}` | Grade an attempt and return the path with its result |
+| `GET /problems/{module}`, `POST /problems/{module}/solved` | A coding problem without its solution; record that the learner's code passed |
+| `POST /path/done`, `/path/accept`, `/path/decline` | Mark a module without a checkpoint done; answer a suggestion |
+| `GET /report` | Where learners who share their progress stop; needs `API_REPORT_TOKEN` |
+
+Settings (environment or `.env`): `API_ALLOWED_ORIGINS` lists the sites that may call the API (default
+`http://localhost:3000`); `API_RATE_LIMIT` and `API_RATE_WINDOW` limit model calls per client (default 20 an
+hour) to share the free-tier quota, in memory, so for one server process; `API_REPORT_TOKEN` opens the report;
+`API_EVENTS_FILE` says where shared progress is kept (default `data/events.sqlite`).
+
+## Curriculum versions
 
 `python -m roadmap fetch` clones the curriculum once into `data/curricula/repository/` (git-ignored) and checks
-out every version in [config/curriculum.yaml](config/curriculum.yaml) next to it, one folder per version. The
-repository is public and needs no credentials.
+out every version in [config/curriculum.yaml](config/curriculum.yaml) next to it. The repository is public and
+needs no credentials.
 
-**Curriculum versions.** New paths use the first version in the config, the current curriculum. A path planned
-for another listed version keeps working against that version, and links to that version's pages on the site,
-so learners keep their progress when the course changes. The current curriculum retired several modules
-(`unlisted` pages, which are left out) and states what finishes a module under "Expected output" and "Finish
-this module" rather than in tick boxes; `completion_headings: true` reads those. The October 6 version is read
-exactly as before, so the model runs of 21 October are reproducible with `--curriculum 2026-10-06`:
+New paths use the first version, the current curriculum. A path planned for another listed version keeps
+working against that version and links to its pages on the site, so learners keep their progress when the
+course changes. The current curriculum hides retired modules (`unlisted` pages, which we leave out) and states
+what finishes a module under "Expected output", "What you'll build" and "Finish this module" instead of tick
+boxes; `completion_headings: true` reads those. The October 6 version is read exactly as before, so the model
+runs of 21 October can be repeated:
 
 ```bash
 python -m roadmap compare --curriculum 2026-10-06
 ```
 
-The curriculum stays outside this repository; usage conditions are in the licence section above.
+## Checkpoints
+
+Questions are written once per module and curriculum version, reviewed by a person, and kept in `checkpoints/`;
+learners do not wait for a model, and grading is code. An attempt shows five questions with the options in a new
+order; the right answers appear only after a pass, and a failed attempt names the module topics to review. The
+next attempt shows the next five questions. The coding problem, where there is one, runs in the learner's
+browser with Pyodide; the server cannot run a learner's code safely, so it takes the browser's word that the
+tests passed.
+
+Without accounts, a learner who edits their saved path can undo a lock or mark a problem solved. The lock and
+the problem hold in the page, not against that. See [checkpoints/README.md](checkpoints/README.md) for how
+checkpoints are made.
+
+The checkpoints in `checkpoints/` — two modules for each curriculum version — are drafts written by Claude
+during development so that the flow can be shown. They are not generator output and are not reviewed.
 
 ## Fallback when the model is unavailable or rate-limited
 
@@ -241,33 +258,45 @@ If a model is rate-limited, down, or gives a plan that leaves a module out, the 
 provider in [config/llm.yaml](config/llm.yaml) is tried; free-tier quotas are counted per model. If no model
 answers, the path is the whole course in its own order and the learner is told that personalization is
 unavailable. Nothing is skipped without a model: a wrong skip does more harm than repeating familiar material.
-Gemini comes first; Groq is used when `LLM_PROVIDER=groq` or there is no Google key (Q-003).
+Without a model, checkpoints still work, there are no suggestions after them, and a goal change is refused
+with the path left as it was. Gemini comes first; Groq is used when `LLM_PROVIDER=groq` or there is no Google
+key (Q-003).
 
 ## Example output
 
-The path for example profile P1, built by `openai/gpt-oss-120b` on 3 October and opened on the saved-path page.
+The page on the curriculum site, run locally on 5 November without a model key: the path is therefore the
+fallback (every module to study), while checkpoints, the coding problem and progress work as with a model.
 
 | | |
 |---|---|
-| ![Onboarding answers](docs/images/1-onboarding.jpg) | ![Suggested level and summary](docs/images/2-level-and-summary.jpg) |
-| Onboarding, filled in from P1 | The suggested level with its evidence; how many modules to study, prove or skip |
-| ![A module to prove](docs/images/3-prove.jpg) | ![Modules to study and to skip](docs/images/4-study-and-skip.jpg) |
-| "Prove": the module's checklist instead of studying it | Study and skip, each with a reason |
-| ![A decision changed by the learner](docs/images/5-learner-change.jpg) | ![Confirmed path and attribution](docs/images/6-confirmed-and-attribution.jpg) |
-| The learner changed a skip to study; the planner's suggestion stays visible | The confirmed path can be downloaded; attribution below |
+| ![The questions, filled in from example learner P1](docs/images/1-questions.jpg) | ![The path: goal, next module, decisions and time](docs/images/2-path.jpg) |
+| The questions, filled in from invented learner P1 | The confirmed path: the goal, the next module, the counts and the hours |
+| ![A failed checkpoint](docs/images/3-failed.jpg) | ![A coding problem solved](docs/images/4-problem.jpg) |
+| A failed attempt: wrong answers marked, right answers hidden, topics to review | The coding problem after the questions, its tests passed in the browser |
+| ![Sharing progress and changing the goal](docs/images/5-share-and-goal.jpg) | |
+| The choice to share progress, the goal change, and the attribution | |
 
 ## Test results, known errors and limitations
 
-`pytest` checks everything code decides — parsing, course order, attribution, the fallback, the learner's
-changes and both web pages — with a stub in place of the model. Three of the tests run on the real
-curriculum: 18 modules, 116 resources, page URLs as on the site.
+`pytest` checks everything code decides — parsing both curriculum versions, course order, attribution, the
+fallback, checkpoint grading, locks, suggestions, goal change and the report — with a stub in place of the
+model. Eight tests run on the real curriculum and are skipped until `python -m roadmap fetch` has run. The
+page was checked in a browser at desktop and phone width on 5 November: questions, path, a failed and a
+passed checkpoint, the coding problem, sharing and goal change.
 
-Model runs on 21 October, 3–5 per profile and model ([report](docs/test-results/2026-10-21-model-stability.md)).
-With `gemini-3.5-flash-lite`, 93% of decisions stayed the same across runs and 96% matched the
-[expected decisions](docs/test-results/expected-decisions.md); the paths of P1 and P2 differ by 40–50%. Its
-one repeated error: P1, who has never used NumPy or Pandas, is asked to prove the module that teaches them.
+Model runs on 21 October, on the October 6 version, 3–5 per profile and model
+([report](docs/test-results/2026-10-21-model-stability.md)). With `gemini-3.5-flash-lite`, 93% of decisions
+stayed the same across runs and 96% matched the [expected decisions](docs/test-results/expected-decisions.md);
+the paths of P1 and P2 differ by 40–50%. Its one repeated error: P1, who has never used NumPy or Pandas, is
+asked to prove the module that teaches them.
 
-Not tested yet: level inference against what real learners say about themselves (Target).
+Not tested yet:
+
+- the current curriculum with a real model: the expected decisions are written for the 18 modules of the
+  October 6 version and need redoing for the 20 of the current one;
+- checkpoint generation, suggestions after a checkpoint and goal change with a real model;
+- the Docker setup on a server;
+- the level suggestion against what real learners say about themselves, and every other learner test (Target).
 
 ## Team
 
@@ -285,22 +314,14 @@ responsible for and who reviews their work are in the role sheet:
 
 ## Use of AI tools
 
-A substantial part of the documentation here is written with AI
-assistance (Claude).
+Claude (Anthropic) was used throughout:
 
-For this submission we checked the Baseline, Target and Stretch items against the S2 project brief, the
-licence in the source repository's own files, and the content statistics in the overview, which come from
-parsing the source repository rather than from a model.
-
-Drafts were edited rather than taken as they came.
-
-The prototype code (`src/`, `app/`, `tests/`, `config/`) was written with AI assistance (Claude). Its tests
-were run, and the module URLs it builds were checked against the curriculum site's sitemap.
-
-The HTTP API, the checkpoints and progress (`src/roadmap/api.py`, `src/roadmap/checkpoints.py`, the progress
-rules in `src/roadmap/path.py`) and the personal path page for the curriculum site were written with Claude.
-The two draft checkpoints in `checkpoints/` were written by Claude and still need review by someone who knows
-the topic. The curriculum versions, coding problems, goal change, shared progress, time estimates and
-`deploy/` were written with Claude too. The tests pass with a stub model, and the site flow was checked in a
-browser at desktop and phone width; checkpoint generation, the suggestions after a checkpoint and goal change
-have not been run with a real model yet, and the Docker setup has not been built on a server yet.
+- **Documents.** A substantial part of the documentation was drafted with Claude and edited rather than taken
+  as it came. We checked the Baseline, Target and Stretch items against the S2 project brief, the licence in
+  the source repository's own files, and the content statistics, which come from parsing the source repository
+  rather than from a model.
+- **Code.** The core, the HTTP API, the checkpoints and progress rules, the curriculum versions, the personal
+  path page on the curriculum site and `deploy/` were written with Claude. The tests were run, the module URLs
+  were checked against the curriculum site's sitemap, and the page was checked in a browser.
+- **Data.** The expected decisions in `docs/test-results/` and the draft checkpoints in `checkpoints/` were
+  drafted by Claude. The checkpoints still need review by someone who knows each topic.

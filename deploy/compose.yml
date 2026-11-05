@@ -20,6 +20,7 @@ services:
       args:
         PERSONAL_PATH_API: https://${API_DOMAIN}
         REACT_APP_CHAT_LINK: ${REACT_APP_CHAT_LINK:-}
+        PYODIDE_URL: ${PYODIDE_URL:-}
     restart: unless-stopped
 
   caddy:

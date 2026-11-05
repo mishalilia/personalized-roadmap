@@ -94,3 +94,22 @@ def test_the_current_curriculum_states_completion_under_headings(current):
     assert all(module.title for module in current.modules)
     # Its resource cards mostly leave out difficulty and duration; they still parse.
     assert sum(len(module.resources) for module in current.modules) > 100
+
+
+@pytest.mark.parametrize("version_name", [v.name for v in SOURCE.versions])
+def test_checkpoint_questions_name_topics_of_their_module(version_name):
+    """A failed attempt sends the learner to review these topics, so they must exist in the module."""
+    from roadmap.checkpoints import CheckpointStore
+
+    curriculum = load_curriculum(
+        SOURCE, SOURCE.version(version_name), SETTINGS.curricula_dir
+    )
+    store = CheckpointStore(ROOT / "checkpoints" / version_name)
+    for module in curriculum.modules:
+        checkpoint = store.load(module.id)
+        if checkpoint is None:
+            continue
+        topics = {topic.title for topic in module.topics}
+        assert {
+            question.topic for question in checkpoint.questions
+        } <= topics, module.id

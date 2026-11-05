@@ -7,7 +7,8 @@ so use your own knowledge of the subject, but stay within what the topics and ou
 a specific linked resource, its author or its contents.
 
 Write 15 questions:
-- Spread them over the module's topics, in proportion to how much of the module each topic is.
+- Spread them over the module's topics, in proportion to how much of the module each topic is. Give each
+  question's `topic` exactly as one of the topic titles you received: a learner who fails is sent back to it.
 - Ask the learner to apply an idea: predict the result of a short command or snippet, choose the right tool or
   approach for a situation, or spot the mistake. Avoid questions a learner answers by recalling a definition or
   a name.

@@ -254,15 +254,20 @@ class CheckpointStore:
     def save(self, checkpoint: Checkpoint) -> Path:
         file = self.path_for(checkpoint.module_id)
         file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_text(
-            yaml.safe_dump(
-                checkpoint.model_dump(mode="json"),
-                sort_keys=False,
-                allow_unicode=True,
-                width=110,
-            ),
-            encoding="utf-8",
+        text = yaml.safe_dump(
+            checkpoint.model_dump(mode="json"),
+            sort_keys=False,
+            allow_unicode=True,
+            width=110,
         )
+        # The curriculum version is a commit hash, which the secret scanner in pre-commit takes for a key.
+        version_line = f"curriculum_version: {checkpoint.curriculum_version}\n"
+        text = text.replace(
+            version_line,
+            version_line.rstrip("\n") + "  # pragma: allowlist secret\n",
+            1,
+        )
+        file.write_text(text, encoding="utf-8")
         return file
 
     def all_for(self, curriculum: Curriculum) -> dict[str, Checkpoint]:
@@ -298,7 +303,7 @@ class CheckpointGenerator:
             prompts.load("checkpoint"),
             module_brief(module),
             GeneratedQuestions,
-            check=_check_generated,
+            check=lambda response: _check_generated(response, module),
         )
         questions = [
             question.model_copy(update={"id": f"q{number}"})
@@ -313,7 +318,7 @@ class CheckpointGenerator:
         )
 
 
-def _check_generated(response: GeneratedQuestions) -> None:
+def _check_generated(response: GeneratedQuestions, module: Module) -> None:
     if len(response.questions) != GENERATED_QUESTIONS:
         raise UnusableAnswer(
             f"{len(response.questions)} questions instead of {GENERATED_QUESTIONS}"
@@ -321,6 +326,12 @@ def _check_generated(response: GeneratedQuestions) -> None:
     texts = {question.text.casefold() for question in response.questions}
     if len(texts) != len(response.questions):
         raise UnusableAnswer("Questions repeat")
+    # A failed attempt sends the learner back to these topics, so they must be the module's own.
+    titles = {topic.title for topic in module.topics}
+    if titles and (unknown := {q.topic for q in response.questions} - titles):
+        raise UnusableAnswer(
+            f"Topics the module does not have: {', '.join(sorted(unknown))}"
+        )
 
 
 def module_brief(module: Module) -> str:

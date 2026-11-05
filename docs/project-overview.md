@@ -1,5 +1,9 @@
 # Project Overview — Personalized Learning Roadmap
 
+The plan as written for the 20 September submission, kept up to date with what changed since. **Status on
+5 November 2026:** the Baseline and the Target code are built (§7, §8); learner testing and the business case
+are not done yet.
+
 ## 1. Target users and the problem
 
 High-quality free technical learning material is abundant; completion is not. The reference case is
@@ -58,12 +62,15 @@ Three parts of this cannot be built as fixed branching logic:
 3. **Generating checkpoints from content.** Hand-writing questions for every section does not scale, which
    is exactly why most free material has none.
 
-## 5. Proposed implementation
+## 5. Implementation
 
-A Python core that produces a learning path as a structured artifact, plus a thin interface that consumes it.
+A Python core that produces a learning path as a structured artifact, an HTTP API that puts it behind the
+curriculum site, and a page on that site that the learner uses.
 
 1. **Content ingestion.** Parse the curriculum repository into modules and their resources, with metadata
-   already present in the source: type, title, url, duration, difficulty, rationale.
+   already present in the source: type, title, url, duration, difficulty, rationale, and each module's topics,
+   stated outcomes and completion criteria. Each curriculum version is pinned to a commit; paths keep the
+   version they were planned for.
 2. **Course order.** The path keeps the order the authors gave the course. The source states prerequisites
    only in prose; they go to the model as text. (The first plan was a hand-written prerequisite graph; see
    the changes in [architecture.md](architecture.md).)
@@ -72,20 +79,22 @@ A Python core that produces a learning path as a structured artifact, plus a thi
    reasoning stated**, which the learner can override. The estimate is presented as a suggestion, never a
    verdict.
 5. **Path generation.** For every module the model suggests study, prove (the learner likely knows it and
-   checks themselves against its checklist) or skip, each with a reason. The learner can change any of them.
-6. **Checkpoints (Target).** Questions and coding problems generated per section, with progress gated on
-   them and the remainder of the path replanned on failure.
+   shows it) or skip, each with a reason. The learner can change any of them and confirms the path.
+6. **Checkpoints (Target).** Questions per module, generated once and reviewed by a person, and a coding
+   problem for modules that teach programming, run in the learner's browser. A failed checkpoint locks the
+   modules after it and turns "prove" into "study"; a checkpoint passed without a mistake lets the model suggest
+   lightening later modules, which the learner accepts or declines.
 
-The path is emitted as JSON, which any interface reads.
+The path is JSON. The page keeps it in the learner's browser, and the learner can download it.
 
 ## 6. Inputs and outputs
 
 | | |
 |---|---|
-| **Input** | Learner's answers to onboarding questions (free text: background, experience, end goal); optional explicit corrections to the inferred level; later, checkpoint answers. |
-| **Reference data** | The modules parsed from a pinned version of the public content repository. |
-| **Output** | An ordered learning path: included nodes in order, each with a reason; skipped nodes with justification; the inferred level with the reasoning behind it; attribution for every referenced resource. Emitted as JSON, rendered for the learner. |
-| **Output (Target)** | Checkpoint questions per section; pass/fail state; a revised remaining path after a failed checkpoint. |
+| **Input** | Learner's answers to onboarding questions (free text: background, experience, end goal); optional corrections to the suggested level and to any decision; checkpoint answers and code. |
+| **Reference data** | The modules parsed from pinned versions of the public content repository. |
+| **Output** | The path: every module in course order, marked study, prove or skip with a reason; the suggested level with the reasoning behind it; the title and URL of every module, and the licence. JSON, shown on the page. |
+| **Output (Target)** | Checkpoint results per module; locked modules after a failed checkpoint; suggestions after an effortless pass; the hours of the path against the whole course. |
 
 ## 7. Baseline and how we build it
 
@@ -95,10 +104,12 @@ The path is emitted as JSON, which any interface reads.
 | Infers a level from the answers and explains the reasoning, so the learner can correct it | One model call returns the level, the evidence for it and how sure it is. The learner sees that evidence and can change the level; the planner then uses their version. |
 | Generates an ordered path through the real content, with skipped material explicitly marked and justified | Code keeps the course order and checks that every module has a decision. The model decides study, prove or skip, with a reason for each. |
 | Produces visibly different paths for three clearly different learner profiles | Three example profiles are kept in the repository and their paths are compared automatically, so the difference is measured rather than claimed. They are invented, not built from real people's answers. |
-| Licence attribution correctly implemented | Each item in the output carries its source title, URL and licence. |
+| Licence attribution correctly implemented | Every module in a path carries its title and URL, the path carries the licence, and the page shows the attribution under every path. |
 
-Order, prerequisites and attribution are ordinary code; the model is used only where a judgement is needed.
-That makes most of the Baseline testable, and leaves a working path when no model is available.
+All five are built; their tests are in [test-plan.md](test-plan.md). Order, the check that every module got a
+decision, and attribution are ordinary code; the model is used only where a judgement is needed, and
+prerequisites, which the source states only in prose, reach it as text. That makes most of the Baseline
+testable, and leaves a working path when no model is available.
 
 ## 8. Target and Stretch
 
@@ -111,6 +122,11 @@ up; a business case quantifying what a completion-rate improvement is worth to a
 against tests; mid-path goal change with replanning; peer recommendation at a similar stage; drop-off analysis
 fed back to the content owner.
 
+**Status:** the Target code is built — checkpoints with coding problems, the lock, both adjustments and the
+page on the curriculum site. Learner testing and the business case are not done. Three Stretch items came
+with it: coding problems are checked against their tests in the learner's browser, goal change replans the
+rest of a path, and a report shows where learners who opt in stop. Peer recommendation is not started.
+
 **Out of scope:** user accounts and authentication; any paid API on the Baseline path; model fine-tuning;
 curricula other than the one named below.
 
@@ -122,8 +138,8 @@ curricula other than the one named below.
 | **Source** | https://roadmap.humblebee.ai — repository https://github.com/humblebeeai/int.academy-curriculum |
 | **Licence** | CC BY-NC-SA 4.0 (attribution, share-alike, non-commercial), confirmed in the repository's LICENSE file |
 | **Access** | Obtained. Public repository, cloned directly; no scraping and no credentials required. |
-| **Shape** | 25 MDX documents (22 of them curriculum content, 3 meta pages), about 165 KB of text, 151 sections, 116 structured resource entries with type, title, url, duration, difficulty and rationale. Resource types: course 36, tutorial 22, video 22, paper 9, article 6, docs 5, practice 4, book 4, guide 4, blog 3, talk 1. Declared difficulty: beginner 44, intermediate 53, advanced 19. |
-| **Version** | Pinned to commit [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026). The source repository maintains `curriculum-versions.json` and `versioned_docs`, so the version we build against is recorded and reproducible. |
+| **Shape** | Measured in September on commit 5c21272: 25 MDX documents (22 of them curriculum content, 3 meta pages), about 165 KB of text, 151 sections, 116 structured resource entries with type, title, url, duration, difficulty and rationale. Resource types: course 36, tutorial 22, video 22, paper 9, article 6, docs 5, practice 4, book 4, guide 4, blog 3, talk 1. Declared difficulty: beginner 44, intermediate 53, advanced 19. The current curriculum (commit 9fc5573) has 20 modules and 175 resources, 96 of them without a declared difficulty. |
+| **Version** | Each version pinned to a commit in `config/curriculum.yaml`: [`9fc5573`](https://github.com/humblebeeai/int.academy-curriculum/commit/9fc5573ddbd7be5d5da997a26c49afeafbfe6210) (22 October 2026, the current curriculum) for new paths, and [`5c21272`](https://github.com/humblebeeai/int.academy-curriculum/commit/5c212720af50ffd0a1592ea6c0f812c3af733ed3) (7 September 2026, the site's October 6 version) for older paths. The source repository maintains `curriculum-versions.json` and `versioned_docs`, so the versions we build against are recorded and reproducible. |
 | **Personal data** | None in the source. Learner data collected during testing is kept minimal, is not published, and does not enter this repository. |
 | **Preprocessing** | MDX frontmatter and component attributes parsed into modules, resources, prerequisites and checklists; no content redistributed beyond what attribution requires. |
 
@@ -137,12 +153,12 @@ Tracked as Q-001 in [questions.md](questions.md).
 | | |
 |---|---|
 | **Language / core** | Python 3.11 |
-| **Starter template** | [module-python-template](https://github.com/humblebeeai/module-python-template) — the core is a library, not a service. No HTTP API or database is introduced until something outside the core needs one. |
+| **Starter template** | [module-python-template](https://github.com/humblebeeai/module-python-template) — the core is a library. An HTTP API (FastAPI) was added when the curriculum site needed one, and a SQLite file for the progress learners choose to share. |
 | **LLM** | Gemini API free tier (`gemini-3.5-flash-lite`, then `gemini-3.8-flash`), with Groq (`openai/gpt-oss-120b`) as the second provider. Chosen on cost, latency and stability across repeated runs (Q-003). |
 | **Fallback when the model is unavailable or rate-limited** | Free-tier quotas are counted per model, so the first fallback is the provider's next model. If no model answers, the path is the whole course in its own order, and the learner is told that personalization is unavailable. |
-| **Interface** | The path JSON is the contract. A web interface is a Target item and is built as a client of that JSON. |
-| **Hosting** | TBD (Hugging Face Spaces or Vercel), free tier only. |
-| **Hardware** | None beyond team laptops. No GPU required; no model training. |
+| **Interface** | A page on the curriculum site (React, Docusaurus), calling the API. The Baseline prototype used Streamlit, which the page replaced. The path JSON is the contract between them. |
+| **Hosting** | The team's VPS, with Docker Compose and Caddy for HTTPS ([deploy/](../deploy/README.md)). |
+| **Hardware** | Team laptops and one small VPS. No GPU required; no model training. Coding problems run in the learner's browser. |
 
 ## 11. Technical difficulties to investigate first
 
@@ -150,17 +166,20 @@ Tracked as Q-001 in [questions.md](questions.md).
    prose: 126 sections carry 12,786 words in total, a median of 75 each. Working answer: generate questions
    about the topic a section defines, using its stated outcomes, structure, declared difficulty and the
    authors' per-resource notes. First test: 10 questions for one module, rated by someone who knows the topic
-   (Q-004).
-2. **Whether the corpus supports visibly different paths.** 25 modules may be too coarse a unit; 116
-   resources is finer. First test: hand-build paths for the three example profiles before writing the planner.
+   (Q-004). Status: the generator is built; the rating has not been done.
+2. **Whether the corpus supports visibly different paths.** 18 modules may be too coarse a unit; resources
+   are finer. Status: with `gemini-3.5-flash-lite`, the paths of the three profiles differ by 40–85% at module
+   level (21 October), so modules are enough.
 3. **Prerequisites exist only in prose.** We use the course order and give the prose to the model instead of
    writing a graph by hand.
 4. **Self-reported level is unreliable in both directions.** Testing is stronger than asking, but a long
    test loses the learner before they start. To be settled with real learners.
 5. **How strictly a failed checkpoint blocks progress.** Too strict and learners quit; too loose and
-   checkpoints mean nothing. To be tested.
+   checkpoints mean nothing. Status: a failed checkpoint locks every module after it until a retake passes;
+   whether that is too strict is to be tested with real learners.
 6. **Output stability.** The same profile run repeatedly must not produce arbitrarily different paths; the
-   degree of variation is measured and reported.
+   degree of variation is measured and reported. Status: measured on 21 October (93% of decisions stable with
+   the chosen model).
 
 ## 12. References and sources
 

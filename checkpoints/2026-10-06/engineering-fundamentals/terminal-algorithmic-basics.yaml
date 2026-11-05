@@ -1,5 +1,5 @@
 module_id: engineering-fundamentals/terminal-algorithmic-basics
-curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3
+curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # pragma: allowlist secret
 status: draft
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
 reviewed_by: null

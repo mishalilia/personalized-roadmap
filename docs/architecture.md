@@ -1,11 +1,10 @@
 # Architecture: C4 Level 1 and Level 2
 
-**Status:** matches the Baseline prototype. Changes since the 23 September draft are listed at the end; what
-we have not decided is marked **TBD**.
+**Status:** matches the code on 5 November 2026: the Baseline and the Target code, and two Stretch items built
+early. Changes since the 23 September draft are listed at the end.
 
-The diagrams are written in Mermaid, which GitHub draws automatically. **Dashed** boxes and arrows are Target or Stretch items, not Baseline.
-
-We draw only Level 1 and Level 2, as the course guide asks.
+The diagrams are written in Mermaid, which GitHub draws automatically. **Dashed** boxes and arrows are Stretch
+items. We draw only Level 1 and Level 2, as the course guide asks.
 
 ---
 
@@ -16,15 +15,17 @@ We draw only Level 1 and Level 2, as the course guide asks.
 ```mermaid
 flowchart TB
     learner["<b>Learner</b><br/>[Person]<br/>Self-directed learner who wants a personal path"]
-    owner["<b>Content Owner</b><br/>[Person, Stretch]<br/>Maintains the curriculum and wants to see where learners drop off"]
-    system["<b>Personalized Roadmap System</b><br/>[Software system]<br/>Infers the learner's level, builds a personal path with reasons, checks understanding"]
+    owner["<b>Course Authors</b><br/>[Person, Stretch]<br/>Maintain the curriculum and want to see where learners stop"]
+    system["<b>Personalized Roadmap System</b><br/>[Software system]<br/>Suggests the level, builds a personal path with reasons, checks understanding, keeps progress"]
     curriculum["<b>HumbleBeeAI Curriculum Repository</b><br/>[External system]<br/>Public GitHub repo with the course content, CC BY-NC-SA 4.0"]
-    llm["<b>LLM Service</b><br/>[External system]<br/>Groq or Google Gemini API, free tier"]
+    llm["<b>LLM Service</b><br/>[External system]<br/>Google Gemini or Groq API, free tier"]
+    cdn["<b>jsDelivr CDN</b><br/>[External system]<br/>Serves Pyodide, Python for the browser"]
 
-    learner -->|"Answers questions, reviews and confirms the path in"| system
+    learner -->|"Answers questions, confirms the path, takes checkpoints in"| system
     system -->|"Reads course content from"| curriculum
-    system -->|"Asks for level estimates and path decisions from"| llm
-    system -.->|"Sends drop-off report to (Stretch)"| owner
+    system -->|"Asks for levels, path decisions and suggestions from"| llm
+    learner -->|"Loads Python for coding problems from"| cdn
+    owner -.->|"Reads where learners stop from"| system
 
     classDef person fill:#fff3b0,stroke:#333
     classDef sys fill:#ffd43b,stroke:#333
@@ -32,16 +33,17 @@ flowchart TB
     classDef later stroke-dasharray:5 5
     class learner,owner person
     class system sys
-    class curriculum,llm ext
+    class curriculum,llm,cdn ext
     class owner later
 ```
 
 **How to read it**
 
 - The yellow box is what our team builds. Everything outside it is a person or an external system we do not control.
-- The learner is the only user in Baseline. The content owner appears only in the Stretch item "drop-off analysis".
-- We do **not** copy the curriculum into our repository. We read it from its own repository at a pinned version.
-- Every arrow says what the connection is used for.
+- The learner uses the system through a page on the curriculum site. The course authors only read a report of
+  where learners who chose to share their progress stop (Stretch).
+- We do **not** copy the curriculum into our repository. We read it from its own repository at pinned versions.
+- The learner's browser loads Pyodide from the CDN only when they run a coding problem.
 
 ---
 
@@ -52,82 +54,84 @@ flowchart TB
 ```mermaid
 flowchart TB
     learner["<b>Learner</b><br/>[Person]"]
+    owner["<b>Course Authors</b><br/>[Person, Stretch]"]
     curriculum["<b>HumbleBeeAI Curriculum Repository</b><br/>[External system]"]
-    llm["<b>LLM Service</b><br/>[External system: Groq, Google Gemini]"]
+    llm["<b>LLM Service</b><br/>[External system: Google Gemini, Groq]"]
 
     subgraph boundary ["Personalized Roadmap System [Software system]"]
-        webui["<b>Web UI</b><br/>[Container: Streamlit, Python 3.11]<br/>Onboarding, level, the path; the learner changes and confirms it; opens saved paths"]
-        cli["<b>Command line</b><br/>[Container: Python 3.11]<br/>Fetches the curriculum, plans paths for the example profiles, compares them"]
-        core["<b>Roadmap Core</b><br/>[Container: Python library]<br/>Parses the curriculum, infers the level, plans the path, checks the model's answer, falls back to the course order"]
-        config[("<b>Configuration</b><br/>[Data store: YAML files]<br/>Curriculum version, onboarding questions, example profiles, models")]
-        api["<b>HTTP API</b><br/>[Container: FastAPI, Target]<br/>Level, path, checkpoints and progress rules for the curriculum site; holds the model keys"]
-        checkpoints[("<b>Checkpoints</b><br/>[Data store: YAML files, Target]<br/>Reviewed questions per module")]
-        checkout[("<b>Curriculum Checkout</b><br/>[Data store: git working copy]<br/>The course at the pinned commit")]
-        pathjson[("<b>Path Output</b><br/>[Data store: JSON files]<br/>Level, decisions with reasons, the learner's changes, attribution")]
-        progress[("<b>Progress Store</b><br/>[Data store: browser storage and the path file, Target]<br/>Checkpoint results, locked modules, suggestions")]
+        page["<b>Personal Path Page</b><br/>[Container: React in the curriculum site, Docusaurus]<br/>Questions, level, path; checkpoints and coding problems on module pages"]
+        browser[("<b>Path in the Browser</b><br/>[Data store: local storage, JSON download]<br/>The path, the learner's decisions and progress")]
+        api["<b>HTTP API</b><br/>[Container: FastAPI, Python 3.11]<br/>Holds the model keys; grades checkpoints; applies locks and rules"]
+        cli["<b>Command Line</b><br/>[Container: Python 3.11]<br/>Fetches the curriculum, runs paths for the example learners, writes draft checkpoints, prints the report"]
+        core["<b>Roadmap Core</b><br/>[Container: Python library]<br/>Parses each curriculum version, suggests the level, plans the path, checks the model's answers, falls back to the course order"]
+        config[("<b>Configuration</b><br/>[Data store: YAML files]<br/>Curriculum versions, questions, example learners, models")]
+        checkpoints[("<b>Checkpoints</b><br/>[Data store: YAML files]<br/>Reviewed questions and coding problems per module and version")]
+        checkout[("<b>Curriculum Checkouts</b><br/>[Data store: git worktrees]<br/>Each listed version at its pinned commit")]
+        events[("<b>Shared Progress</b><br/>[Data store: SQLite, Stretch]<br/>Anonymous events from learners who opted in")]
     end
 
-    learner -->|"Uses [HTTP, browser]"| webui
-    webui -->|"Calls [Python]"| core
+    learner -->|"Uses [HTTPS, browser]"| page
+    page -->|"Keeps the path in"| browser
+    page -->|"Calls [HTTPS, JSON]"| api
+    api -->|"Calls [Python]"| core
     cli -->|"Calls [Python]"| core
+    api -->|"Reads"| checkpoints
+    cli -->|"Writes drafts to"| checkpoints
     core -->|"Reads"| config
-    core -->|"Clones a pinned version into [git over HTTPS]"| checkout
+    core -->|"Checks out pinned versions into [git over HTTPS]"| checkout
     checkout -.-|"Copy of"| curriculum
     core -->|"Sends prompts and reads JSON answers from [HTTPS, OpenAI-compatible API]"| llm
-    webui -->|"Downloads and opens [JSON files]"| pathjson
-    cli -->|"Writes [JSON files]"| pathjson
-    site["<b>Personal path page</b><br/>[Curriculum site, Docusaurus, Target]<br/>Questions, path, checkpoints on module pages"]
-    learner -.->|"Uses [browser]"| site
-    site -.->|"Calls [HTTPS, JSON]"| api
-    api -.->|"Calls [Python]"| core
-    api -.->|"Reads"| checkpoints
-    site -.->|"Keeps the path and progress in"| progress
+    api -.->|"Records opted-in events in"| events
+    owner -.->|"Reads the report from [HTTPS, token]"| api
 
     classDef person fill:#fff3b0,stroke:#333
     classDef ext fill:#dddddd,stroke:#333
     classDef later stroke-dasharray:5 5
-    class learner person
+    class learner,owner person
     class curriculum,llm ext
-    class progress,api,checkpoints,site later
+    class events later
 ```
 
 ### What each container does
 
 | Container | Responsibility | Technology | Tier |
 |---|---|---|---|
-| Web UI | Asks the onboarding questions, shows the suggested level with its evidence, shows the path; the learner changes any decision and confirms the path before downloading it; opens a saved path without calling a model | Streamlit, two pages (`app/`) | Baseline |
-| Command line | Fetches the curriculum, plans a path for an example profile, compares the paths of all profiles | `python -m roadmap` | Baseline |
-| Roadmap Core | Turns the curriculum into modules; infers the level and explains why; asks the model to decide study, prove or skip for every module with a reason; rejects an answer that leaves a module out and tries the next model; keeps the course order; falls back to the whole course when no model answers | Python library (`src/roadmap/`) | Baseline |
-| Configuration | The pinned curriculum commit, the six onboarding questions, the three invented example profiles, the providers and models in fallback order | YAML files (`config/`) | Baseline |
-| Curriculum Checkout | Every listed curriculum version, each at its pinned commit, read directly from its Docusaurus files. New paths use the newest; older paths keep theirs | One clone and a git worktree per version in `data/curricula/`, git-ignored | Baseline (several versions: Target) |
-| Progress Events | Anonymous events from learners who chose to share their progress; counted per module in the report | SQLite file on the API server | Stretch |
-| Path Output | The path: level and evidence, each module's suggested and chosen decision with the reason, confirmation time, attribution. Any interface only needs to read it | JSON files | Baseline |
-| Progress Store | Remembers checkpoint results and where the learner is in the path. It is the path itself: each module keeps its progress, and the path lists the locked modules and the suggestions after a checkpoint. No accounts, so nothing is stored on a server | The browser's local storage on the curriculum site, and the path JSON the learner downloads | Target |
-| HTTP API | Serves the questions, a level and a path to the curriculum site; serves checkpoint questions without answers, grades attempts and applies the rules of progress. Holds the model keys | FastAPI (`src/roadmap/api.py`) | Target |
-| Checkpoints | Ten questions per module, generated once per curriculum version and reviewed by a person | YAML files (`checkpoints/`) | Target |
+| Personal Path Page | Asks the questions (or fills them from an example learner), shows the suggested level with its evidence and the path; the learner changes any decision and confirms it. On each module page: the decision, the checkpoint, the coding problem, or "mark as done". Shows progress, the next module, hours, suggestions after a checkpoint and the goal change | React components in our fork of the curriculum site (`src/components/personal-path/`), Docusaurus | Baseline (the path), Target (checkpoints and progress) |
+| Path in the Browser | The path itself: decisions, confirmation, progress per module, locks, suggestions. No accounts, so nothing about the learner is stored on a server | The browser's local storage; the JSON the learner downloads | Target |
+| HTTP API | Serves questions, example learners, a level and a path; confirms paths; serves checkpoint questions without answers, grades attempts, applies locks and rules; plans the rest of a path for a new goal; records opted-in events and serves the report. Holds the model keys; limits model calls per client | FastAPI (`src/roadmap/api.py`), one uvicorn worker | Target |
+| Command Line | Fetches the curriculum versions, runs paths for the example learners and compares them, writes draft checkpoints and checks their coding problems, prints the report | `python -m roadmap` | Baseline |
+| Roadmap Core | Parses each curriculum version into modules; suggests the level and explains why; asks the model for study, prove or skip on every module with a reason; rejects an answer that leaves a module out and tries the next model; keeps the course order; falls back to the whole course when no model answers | Python library (`src/roadmap/`) | Baseline |
+| Configuration | The curriculum versions with their commits, the six questions, the three invented example learners, the providers and models in fallback order | YAML files (`config/`) | Baseline |
+| Checkpoints | Questions (and a coding problem for modules that teach programming) per module and curriculum version, generated once and reviewed by a person | YAML files (`checkpoints/`) | Target |
+| Curriculum Checkouts | Every listed version at its pinned commit, read directly from its Docusaurus files | One clone and a git worktree per version in `data/curricula/`, git-ignored | Baseline |
+| Shared Progress | A random path id, the curriculum version and module events (included, failed, questions passed, finished, goal changed) from learners who opted in; counted per module in the report | SQLite file on the API server | Stretch |
 
 ### Key decisions
 
-1. **One Python process, no service.** The web interface calls the core directly. Baseline needs no HTTP API and no database; we add them only when the Target needs them. This matches the "Basic Python module" starter template we chose.
-2. **The model judges, code decides the rest.** The model suggests the level and a decision for each module. Code keeps the course order, checks that every module got a decision, and attaches attribution, so these parts are tested and still work without a model.
-3. **The learner has the last word.** Every decision the model suggests can be changed, and the path is confirmed before it can be downloaded.
-4. **The curriculum stays outside our repository.** We clone it at a pinned commit and record the licence.
+1. **The model judges, code decides the rest.** The model suggests the level, a decision for each module, and
+   suggestions after a checkpoint. Code keeps the course order, checks that every module got a decision, grades
+   checkpoints, applies locks and attaches attribution, so these parts are tested and work without a model.
+2. **The learner has the last word.** Every decision the model suggests can be changed, the path is confirmed
+   before it is used, and suggestions after a checkpoint change nothing until the learner accepts them.
+3. **No accounts.** The path and progress stay in the learner's browser. The server keeps only what a learner
+   chooses to share, anonymously.
+4. **The curriculum stays outside our repository.** We check it out at pinned commits and record the licence.
+
+### Deployment
+
+On one server, Docker Compose runs the curriculum site (nginx), the API and Caddy, which serves both over HTTPS
+under two domain names ([deploy/](../deploy/README.md)). Only Caddy is reachable from outside.
 
 ### Changes since the first draft
 
 - **No prerequisite graph.** The path follows the course's own order. The curriculum already orders its modules and states its prerequisites as text, and a hand-written graph would need maintenance every time the course changes. The trade-off: we cannot reorder modules for a learner, only include, prove or skip them.
-- **A web interface in Baseline.** We planned a command line for Baseline and a web interface for Target. Streamlit made it no more work than the command line, and a demo is easier to follow in a browser.
-- **"Prove" as a third decision.** Besides study and skip, the model can suggest that the learner proves a module they likely know, using the module's own checklist. In Target, checkpoints will turn this into a real test.
-- **Target: the interface is a page on the curriculum site.** The site is static, so it calls an HTTP API that holds the model keys and runs the core; Streamlit stays as the team's tool for demos and model runs. Progress lives in the learner's browser and the path file: no accounts, so no learner data on a server.
-- **Several curriculum versions.** The site moved to a restructured course in October; paths now follow the current version, and paths planned for an older listed version keep working against it. The planner, the parser and the checkpoints all work per version.
-- **Coding problems run in the browser.** The learner's code runs in Pyodide, never on our server, which could not run untrusted code safely. The server takes the browser's word that the tests passed, like the lock.
-- **Deployment on the team's VPS** with Docker Compose and Caddy instead of a free host: the API holds keys and a small database, and the free hosts sleep or reset their disks.
-- **Target: checkpoints are generated once per module, not per learner.** A person reviews them, they cost no model call when a learner takes them, and grading is code. A failed checkpoint locks the modules after it and turns "prove" into "study"; a checkpoint passed without a mistake at the first try lets the model suggest lightening later modules, which the learner accepts or declines.
+- **"Prove" as a third decision.** Besides study and skip, the model can suggest that the learner proves a module they likely know. Where a module has a checkpoint, proving means passing it.
+- **The interface is a page on the curriculum site.** The Baseline prototype used Streamlit; the page on the curriculum site replaced it and does everything it did. The site is static, so it calls an HTTP API that holds the model keys and runs the core.
+- **Checkpoints are generated once per module, not per learner.** A person reviews them, they cost no model call when a learner takes them, and grading is code. Right answers appear only after a pass, and options are shuffled per attempt, so a learner cannot pass by remembering earlier attempts.
+- **Coding problems run in the browser.** The learner's code runs in Pyodide, never on our server, which could not run untrusted code safely. The server takes the browser's word that the tests passed, as it does for the lock.
+- **Several curriculum versions.** In October the site moved to a restructured course. New paths follow the current version; paths planned for an older listed version keep working against it. The parser, the planner and the checkpoints all work per version.
+- **Progress lives in the browser.** No accounts, so no learner data on a server, except anonymous events from learners who opt in.
+- **Deployment on the team's VPS** with Docker Compose and Caddy, not a free host: the API holds keys and a small database, and free hosts sleep or reset their disks.
 - **The model is chosen.** Gemini `gemini-3.5-flash-lite` first, Groq `openai/gpt-oss-120b` as the second provider, both through the same OpenAI-compatible client (Q-003).
 
-### Open points (TBD)
-
-- The interface technology for Target, and where progress is stored.
-- Whether hosting is Hugging Face Spaces or something else (free tier only).
-
-The modules inside the core (parser, level inference, planner, model client) are Level 3 and not drawn.
+The modules inside the core (parser, level, planner, checkpoints, events, model client) are Level 3 and not drawn.
