@@ -1,0 +1,212 @@
+module_id: softlanding/core-systems/software-engineering
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: 1. Readable Python
+  text: A function currently loads a CSV, filters rows, computes a total, and prints the result. Which change would
+    make it easiest to reuse the calculation in a different program?
+  options:
+  - Keep the function together and add an argument that selects where it prints the total.
+  - Move the filtering and calculation into a function that accepts rows and returns the total.
+  - Store the rows in a module-level variable so the calculation can be called from anywhere.
+  - Add more comments describing each step, but leave the loading and printing in the function.
+  answer: 1
+  explanation: A function that accepts its data and returns a result has a clear responsibility and can be reused
+    without requiring a particular input source or output destination.
+- id: q2
+  topic: 1. Readable Python
+  text: A function uses a notebook variable named `threshold` that is set in an earlier cell. What change makes
+    the function's behavior explicit and avoids dependence on execution order?
+  options:
+  - Set `threshold` inside the function to the value used by the notebook.
+  - Rename the notebook variable so it is easy to find before running the function.
+  - Pass `threshold` as a function argument and document what values it accepts.
+  - Add a comment saying the function expects `threshold` to exist globally.
+  answer: 2
+  explanation: Passing the threshold as an argument makes the function's dependency visible at its call site and
+    avoids relying on a notebook's hidden state.
+- id: q3
+  topic: 1. Readable Python
+  text: Several operations repeatedly use the same account's `balance` and `owner`, and each operation should update
+    that account's balance. Which design best fits this behavior?
+  options:
+  - Create an account instance that stores the attributes and provides methods to update its balance.
+  - Pass the balance and owner to every function, then keep each updated balance in a separate global.
+  - Create one function for each account and store the account's current values in its defaults.
+  - Keep the values in a list and write one large function that handles every account operation.
+  answer: 0
+  explanation: An instance groups related state, while its methods operate on that state. This avoids scattering
+    an account's current values across unrelated function calls or globals.
+- id: q4
+  topic: 1. Readable Python
+  text: A function's behavior is correct, but someone using it cannot tell what its arguments mean or what it returns.
+    Which change most directly helps that user?
+  options:
+  - Add inline comments to each statement inside the function body.
+  - Rename the function to include the names of all its arguments.
+  - Add a print statement that displays the arguments and result on each call.
+  - Write a docstring describing its arguments, return value, and important assumptions.
+  answer: 3
+  explanation: A docstring describes how to use the function, including its inputs, output, and assumptions. Inline
+    comments are better suited to explaining non-obvious implementation decisions.
+- id: q5
+  topic: 2. Testing and debugging
+  text: A function should return `0` when given an empty list. Which pytest test checks that behavior directly?
+  options:
+  - '`assert total([]) == 0`'
+  - '`assert total([]) is not None`'
+  - '`assert total([0]) == 0`'
+  - '`assert total([])`'
+  answer: 0
+  explanation: The assertion compares the function's result for the specified input with the exact expected value,
+    so it fails if the empty-list behavior changes.
+- id: q6
+  topic: 2. Testing and debugging
+  text: A conversion function should return `2` for `'2'`, `15` for `'15'`, and `0` for `'0'`. How should you test
+    these examples without duplicating the same test body?
+  options:
+  - Write one test that checks only the first example and infer the others.
+  - Put all three calls in a fixture that runs once before the test suite.
+  - Use a parametrized test with each input and expected result as a case.
+  - Add three separate fixtures, one to provide each input string.
+  answer: 2
+  explanation: Parametrization runs the same test rule for each input-and-expected-result pair, checking every example
+    without repeating the test body.
+- id: q7
+  topic: 2. Testing and debugging
+  text: Several tests need the same temporary configuration file. What is the most suitable approach?
+  options:
+  - Have each test build a different configuration file to avoid sharing setup.
+  - Use a fixture to create and provide the temporary file to the tests that need it.
+  - Create the file once in a module-level variable and leave it in the project directory.
+  - Combine all the tests into one test so they can share a local file.
+  answer: 1
+  explanation: A fixture provides shared setup in a controlled way and can manage temporary resources, keeping the
+    tests focused on the behavior they check.
+- id: q8
+  topic: 2. Testing and debugging
+  text: A function is intended to reject negative quantities with `ValueError`. Which test best checks that contract?
+  options:
+  - Check that passing `-1` returns a result that is not `None`.
+  - Check that passing `-1` prints an error message.
+  - Check that passing `-1` returns `False` without raising an exception.
+  - Use `pytest.raises(ValueError)` around a call with `-1`.
+  answer: 3
+  explanation: The function's stated behavior is to raise `ValueError` for a negative quantity, and `pytest.raises`
+    checks for that specific expected exception.
+- id: q9
+  topic: 2. Testing and debugging
+  text: A test fails after a code change because totals are wrong only when a discount is applied. What is the best
+    next step?
+  options:
+  - Reproduce the failing case, inspect the discount-related values, fix the cause, and keep a test for that case.
+  - Change the expected total to match the new output, then rerun the full test suite.
+  - Skip the failing test temporarily and check whether unrelated tests still pass.
+  - Rewrite the calculation before inspecting the failing input or intermediate values.
+  answer: 0
+  explanation: Reproducing the failure and inspecting relevant state helps locate its cause; retaining a test for
+    the case guards against the same bug returning.
+- id: q10
+  topic: 3. Refactoring and project structure
+  text: A function reads a file, cleans its rows, calculates a summary, and prints it. You want to test the calculation
+    with different inputs. Which change is the best first step?
+  options:
+  - Add more file-reading options to the function so tests can select different files.
+  - Extract a calculation function that takes cleaned rows and returns the summary.
+  - Move the print statement earlier so it runs before the calculation.
+  - Duplicate the function and remove file reading from the copy used by tests.
+  answer: 1
+  explanation: Separating the calculation from file input and printing lets tests call the transformation directly
+    with representative data.
+- id: q11
+  topic: 3. Refactoring and project structure
+  text: You have tested a function's existing behavior and now want to split its long body into smaller helpers
+    without changing its output. What should you do to check the refactor?
+  options:
+  - Replace the existing tests with tests that match the new helper structure.
+  - Change the expected outputs if the new implementation seems more intuitive.
+  - Run the existing tests and compare representative outputs before and after the change.
+  - Test only the new helper functions because the original function was already tested.
+  answer: 2
+  explanation: A structural refactor should preserve behavior, so existing tests and representative outputs provide
+    evidence that the externally visible results remain the same.
+- id: q12
+  topic: 3. Refactoring and project structure
+  text: A project has reusable date calculations mixed into a script that also handles command-line arguments and
+    prints reports. Which organization gives the calculation logic a clearer interface?
+  options:
+  - Move the date calculations to a module with functions that accept dates and return results, and call them from
+    the script.
+  - Keep the calculations in the script and add more command-line options to expose them.
+  - Move all project code into one module so each part can access the script's variables.
+  - Copy the date calculations into each script that needs to use them.
+  answer: 0
+  explanation: A module of functions with clear inputs and outputs separates reusable calculations from command-line
+    and printing operations.
+- id: q13
+  topic: 3. Refactoring and project structure
+  text: Two parts of a program contain the same validation logic. You plan to extract a shared helper. Which approach
+    best keeps the change focused on refactoring?
+  options:
+  - Extract the helper and also revise which inputs the program accepts.
+  - Keep both copies so the refactor cannot affect either part's behavior.
+  - Extract the helper and update the tests to expect a new error message.
+  - Extract the helper, keep the existing input behavior, and run tests that cover both call sites.
+  answer: 3
+  explanation: A focused refactor removes duplication while preserving the established behavior, which tests at
+    both call sites can help verify.
+- id: q14
+  topic: 4. Collaboration and handover
+  text: You are opening a pull request that adds a CSV export option. Which description will make the change easiest
+    to review and verify?
+  options:
+  - Describe the implementation choices and ask reviewers to check that they seem reasonable.
+  - State the bounded change, its acceptance criteria, and how a reviewer can verify them.
+  - List the files changed and let reviewers determine what behavior the change is meant to provide.
+  - Describe the broader project goal and leave the expected behavior for the review discussion.
+  answer: 1
+  explanation: A bounded description with acceptance criteria tells reviewers what the change should do and gives
+    them a concrete basis for checking it.
+- id: q15
+  topic: 4. Collaboration and handover
+  text: A teammate needs to set up your project on another computer. Which handover is most likely to let them run
+    and test it reliably?
+  options:
+  - Provide the README commands and dependency information, and keep credentials in a local environment variable
+    rather than committed code.
+  - Provide the commands you use, but include your working credentials in a configuration file in the repository.
+  - List the package names, but rely on the teammate to infer the Python version and test command.
+  - Share a copy of your current environment and assume it documents how the project was configured.
+  answer: 0
+  explanation: A useful handover records the Python version, dependencies, configuration, and run and test commands,
+    while keeping credentials outside committed code.
+problem:
+  title: Summarize numeric readings
+  prompt: 'Implement `summarize_readings(values)` to return a dictionary with the number of readings (`count`),
+    the smallest reading (`min`), the largest reading (`max`), and their arithmetic mean (`mean`). The input must
+    be a non-empty list of finite numbers; raise `ValueError` for an empty list or a non-finite value, and `TypeError`
+    for a value that is not a number (booleans do not count as numbers here).
+
+
+    For example, `summarize_readings([2, 4])` should return `{"count": 2, "min": 2, "max": 4, "mean": 3.0}`.'
+  starter_code: "def summarize_readings(values):\n    \"\"\"Return count, minimum, maximum, and mean for finite\
+    \ numeric readings.\"\"\"\n    ..."
+  tests: "assert summarize_readings([2, 4]) == {\"count\": 2, \"min\": 2, \"max\": 4, \"mean\": 3.0}, \"summarize\
+    \ two readings\"\nassert summarize_readings([-3]) == {\"count\": 1, \"min\": -3, \"max\": -3, \"mean\": -3.0},\
+    \ \"summarize one reading\"\nassert summarize_readings([1.5, 2.5, 6.0])[\"mean\"] == 10 / 3, \"compute the arithmetic\
+    \ mean\"\ntry:\n    summarize_readings([])\nexcept ValueError:\n    pass\nelse:\n    assert False, \"empty input\
+    \ should raise ValueError\"\ntry:\n    summarize_readings([1, float(\"inf\")])\nexcept ValueError:\n    pass\n\
+    else:\n    assert False, \"non-finite readings should raise ValueError\"\ntry:\n    summarize_readings([1, \"\
+    2\"])\nexcept TypeError:\n    pass\nelse:\n    assert False, \"non-numeric readings should raise TypeError\"\
+    \ntry:\n    summarize_readings([True])\nexcept TypeError:\n    pass\nelse:\n    assert False, \"booleans should\
+    \ raise TypeError\""
+  solution: "import math\n\n\ndef summarize_readings(values):\n    \"\"\"Return count, minimum, maximum, and mean\
+    \ for finite numeric readings.\"\"\"\n    if not values:\n        raise ValueError(\"values must not be empty\"\
+    )\n\n    for value in values:\n        if isinstance(value, bool) or not isinstance(value, (int, float)):\n\
+    \            raise TypeError(\"readings must be numbers\")\n        if not math.isfinite(value):\n         \
+    \   raise ValueError(\"readings must be finite\")\n\n    return {\n        \"count\": len(values),\n       \
+    \ \"min\": min(values),\n        \"max\": max(values),\n        \"mean\": sum(values) / len(values),\n    }"
+  packages: []

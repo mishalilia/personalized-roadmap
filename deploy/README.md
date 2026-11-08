@@ -65,12 +65,14 @@ After pulling changes in either repository:
 docker compose up -d --build
 ```
 
-Shared progress lives in the `api-state` volume and survives a rebuild. Paths live in learners' browsers, so
-a rebuild loses nothing of theirs. When `config/curriculum.yaml` gains a new curriculum version, keep the old
+Accounts, learners' paths and shared progress live in the `api-state` volume and survive a rebuild. Back it
+up: it is the only copy of learners' progress. When `config/curriculum.yaml` gains a new curriculum version, keep the old
 one listed for as long as learners may still be working through paths planned for it.
 
 ## What this setup assumes
 
+- **The site and the API under one domain**, such as `path.example.com` and `api.path.example.com`. The
+  session cookie is `SameSite=Lax`, so browsers send it only between pages of the same site.
 - **One API worker.** The rate limit is kept in memory. More workers would each keep their own count.
 - **The API is not published.** Only Caddy reaches it, which is why uvicorn trusts the client address Caddy
   forwards; the limit then counts per learner, not per proxy. Do not publish port 8000.

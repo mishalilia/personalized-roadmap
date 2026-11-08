@@ -88,7 +88,8 @@ Default rule from the course: public or safe sample data only. No personal data,
 
 | Data | How it is made | Where it lives | Licence |
 |---|---|---|---|
-| Paths (JSON) | The API, for a learner; the command line, for the example learners | The learner's browser and their downloads; files the team writes with `--out`. Not committed: they contain curriculum text and can be rebuilt | CC BY-NC-SA 4.0. Every module carries its title and URL; the path carries the licence |
+| Paths (JSON) | The API, for a learner; the command line, for the example learners | The learner's account on the API server, with their onboarding answers, until they delete it; a path planned without an account for a day; the learner's downloads; files the team writes with `--out`. Not committed: they contain curriculum text and can be rebuilt | CC BY-NC-SA 4.0. Every module carries its title and URL; the path carries the licence |
+| Accounts | Sign-up on the curriculum site | `API_ACCOUNTS_FILE` on the API server: the email (not verified), a scrypt hash of the password, session tokens as SHA-256 hashes. Deleted with the account. Never in this repository | — |
 | Checkpoints (YAML) | Written by the model from a module's outline, then reviewed by a person | `checkpoints/` in this repository | CC BY-NC-SA 4.0, as material derived from the curriculum |
 
 ---

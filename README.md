@@ -58,8 +58,10 @@ in completion and retention.
    can be lightened; the learner accepts or declines each suggestion. A learner who changes their goal gets
    the rest of the path planned again, keeping what they have started.
 
-The path, with the learner's progress, is kept in their browser and can be downloaded as JSON. There are no
-accounts.
+A learner who creates an account (email and password) keeps their path and progress on our server, so the
+rules of the path hold there and not only in the page. A path planned before signing up is kept for a day,
+so the learner can look at it first and keep it by signing up. The path can be downloaded as JSON, and the
+account deleted with everything in it.
 
 ## Architecture
 
@@ -130,8 +132,9 @@ to them and keep their metadata, and do not copy their content.
 
 ## Learner data
 
-The answers a learner types go to our API and to the model provider, and are not stored by us; the path stays
-in their browser. A learner can choose to share anonymous progress (which modules they finish, fail or stop
+The answers a learner types go to our API and to the model provider. With an account, we keep the learner's
+email (not verified), a scrypt hash of their password, their path and their onboarding answers until they
+delete the account; a path planned without an account is deleted after a day. A learner can choose to share anonymous progress (which modules they finish, fail or stop
 at); nothing else about them is kept. Data from testing with real learners is kept to the minimum, participants
 are told what is collected, and **no learner data is published in this repository**. Details:
 [docs/data-sources.md](docs/data-sources.md).
@@ -245,12 +248,15 @@ next attempt shows the next five questions. The coding problem, where there is o
 browser with Pyodide; the server cannot run a learner's code safely, so it takes the browser's word that the
 tests passed.
 
-Without accounts, a learner who edits their saved path can undo a lock or mark a problem solved. The lock and
-the problem hold in the page, not against that. See [checkpoints/README.md](checkpoints/README.md) for how
+The path lives on the server, so a learner cannot undo a lock or replay an old attempt: each attempt must
+follow the one the server stored. The coding problem is the exception: it counts as solved on the browser's
+word. See [checkpoints/README.md](checkpoints/README.md) for how
 checkpoints are made.
 
-The checkpoints in `checkpoints/` — two modules for each curriculum version — are drafts written by Claude
-during development so that the flow can be shown. They are not generator output and are not reviewed.
+The checkpoints in `checkpoints/` are drafts, none reviewed yet. Terminal & Algorithmic Basics and Data
+Foundations were written by Claude during development so that the flow can be shown; Math for AI and
+Software Engineering for AI (current version) are `roadmap checkpoints` output, generated with OpenAI
+`gpt-6-luna` while testing the generator.
 
 ## Fallback when the model is unavailable or rate-limited
 

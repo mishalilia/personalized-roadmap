@@ -60,7 +60,7 @@ flowchart TB
 
     subgraph boundary ["Personalized Roadmap System [Software system]"]
         page["<b>Personal Path Page</b><br/>[Container: React in the curriculum site, Docusaurus]<br/>Questions, level, path; checkpoints and coding problems on module pages"]
-        browser[("<b>Path in the Browser</b><br/>[Data store: local storage, JSON download]<br/>The path, the learner's decisions and progress")]
+        browser[("<b>Accounts and Paths</b><br/>[Data store: SQLite]<br/>Accounts, sessions, each learner's path with their decisions and progress; drafts for a day")]
         api["<b>HTTP API</b><br/>[Container: FastAPI, Python 3.11]<br/>Holds the model keys; grades checkpoints; applies locks and rules"]
         cli["<b>Command Line</b><br/>[Container: Python 3.11]<br/>Fetches the curriculum, runs paths for the example learners, writes draft checkpoints, prints the report"]
         core["<b>Roadmap Core</b><br/>[Container: Python library]<br/>Parses each curriculum version, suggests the level, plans the path, checks the model's answers, falls back to the course order"]
@@ -71,7 +71,7 @@ flowchart TB
     end
 
     learner -->|"Uses [HTTPS, browser]"| page
-    page -->|"Keeps the path in"| browser
+    api -->|"Keeps accounts and paths in"| browser
     page -->|"Calls [HTTPS, JSON]"| api
     api -->|"Calls [Python]"| core
     cli -->|"Calls [Python]"| core
@@ -97,7 +97,7 @@ flowchart TB
 | Container | Responsibility | Technology | Tier |
 |---|---|---|---|
 | Personal Path Page | Asks the questions (or fills them from an example learner), shows the suggested level with its evidence and the path; the learner changes any decision and confirms it. On each module page: the decision, the checkpoint, the coding problem, or "mark as done". Shows progress, the next module, hours, suggestions after a checkpoint and the goal change | React components in our fork of the curriculum site (`src/components/personal-path/`), Docusaurus | Baseline (the path), Target (checkpoints and progress) |
-| Path in the Browser | The path itself: decisions, confirmation, progress per module, locks, suggestions. No accounts, so nothing about the learner is stored on a server | The browser's local storage; the JSON the learner downloads | Target |
+| Accounts and Paths | Accounts (email, scrypt password hash), sessions (hashed tokens, 30 days), each learner's path: decisions, confirmation, progress per module, attempts, locks, suggestions; paths planned before signing up, for a day | SQLite file on the API server (`src/roadmap/accounts.py`, `API_ACCOUNTS_FILE`) | Target |
 | HTTP API | Serves questions, example learners, a level and a path; confirms paths; serves checkpoint questions without answers, grades attempts, applies locks and rules; plans the rest of a path for a new goal; records opted-in events and serves the report. Holds the model keys; limits model calls per client | FastAPI (`src/roadmap/api.py`), one uvicorn worker | Target |
 | Command Line | Fetches the curriculum versions, runs paths for the example learners and compares them, writes draft checkpoints and checks their coding problems, prints the report | `python -m roadmap` | Baseline |
 | Roadmap Core | Parses each curriculum version into modules; suggests the level and explains why; asks the model for study, prove or skip on every module with a reason; rejects an answer that leaves a module out and tries the next model; keeps the course order; falls back to the whole course when no model answers | Python library (`src/roadmap/`) | Baseline |
@@ -113,8 +113,9 @@ flowchart TB
    checkpoints, applies locks and attaches attribution, so these parts are tested and work without a model.
 2. **The learner has the last word.** Every decision the model suggests can be changed, the path is confirmed
    before it is used, and suggestions after a checkpoint change nothing until the learner accepts them.
-3. **No accounts.** The path and progress stay in the learner's browser. The server keeps only what a learner
-   chooses to share, anonymously.
+3. **Accounts keep the path on the server.** The browser holds an HTTP-only session cookie and nothing else;
+   every change to a path goes through the API and the path's rules. Shared progress stays anonymous: the
+   events hold a random path id, never the account.
 4. **The curriculum stays outside our repository.** We check it out at pinned commits and record the licence.
 
 ### Deployment
@@ -128,9 +129,10 @@ under two domain names ([deploy/](../deploy/README.md)). Only Caddy is reachable
 - **"Prove" as a third decision.** Besides study and skip, the model can suggest that the learner proves a module they likely know. Where a module has a checkpoint, proving means passing it.
 - **The interface is a page on the curriculum site.** The Baseline prototype used Streamlit; the page on the curriculum site replaced it and does everything it did. The site is static, so it calls an HTTP API that holds the model keys and runs the core.
 - **Checkpoints are generated once per module, not per learner.** A person reviews them, they cost no model call when a learner takes them, and grading is code. Right answers appear only after a pass, and options are shuffled per attempt, so a learner cannot pass by remembering earlier attempts.
-- **Coding problems run in the browser.** The learner's code runs in Pyodide, never on our server, which could not run untrusted code safely. The server takes the browser's word that the tests passed, as it does for the lock.
+- **Coding problems run in the browser.** The learner's code runs in Pyodide, never on our server, which could not run untrusted code safely. The server takes the browser's word that the tests passed; it is the one step a learner could fake.
 - **Several curriculum versions.** In October the site moved to a restructured course. New paths follow the current version; paths planned for an older listed version keep working against it. The parser, the planner and the checkpoints all work per version.
-- **Progress lives in the browser.** No accounts, so no learner data on a server, except anonymous events from learners who opt in.
+- **Progress lives on the server, behind accounts.** First kept in the browser without accounts (Q-005); the professors' feedback asked for login, and a path kept in the browser let a learner undo a lock or replay an attempt. A learner can still look at a planned path before signing up.
+- **The path is part of the course pages.** The docs sidebar shows the learner's progress, what is next and each module's status; each module page shows its decision at the top and its checkpoint at the end, with a link to the next module of the path.
 - **Deployment on the team's VPS** with Docker Compose and Caddy, not a free host: the API holds keys and a small database, and free hosts sleep or reset their disks.
 - **The model is chosen.** Gemini `gemini-3.5-flash-lite` first, Groq `openai/gpt-oss-120b` as the second provider, both through the same OpenAI-compatible client (Q-003).
 

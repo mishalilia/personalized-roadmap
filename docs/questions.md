@@ -103,9 +103,12 @@ Status values: Not checked / Under review / Decided.
 - **What we have tried:** Built the lock in the page and in the API; failed attempts reveal no answers and
   options are shuffled per attempt, so the questions themselves cannot be learned by retrying.
 - **Ask:** Professor
-- **Status:** Not checked
-- **Decision and date:** —
-- **Follow-up:** if a server-side record is expected, a signed path (the server signs the progress it
+- **Status:** Resolved
+- **Decision and date:** 2026-11-08 — no. The professors' feedback asks for login and accounts, so the path
+  now lives on the server under the learner's account (email and password), and every change to it goes
+  through the API. Locks and attempts can no longer be undone from the browser; only the coding problem
+  still counts as solved on the browser's word.
+- **Follow-up (superseded):** if a server-side record is expected, a signed path (the server signs the progress it
   returns) would detect edits without accounts.
 
 ### Q-006 — Expected decisions for the current curriculum
