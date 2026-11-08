@@ -20,11 +20,13 @@ flowchart TB
     curriculum["<b>HumbleBeeAI Curriculum Repository</b><br/>[External system]<br/>Public GitHub repo with the course content, CC BY-NC-SA 4.0"]
     llm["<b>LLM Service</b><br/>[External system]<br/>Google Gemini or Groq API, free tier"]
     cdn["<b>jsDelivr CDN</b><br/>[External system]<br/>Serves Pyodide, Python for the browser"]
+    google["<b>Google Sign-In</b><br/>[External system, optional]<br/>Confirms a learner's Google account and email"]
 
     learner -->|"Answers questions, confirms the path, takes checkpoints in"| system
     system -->|"Reads course content from"| curriculum
     system -->|"Asks for levels, path decisions and suggestions from"| llm
     learner -->|"Loads Python for coding problems from"| cdn
+    system -->|"Asks who signed in from (OAuth 2.0, OpenID Connect)"| google
     owner -.->|"Reads where learners stop from"| system
 
     classDef person fill:#fff3b0,stroke:#333
@@ -33,7 +35,7 @@ flowchart TB
     classDef later stroke-dasharray:5 5
     class learner,owner person
     class system sys
-    class curriculum,llm,cdn ext
+    class curriculum,llm,cdn,google ext
     class owner later
 ```
 
@@ -44,6 +46,7 @@ flowchart TB
   where learners who chose to share their progress stop (Stretch).
 - We do **not** copy the curriculum into our repository. We read it from its own repository at pinned versions.
 - The learner's browser loads Pyodide from the CDN only when they run a coding problem.
+- Google takes part only when a learner chooses to sign in with it; no Google script runs on the site.
 
 ---
 

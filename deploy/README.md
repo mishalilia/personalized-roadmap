@@ -33,7 +33,8 @@ cd personalized-roadmap/deploy
 cp .env.example .env
 ```
 
-Fill in `.env`: the two domains, `SITE_DIR` (the fork, relative to `deploy/`), at least one model key, and a
+Fill in `.env`: the two domains, optionally a Google OAuth client for sign-in with Google (its redirect URI
+is `https://API_DOMAIN/auth/google/callback`), `SITE_DIR` (the fork, relative to `deploy/`), at least one model key, and a
 long random `API_REPORT_TOKEN` (`openssl rand -hex 32`). The file holds keys: keep it on the server only.
 
 ## Run

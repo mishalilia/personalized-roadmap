@@ -89,7 +89,7 @@ Default rule from the course: public or safe sample data only. No personal data,
 | Data | How it is made | Where it lives | Licence |
 |---|---|---|---|
 | Paths (JSON) | The API, for a learner; the command line, for the example learners | The learner's account on the API server, with their onboarding answers, until they delete it; a path planned without an account for a day; the learner's downloads; files the team writes with `--out`. Not committed: they contain curriculum text and can be rebuilt | CC BY-NC-SA 4.0. Every module carries its title and URL; the path carries the licence |
-| Accounts | Sign-up on the curriculum site | `API_ACCOUNTS_FILE` on the API server: the email (not verified), a scrypt hash of the password, session tokens as SHA-256 hashes. Deleted with the account. Never in this repository | — |
+| Accounts | Sign-up on the curriculum site | `API_ACCOUNTS_FILE` on the API server: the email (verified by Google, or not verified), a scrypt hash of the password or Google's id for the learner, session tokens as SHA-256 hashes. Deleted with the account. Never in this repository | — |
 | Checkpoints (YAML) | Written by the model from a module's outline, then reviewed by a person | `checkpoints/` in this repository | CC BY-NC-SA 4.0, as material derived from the curriculum |
 
 ---
@@ -97,6 +97,8 @@ Default rule from the course: public or safe sample data only. No personal data,
 ## 7. Hosting and third parties
 
 - The team's VPS: [deploy/](../deploy/README.md) runs the site, the API and Caddy with Docker Compose.
+- A learner who signs in with Google goes to Google's sign-in page, so Google learns that they signed in to
+  this site. We receive their Google id and email address (scope `openid email`), nothing else.
 - A learner who runs a coding problem loads Pyodide (Python for the browser) from the jsDelivr CDN, which sees
   their IP address like any website. The site can serve its own copy instead (`PYODIDE_URL`).
 - The curriculum site carries HumbleBeeAI's own chat assistant; it is theirs, not part of our system.

@@ -8,6 +8,7 @@ services:
     env_file: .env
     environment:
       API_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+      API_PUBLIC_URL: https://${API_DOMAIN}
     volumes:
       - api-state:/app/state
     restart: unless-stopped

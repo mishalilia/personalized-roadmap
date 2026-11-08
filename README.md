@@ -58,7 +58,7 @@ in completion and retention.
    can be lightened; the learner accepts or declines each suggestion. A learner who changes their goal gets
    the rest of the path planned again, keeping what they have started.
 
-A learner who creates an account (email and password) keeps their path and progress on our server, so the
+A learner who creates an account (with Google, or with an email and a password) keeps their path and progress on our server, so the
 rules of the path hold there and not only in the page. A path planned before signing up is kept for a day,
 so the learner can look at it first and keep it by signing up. The path can be downloaded as JSON, and the
 account deleted with everything in it.
@@ -133,8 +133,9 @@ to them and keep their metadata, and do not copy their content.
 ## Learner data
 
 The answers a learner types go to our API and to the model provider. With an account, we keep the learner's
-email (not verified), a scrypt hash of their password, their path and their onboarding answers until they
-delete the account; a path planned without an account is deleted after a day. A learner can choose to share anonymous progress (which modules they finish, fail or stop
+email (verified by Google, or not verified), a scrypt hash of their password if they chose one, Google's id
+for them if they signed in with Google, their path and their onboarding answers until they delete the
+account; a path planned without an account is deleted after a day. A learner can choose to share anonymous progress (which modules they finish, fail or stop
 at); nothing else about them is kept. Data from testing with real learners is kept to the minimum, participants
 are told what is collected, and **no learner data is published in this repository**. Details:
 [docs/data-sources.md](docs/data-sources.md).

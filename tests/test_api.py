@@ -285,7 +285,7 @@ def test_a_path_planned_before_signing_up_is_kept_by_the_new_account(
     assert planned["draft_id"] == planned["path"]["id"]
     assert without_account.status_code == 401
     assert draft.json()["id"] == planned["path"]["id"]
-    assert signed_up.json()["account"] == {"email": "learner@example.com"}
+    assert signed_up.json()["account"]["email"] == "learner@example.com"
     assert signed_up.json()["path"]["id"] == planned["path"]["id"]
     assert browser.get("/me/path").json()["id"] == planned["path"]["id"]
     # The draft became the account's path, so nobody else can take it.
@@ -365,8 +365,8 @@ def test_deleting_the_account_deletes_its_path(curriculum, questions):
     client = site.signed_in("a@example.com")
     confirmed_path(client)
 
-    wrong = client.post("/auth/delete", json={"password": WRONG})
-    deleted = client.post("/auth/delete", json={"password": PASSWORD})
+    wrong = client.post("/auth/delete", json={"confirmation": WRONG})
+    deleted = client.post("/auth/delete", json={"confirmation": PASSWORD})
     sign_in = site.learner().post(
         "/auth/sign-in", json={"email": "a@example.com", "password": PASSWORD}
     )

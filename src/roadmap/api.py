@@ -10,7 +10,8 @@ working against that version, so learners keep their progress when the course mo
 
 Run it with `uvicorn roadmap.api:app`. Settings come from the environment or `.env`, as for the rest of the
 core: API_ALLOWED_ORIGINS lists the sites that may call it, API_REPORT_TOKEN opens the progress report,
-API_ACCOUNTS_FILE is where accounts and their paths are kept.
+API_ACCOUNTS_FILE is where accounts and their paths are kept, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET turn
+on sign-in with Google (roadmap.google).
 """
 
 import hmac
@@ -26,8 +27,8 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, StringConstraints, ValidationError
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, Field, SecretStr, StringConstraints, ValidationError
 
 from .accounts import (
     MAX_PASSWORD_LENGTH,
@@ -48,6 +49,7 @@ from .checkpoints import (
 from .config import Settings
 from .curriculum import Level
 from .events import EventKind, EventLog, Report
+from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
 from .llm import LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
@@ -181,12 +183,20 @@ class Credentials(BaseModel):
     draft_id: str | None = None
 
 
-class PasswordRequest(BaseModel):
-    password: Annotated[str, StringConstraints(max_length=MAX_PASSWORD_LENGTH)]
+class DeleteRequest(BaseModel):
+    # The password, or for an account made with Google, which has none, its email address.
+    confirmation: Annotated[str, StringConstraints(max_length=MAX_PASSWORD_LENGTH)]
 
 
 class AccountOut(BaseModel):
     email: str
+    has_password: bool = True  # False for an account made with Google
+
+
+class Providers(BaseModel):
+    """The ways to sign in this API offers, besides an email and a password."""
+
+    google: bool
 
 
 class SessionResponse(BaseModel):
@@ -226,6 +236,7 @@ class RateLimiter:
 
 
 SESSION_COOKIE = "roadmap_session"
+GOOGLE_STATE_COOKIE = "roadmap_google_state"
 
 
 def create_app(
@@ -238,6 +249,7 @@ def create_app(
     accounts: AccountStore | None = None,
     sign_in_limiter: RateLimiter | None = None,
     secure_cookies: bool = True,
+    google: GoogleSignIn | None = None,
 ) -> FastAPI:
     """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
     start from. `accounts` keeps learners' accounts and paths; in memory unless given.
@@ -400,7 +412,8 @@ def create_app(
         if account is None:
             return SessionResponse(account=None)
         return SessionResponse(
-            account=AccountOut(email=account.email), path=store.path_of(account)
+            account=AccountOut(email=account.email, has_password=account.has_password),
+            path=store.path_of(account),
         )
 
     def signed_in_response(
@@ -409,7 +422,7 @@ def create_app(
         start_session(response, token)
         path = store.claim_draft(account, draft_id) if draft_id else None
         return SessionResponse(
-            account=AccountOut(email=account.email),
+            account=AccountOut(email=account.email, has_password=account.has_password),
             path=path or store.path_of(account),
         )
 
@@ -442,16 +455,93 @@ def create_app(
 
     @app.post("/auth/delete", dependencies=[Depends(limit_sign_ins)])
     def delete_account(
-        body: PasswordRequest, request: Request, response: Response
+        body: DeleteRequest, request: Request, response: Response
     ) -> SessionResponse:
         """Deletes the account and its path. Shared progress events hold no account, so they stay."""
         account = signed_in(request)
         try:
-            store.delete(account, body.password)
+            store.delete(account, body.confirmation)
         except AccountError as error:
             raise HTTPException(401, str(error)) from error
         end_session(response)
         return SessionResponse(account=None)
+
+    @app.get("/auth/providers")
+    def providers() -> Providers:
+        return Providers(google=google is not None)
+
+    def page_on_site(address: str) -> bool:
+        return any(
+            address == origin or address.startswith(f"{origin}/")
+            for origin in allowed_origins
+        )
+
+    @app.get("/auth/google", dependencies=[Depends(limit_sign_ins)])
+    def google_start(return_to: str, draft_id: str | None = None) -> RedirectResponse:
+        """Sends the learner to Google. They come back to `return_to`, a page of the site, signed in."""
+        if google is None:
+            raise HTTPException(404, "Sign-in with Google is not set up.")
+        if not page_on_site(return_to):
+            raise HTTPException(422, "Sign-in can only return to the course site.")
+        address, state = google.start(return_to, draft_id)
+        redirect = RedirectResponse(address, status_code=303)
+        redirect.set_cookie(
+            GOOGLE_STATE_COOKIE,
+            state,
+            max_age=FLOW_SECONDS,
+            httponly=True,
+            secure=secure_cookies,
+            samesite="lax",  # sent when Google sends the learner back: a top-level navigation
+        )
+        return redirect
+
+    @app.get("/auth/google/callback")
+    def google_callback(
+        request: Request,
+        state: str = "",
+        code: str | None = None,
+        error: str | None = None,
+    ) -> RedirectResponse:
+        """Google sends the learner back here. Signs them in and returns them to the page they came from,
+        or to it with `#sign-in-error=<reason>` if they cancelled or Google did not confirm who they are.
+        """
+        if google is None:
+            raise HTTPException(404, "Sign-in with Google is not set up.")
+        cookie = request.cookies.get(GOOGLE_STATE_COOKIE, "")
+        flow = (
+            google.flow(state) if state and hmac.compare_digest(state, cookie) else None
+        )
+        if flow is None:
+            raise HTTPException(
+                400,
+                "This sign-in has expired or was started elsewhere. Start it again.",
+            )
+
+        def back(fragment: str = "") -> RedirectResponse:
+            redirect = RedirectResponse(
+                f"{flow.return_to.split('#')[0]}{fragment}", status_code=303
+            )
+            redirect.delete_cookie(
+                GOOGLE_STATE_COOKIE,
+                httponly=True,
+                secure=secure_cookies,
+                samesite="lax",
+            )
+            return redirect
+
+        if error or not code:
+            return back("#sign-in-error=cancelled")
+        try:
+            identity = google.identity(code, flow)
+            account, token = store.sign_in_with_google(identity.subject, identity.email)
+        except (GoogleError, AccountError) as failure:
+            logger.warning("Sign-in with Google failed: %s", failure)
+            return back("#sign-in-error=google")
+        redirect = back()
+        start_session(redirect, token)
+        if flow.draft_id:
+            store.claim_draft(account, flow.draft_id)
+        return redirect
 
     # Planning
 
@@ -687,6 +777,11 @@ class ApiSettings(Settings):
     api_accounts_file: Path | None = None
     # Send the session cookie over HTTPS only. Turn off only to try the API over plain HTTP.
     api_cookie_secure: bool = True
+    # Sign-in with Google (roadmap.google); off unless both are set.
+    google_client_id: str | None = None
+    google_client_secret: SecretStr | None = None
+    # The API's own address, as learners' browsers reach it; Google sends them back to it.
+    api_public_url: str = "http://localhost:8000"
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -699,6 +794,16 @@ class ApiSettings(Settings):
     @property
     def accounts_file(self) -> Path:
         return self.api_accounts_file or self.data_dir / "accounts.sqlite"
+
+    @property
+    def google(self) -> GoogleSignIn | None:
+        if not (self.google_client_id and self.google_client_secret):
+            return None
+        return GoogleSignIn(
+            self.google_client_id,
+            self.google_client_secret.get_secret_value(),
+            f"{self.api_public_url.rstrip('/')}/auth/google/callback",
+        )
 
 
 def load_editions(settings: Settings) -> list[Edition]:
@@ -723,6 +828,7 @@ def _app() -> FastAPI:
         profiles=load_profiles(settings.profiles_file),
         accounts=AccountStore(settings.accounts_file),
         secure_cookies=settings.api_cookie_secure,
+        google=settings.google,
     )
 
 

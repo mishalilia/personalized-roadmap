@@ -1,4 +1,5 @@
-"""Learner accounts: an email and a password, a session per signed-in browser, and the learner's path.
+"""Learner accounts: an email and a password, or a Google account; a session per signed-in browser; and the
+learner's path.
 
 The path lives here, not in the browser, so progress cannot be edited on the learner's side: the server keeps
 the attempts, locks and checkpoint results, and every change to a path goes through its rules.
@@ -39,6 +40,8 @@ _N, _R, _P = 2**14, 8, 1
 class Account(BaseModel):
     id: str
     email: str
+    # False for an account made with Google: it has no password of its own.
+    has_password: bool = True
 
 
 class AccountError(ValueError):
@@ -103,6 +106,14 @@ class AccountStore:
                 CREATE TABLE IF NOT EXISTS drafts (
                     id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at TEXT NOT NULL);
                 """)
+            columns = {
+                row[1] for row in self._db.execute("PRAGMA table_info(accounts)")
+            }
+            if "google_sub" not in columns:  # databases made before sign-in with Google
+                self._db.execute("ALTER TABLE accounts ADD COLUMN google_sub TEXT")
+            self._db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS accounts_google ON accounts (google_sub)"
+            )
 
     # Accounts and sessions
 
@@ -144,18 +155,63 @@ class AccountStore:
             raise AccountError("The email or the password is wrong.")
         return Account(id=row[0], email=row[1]), self._new_session(row[0])
 
+    def sign_in_with_google(self, subject: str, email: str) -> tuple[Account, str]:
+        """The account of a Google user, made on their first sign-in, and a session token for it.
+
+        `subject` is Google's id for the user, which stays when they change their address. An account that
+        signed up with a password and the same address becomes the Google user's: Google has verified that the
+        address is theirs."""
+        email = normalize_email(email)
+        with self._lock, self._db:
+            row = (
+                self._db.execute(
+                    "SELECT id FROM accounts WHERE google_sub = ?", (subject,)
+                ).fetchone()
+                or self._db.execute(
+                    "SELECT id FROM accounts WHERE email = ?", (email,)
+                ).fetchone()
+            )
+            if row is None:
+                account_id = uuid4().hex
+                self._db.execute(
+                    "INSERT INTO accounts (id, email, password_hash, created_at, google_sub)"
+                    " VALUES (?, ?, '', ?, ?)",
+                    (account_id, email, _now().isoformat(), subject),
+                )
+            else:
+                account_id = row[0]
+                self._db.execute(
+                    "UPDATE accounts SET google_sub = ? WHERE id = ?",
+                    (subject, account_id),
+                )
+        account = self._account(account_id)
+        assert account is not None  # nosec B101: just written
+        return account, self._new_session(account_id)
+
+    def _account(self, account_id: str) -> Account | None:
+        with self._lock:
+            row = self._db.execute(
+                "SELECT id, email, password_hash FROM accounts WHERE id = ?",
+                (account_id,),
+            ).fetchone()
+        return (
+            Account(id=row[0], email=row[1], has_password=bool(row[2])) if row else None
+        )
+
     def account_for(self, token: str | None) -> Account | None:
         """The account a session token belongs to, while the session lasts."""
         if not token:
             return None
         with self._lock:
             row = self._db.execute(
-                "SELECT accounts.id, accounts.email FROM sessions JOIN accounts"
+                "SELECT accounts.id, accounts.email, accounts.password_hash FROM sessions JOIN accounts"
                 " ON accounts.id = sessions.account_id"
                 " WHERE token_hash = ? AND expires_at > ?",
                 (_token_hash(token), _now().isoformat()),
             ).fetchone()
-        return Account(id=row[0], email=row[1]) if row else None
+        return (
+            Account(id=row[0], email=row[1], has_password=bool(row[2])) if row else None
+        )
 
     def sign_out(self, token: str) -> None:
         with self._lock, self._db:
@@ -163,14 +219,20 @@ class AccountStore:
                 "DELETE FROM sessions WHERE token_hash = ?", (_token_hash(token),)
             )
 
-    def delete(self, account: Account, password: str) -> None:
-        """Deletes the account, its sessions and its path. Asks for the password again."""
+    def delete(self, account: Account, confirmation: str) -> None:
+        """Deletes the account, its sessions and its path. `confirmation` is the account's password, or, for an
+        account made with Google, which has none, its email address typed again."""
         with self._lock:
             row = self._db.execute(
-                "SELECT password_hash FROM accounts WHERE id = ?", (account.id,)
+                "SELECT email, password_hash FROM accounts WHERE id = ?", (account.id,)
             ).fetchone()
-        if row is None or not password_matches(password, row[0]):
+        if row is None:
+            raise AccountError("This account no longer exists.")
+        email, stored = row
+        if stored and not password_matches(confirmation, stored):
             raise AccountError("The password is wrong.")
+        if not stored and confirmation.strip().lower() != email:
+            raise AccountError("Type your email address to confirm.")
         with self._lock, self._db:
             for table, column in (
                 ("sessions", "account_id"),

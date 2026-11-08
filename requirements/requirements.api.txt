@@ -1,3 +1,4 @@
 # The HTTP API (src/roadmap/api.py) for browser interfaces, such as a page on the curriculum site.
 fastapi>=0.115,<1.0
 uvicorn>=0.30,<1.0
+httpx>=0.27,<1.0  # sign-in with Google: the API trades Google's code for an ID token
