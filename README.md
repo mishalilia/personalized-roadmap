@@ -255,8 +255,10 @@ about half a minute (`src/roadmap/project_review.py`). The model says, for each 
 with a file and a quote as evidence; code checks that every quote is really in the project, so a criterion
 counts only with evidence that holds up, and the project passes when every criterion of the rubric's passing
 level counts. Three reviews run at once and each criterion is decided by majority, so a borderline criterion
-does not pass or fail by chance. The model cannot run the code, so results the learner reports in the README
-count as evidence. People listed in `API_REVIEWER_EMAILS` see every decision on the site's `/review` page and
+does not pass or fail by chance. The model does not run the code, so it tells apart what the learner wrote
+(code, README) from what their code produced (notebook outputs, logs, files in `results/`, `outputs/` or
+`logs/`): a criterion about how the project behaves counts only with the code and such output, never with
+numbers the learner typed into the README. People listed in `API_REVIEWER_EMAILS` see every decision on the site's `/review` page and
 can change it; projects no model could review wait for them there.
 
 The server never unpacks an archive to disk or runs it: it reads members in memory within limits on their

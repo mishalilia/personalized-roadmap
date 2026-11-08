@@ -40,8 +40,18 @@ class Evidence(BaseModel):
     )
 
 
+class About(StrEnum):
+    BEHAVIOUR = (
+        "behaviour"  # how the project works when run: accuracy, timing, what it handles
+    )
+    ARTEFACT = "artefact"  # what the project contains: code structure, documentation, tests, a UI
+
+
 class Criterion(BaseModel):
     name: Text = Field(description="The criterion as the rubric names it.")
+    about: About = Field(
+        description="behaviour: how the project works when run; artefact: what it contains."
+    )
     verdict: Verdict
     evidence: list[Evidence] = Field(
         default=[], description="For a met criterion: where the files show it."
@@ -71,11 +81,17 @@ class ModelReview(BaseModel):
 class CheckedCriterion(Criterion):
     # The model said met, but its evidence is not in the files: the criterion does not count.
     evidence_missing: bool = False
+    # A criterion about behaviour, met only on the author's word: no program output shows it.
+    output_missing: bool = False
     votes: str | None = None  # how many of the reviews counted it, such as "2/3"
 
     @property
     def counts(self) -> bool:
-        return self.verdict is Verdict.MET and not self.evidence_missing
+        return (
+            self.verdict is Verdict.MET
+            and not self.evidence_missing
+            and not self.output_missing
+        )
 
 
 class CheckedLevel(BaseModel):
@@ -100,6 +116,7 @@ class ProjectReview(BaseModel):
     source: str
     model: str | None = None
     runs: int = 1  # independent reviews combined
+    outputs: list[str] = []  # the project's texts that its code produced
 
 
 def _check(review: ModelReview) -> None:
@@ -216,10 +233,24 @@ def judge(
                     files.contains(item.file, item.quote) for item in criterion.evidence
                 )
             )
+            # How the project behaves counts only with what its code produced, not with what its author
+            # wrote about it.
+            output_missing = (
+                criterion.verdict is Verdict.MET
+                and criterion.about is About.BEHAVIOUR
+                and not any(
+                    item.file in files.outputs and files.contains(item.file, item.quote)
+                    for item in criterion.evidence
+                )
+            )
             if missing:
                 logger.info("Evidence for '%s' is not in the project", criterion.name)
             criteria.append(
-                CheckedCriterion(**criterion.model_dump(), evidence_missing=missing)
+                CheckedCriterion(
+                    **criterion.model_dump(),
+                    evidence_missing=missing,
+                    output_missing=output_missing,
+                )
             )
         levels.append(
             CheckedLevel(name=level.name, passing=level.passing, criteria=criteria)
@@ -239,4 +270,5 @@ def judge(
         files_listed=len(files.tree),
         source=files.source,
         model=model,
+        outputs=sorted(files.outputs),
     )

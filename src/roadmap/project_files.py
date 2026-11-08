@@ -21,7 +21,10 @@ import httpx
 
 MAX_MEMBERS = 5000  # entries looked at in an archive
 MAX_FILE_BYTES = 200 * 1024  # a larger file is listed, not read
-MAX_READ_BYTES = 4 * 1024 * 1024  # all files read, together
+# Notebooks keep their outputs, images among them, so they may be larger; only their text is read.
+MAX_NOTEBOOK_BYTES = 3 * 1024 * 1024
+MAX_OUTPUT_CHARS = 1500  # of one cell's output
+MAX_READ_BYTES = 8 * 1024 * 1024  # all files read, together
 MAX_PROMPT_CHARS = 120_000  # project text a review sees, about 30 000 tokens
 MAX_FILE_CHARS = 12_000  # of one file, in the review
 MAX_TREE = 400  # paths listed
@@ -74,7 +77,29 @@ _TEXT = {
     ".kt",
     ".r",
     ".env.example",
+    ".csv",
+    ".tsv",
+    ".log",
+    ".out",
+    ".xml",
 }
+# Where projects keep what their code produced: results, logs, predictions, reports.
+_OUTPUT_DIRS = {
+    "results",
+    "result",
+    "outputs",
+    "output",
+    "logs",
+    "log",
+    "reports",
+    "report",
+    "runs",
+    "predictions",
+    "eval",
+    "evaluation",
+    "metrics",
+}
+_OUTPUT_EXTENSIONS = (".log", ".out")
 _NAMED = {
     "dockerfile",
     "makefile",
@@ -96,6 +121,9 @@ class ProjectFiles:
     tree: list[str] = field(default_factory=list)
     texts: dict[str, str] = field(default_factory=dict)
     source: str = ""  # "archive" or the repository's address
+    # Texts that the project's code produced rather than its author wrote: notebook outputs, logs, files in
+    # results/ or outputs/. A notebook's outputs are their own entry, "<notebook> (outputs)".
+    outputs: set[str] = field(default_factory=set)
 
     def contains(self, path: str, quote: str) -> bool:
         """Whether the quote appears in the file, ignoring differences in whitespace. An empty quote asks
@@ -106,11 +134,15 @@ class ProjectFiles:
 
     def prompt(self) -> str:
         """The project for the model: the list of paths, then each file read, between markers."""
-        parts = ["Files in the project:", *self.tree[:MAX_TREE]]
+        parts = [
+            "Files in the project (images and other binary files are listed, not shown):",
+            *self.tree[:MAX_TREE],
+        ]
         if len(self.tree) > MAX_TREE:
             parts.append(f"... and {len(self.tree) - MAX_TREE} more")
         for path, text in self.texts.items():
-            parts.append(f"\n<<<FILE {path}>>>\n{text}\n<<<END FILE {path}>>>")
+            kind = "PROGRAM OUTPUT" if path in self.outputs else "FILE"
+            parts.append(f"\n<<<{kind} {path}>>>\n{text}\n<<<END {kind} {path}>>>")
         return "\n".join(parts)
 
 
@@ -191,9 +223,9 @@ def _zip_members(data: bytes):
             break
         if info.is_dir():
             continue
-        yield info.filename, info.file_size, lambda info=info: archive.open(info).read(
-            MAX_FILE_BYTES + 1
-        )
+        yield info.filename, info.file_size, lambda limit, info=info: archive.open(
+            info
+        ).read(limit)
 
 
 def _tar_members(data: bytes):
@@ -207,9 +239,9 @@ def _tar_members(data: bytes):
             if not member.isreg():
                 continue
 
-            def read(member=member) -> bytes:
+            def read(limit: int, member=member) -> bytes:
                 handle = archive.extractfile(member)
-                return handle.read(MAX_FILE_BYTES + 1) if handle else b""
+                return handle.read(limit) if handle else b""
 
             yield member.name, member.size, read
     except (tarfile.TarError, EOFError, OSError) as error:
@@ -234,7 +266,7 @@ def _collect(members, source: str) -> ProjectFiles:
         if any(part.lower() in _SKIPPED_DIRS for part in parts[:-1]):
             continue
         files.tree.append(path)
-        if size <= MAX_FILE_BYTES and _is_text_name(parts[-1]):
+        if size <= _limit(path) and _is_text_name(parts[-1]):
             candidates.append((_priority(parts), path, read))
     files.tree.sort()
     budget_read = MAX_READ_BYTES
@@ -243,7 +275,7 @@ def _collect(members, source: str) -> ProjectFiles:
         if budget_read <= 0 or budget_chars <= 0:
             break
         try:
-            raw = read()
+            raw = read(_limit(path))
         except (
             zipfile.BadZipFile,
             tarfile.TarError,
@@ -254,16 +286,40 @@ def _collect(members, source: str) -> ProjectFiles:
         ):
             continue  # an encrypted, damaged or oddly packed member: listed, not read
         budget_read -= len(raw)
-        text = _text_of(path, raw)
-        if text is None:
-            continue
-        if len(text) > MAX_FILE_CHARS:
-            text = text[:MAX_FILE_CHARS] + "\n[... the rest of this file is not shown]"
-        files.texts[path] = text[:budget_chars]
-        budget_chars -= len(files.texts[path])
+        if path.lower().endswith(".ipynb"):
+            cells = _notebook(raw)
+            if cells is None:
+                continue
+            entries_read = [(path, cells[0]), (f"{path} (outputs)", cells[1])]
+        else:
+            text = _text_of(raw)
+            if text is None:
+                continue
+            entries_read = [(path, text)]
+        for name, text in entries_read:
+            if not text.strip() or budget_chars <= 0:
+                continue
+            if len(text) > MAX_FILE_CHARS:
+                text = text[:MAX_FILE_CHARS] + "\n[... the rest is not shown]"
+            files.texts[name] = text[:budget_chars]
+            budget_chars -= len(files.texts[name])
+            if name.endswith(" (outputs)") or _is_output(path):
+                files.outputs.add(name)
     if not files.tree:
         raise ProjectError("The archive is empty.")
     return files
+
+
+def _limit(path: str) -> int:
+    return MAX_NOTEBOOK_BYTES if path.lower().endswith(".ipynb") else MAX_FILE_BYTES
+
+
+def _is_output(path: str) -> bool:
+    """Whether a file holds what the code produced: by its folder, or a log by its name."""
+    parts = path.lower().split("/")
+    return any(part in _OUTPUT_DIRS for part in parts[:-1]) or parts[-1].endswith(
+        _OUTPUT_EXTENSIONS
+    )
 
 
 def _is_text_name(name: str) -> bool:
@@ -299,6 +355,8 @@ def _priority(parts: list[str]) -> tuple[int, int, str]:
         )
     ):
         rank = 2
+    elif name.endswith((".log", ".out", ".csv", ".tsv", ".json", ".xml", ".txt")):
+        rank = 3  # results and logs, after the code that made them
     elif name.endswith(".md"):
         rank = 3
     else:
@@ -306,27 +364,44 @@ def _priority(parts: list[str]) -> tuple[int, int, str]:
     return rank, len(parts), "/".join(parts)
 
 
-def _text_of(path: str, raw: bytes) -> str | None:
+def _text_of(raw: bytes) -> str | None:
     if b"\x00" in raw[:2048]:
         return None
     try:
-        text = raw[:MAX_FILE_BYTES].decode("utf-8")
+        return raw[:MAX_FILE_BYTES].decode("utf-8")
     except UnicodeDecodeError:
         return None
-    if path.lower().endswith(".ipynb"):
-        return _notebook(text)
-    return text
 
 
-def _notebook(text: str) -> str | None:
-    """A notebook's cells, without their outputs, which are large and say little about the code."""
+def _joined(value: object) -> str:
+    return "".join(value) if isinstance(value, list) else str(value or "")
+
+
+def _notebook(raw: bytes) -> tuple[str, str] | None:
+    """A notebook's cells, and apart from them the text its cells printed when they ran: what the code
+    produced. Images in the outputs are named, not read."""
     try:
-        cells = json.loads(text).get("cells", [])
+        cells = json.loads(raw.decode("utf-8")).get("cells", [])
     except (ValueError, AttributeError):
         return None
-    parts = []
-    for cell in cells:
-        source = cell.get("source", "")
-        source = "".join(source) if isinstance(source, list) else str(source)
-        parts.append(f"# [{cell.get('cell_type', 'cell')}]\n{source}")
-    return "\n\n".join(parts)
+    sources, outputs = [], []
+    for number, cell in enumerate(cells, start=1):
+        sources.append(
+            f"# [cell {number}, {cell.get('cell_type', 'cell')}]\n{_joined(cell.get('source'))}"
+        )
+        for output in cell.get("outputs", []) or []:
+            if output.get("output_type") == "stream":
+                text = _joined(output.get("text"))
+            elif output.get("output_type") == "error":
+                text = f"{output.get('ename')}: {output.get('evalue')}"
+            else:
+                data = output.get("data", {}) or {}
+                text = _joined(data.get("text/plain"))
+                images = [kind for kind in data if kind.startswith("image/")]
+                if images:
+                    text = f"{text}\n[{', '.join(images)} output]".strip()
+            if text.strip():
+                outputs.append(
+                    f"# [output of cell {number}]\n{text[:MAX_OUTPUT_CHARS]}"
+                )
+    return "\n\n".join(sources), "\n\n".join(outputs)

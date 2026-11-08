@@ -56,9 +56,10 @@ def model_review(*criteria: dict, feedback: str = "Good start.") -> dict:
     }
 
 
-def met(name: str, file: str, quote: str) -> dict:
+def met(name: str, file: str, quote: str, about: str = "artefact") -> dict:
     return {
         "name": name,
+        "about": about,
         "verdict": "met",
         "evidence": [{"file": file, "quote": quote}],
         "comment": "Shown.",
@@ -328,6 +329,7 @@ def test_several_reviews_count_a_criterion_by_majority():
     readme = met("Documentation", "README.md", "Run `python app.py`")
     missing = {
         "name": "Documentation",
+        "about": "artefact",
         "verdict": "not_met",
         "evidence": [],
         "comment": "No.",
@@ -352,3 +354,82 @@ def test_several_reviews_count_a_criterion_by_majority():
     assert criterion.counts and combined.feedback == "Passed."
     assert not one_of_three.passed and one_of_three.feedback == "Failed."
     assert one_of_three.levels[0].criteria[0].votes == "1/3"
+
+
+# What the code produced, and what its author wrote
+
+
+NOTEBOOK = json.dumps(
+    {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": ["detect('card.jpg')\n"],
+                "outputs": [
+                    {
+                        "output_type": "stream",
+                        "text": ["corners: [(12, 30), (410, 28)]\n"],
+                    },
+                    {"output_type": "display_data", "data": {"image/png": "iVBOR..."}},
+                ],
+            },
+            {
+                "cell_type": "code",
+                "source": ["1 / 0"],
+                "outputs": [
+                    {
+                        "output_type": "error",
+                        "ename": "ZeroDivisionError",
+                        "evalue": "division by zero",
+                    },
+                ],
+            },
+        ]
+    }
+).encode()
+
+
+def test_notebook_outputs_and_result_files_are_read_as_program_output():
+    files = read_archive(
+        project(
+            **{
+                "demo.ipynb": NOTEBOOK,
+                "results/eval.csv": b"image,iou\ncard.jpg,0.93\n",
+                "logs/run.log": b"processed 12 images in 4.1 s\n",
+                "notes.md": b"It works on 12 images.\n",
+            }
+        )
+    )
+
+    assert files.outputs == {"demo.ipynb (outputs)", "results/eval.csv", "logs/run.log"}
+    assert "corners: [(12, 30), (410, 28)]" in files.texts["demo.ipynb (outputs)"]
+    assert "[image/png output]" in files.texts["demo.ipynb (outputs)"]
+    assert "ZeroDivisionError: division by zero" in files.texts["demo.ipynb (outputs)"]
+    assert (
+        "corners" not in files.texts["demo.ipynb"]
+    )  # the cells, apart from what they printed
+    assert "<<<PROGRAM OUTPUT logs/run.log>>>" in files.prompt()
+    assert "<<<FILE notes.md>>>" in files.prompt()
+
+
+def test_behaviour_counts_only_with_what_the_code_produced():
+    files = read_archive(
+        project(
+            **{
+                "logs/run.log": b"processed 12 images in 4.1 s\n",
+                "notes.md": b"Works on 12 images.\n",
+            }
+        )
+    )
+    on_its_word = met(
+        "Works on 10+ images", "notes.md", "Works on 12 images.", about="behaviour"
+    )
+    from_its_output = met(
+        "Works on 10+ images", "logs/run.log", "processed 12 images", about="behaviour"
+    )
+
+    claimed = judge(ModelReview.model_validate(model_review(on_its_word)), files)
+    shown = judge(ModelReview.model_validate(model_review(from_its_output)), files)
+
+    assert not claimed.passed and claimed.levels[0].criteria[0].output_missing
+    assert shown.passed and shown.outputs == ["logs/run.log"]
