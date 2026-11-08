@@ -126,9 +126,14 @@ fed back to the content owner.
 page on the curriculum site. Learner testing and the business case are not done. Three Stretch items came
 with it: coding problems are checked against their tests in the learner's browser, goal change replans the
 rest of a path, and a report shows where learners who opt in stop. Peer recommendation is not started.
+Beyond the plan, after the professors' midterm feedback: accounts (email and password, or Google), with the
+path kept on the server; the path in a panel beside the course; and capstone projects submitted and reviewed
+by an AI reviewer against each capstone's rubric, with its evidence checked in code. The reviewer reads the
+code but does not run it.
 
-**Out of scope:** user accounts and authentication; any paid API on the Baseline path; model fine-tuning;
-curricula other than the one named below.
+**Out of scope:** any paid API on the Baseline path; model fine-tuning; running learners' capstone projects;
+curricula other than the one named below. User accounts were out of scope until the midterm feedback asked
+for them (Q-005).
 
 ## 9. Data sources and access
 
