@@ -188,6 +188,9 @@ class AccountStore:
         assert account is not None  # nosec B101: just written
         return account, self._new_session(account_id)
 
+    def account_by_id(self, account_id: str) -> Account | None:
+        return self._account(account_id)
+
     def _account(self, account_id: str) -> Account | None:
         with self._lock:
             row = self._db.execute(

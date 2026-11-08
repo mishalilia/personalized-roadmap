@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
 class Level(StrEnum):
@@ -63,6 +63,12 @@ class Module(BaseModel):
     @property
     def can_be_proved(self) -> bool:
         return bool(self.checklist)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_project(self) -> bool:
+        """A capstone: the learner builds a project and submits it for review instead of a checkpoint."""
+        return self.id.rsplit("/", 1)[-1] == "capstone"
 
     @property
     def full_title(self) -> str:

@@ -6,5 +6,9 @@
 
 {$API_DOMAIN} {
 	encode gzip
+	# Project archives are at most 20 MB; the API refuses larger ones too.
+	request_body {
+		max_size 21MB
+	}
 	reverse_proxy api:8000
 }

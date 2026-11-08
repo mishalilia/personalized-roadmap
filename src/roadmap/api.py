@@ -25,9 +25,19 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field, SecretStr, StringConstraints, ValidationError
 
 from .accounts import (
@@ -55,6 +65,15 @@ from .llm import LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, PathStateError, Progress
 from .service import Roadmap
+from .submissions import (
+    MAX_ARCHIVE_BYTES,
+    MAX_NOTE_LENGTH,
+    Submission,
+    SubmissionError,
+    SubmissionStore,
+    check_link,
+    safe_file_name,
+)
 from .source import CurriculumSource
 
 logger = logging.getLogger(__name__)
@@ -191,6 +210,14 @@ class DeleteRequest(BaseModel):
 class AccountOut(BaseModel):
     email: str
     has_password: bool = True  # False for an account made with Google
+    reviewer: bool = False  # may review submitted projects
+
+
+class ReviewRequest(BaseModel):
+    accept: bool
+    comment: Annotated[
+        str, StringConstraints(strip_whitespace=True, max_length=MAX_NOTE_LENGTH)
+    ] = ""
 
 
 class Providers(BaseModel):
@@ -250,6 +277,8 @@ def create_app(
     sign_in_limiter: RateLimiter | None = None,
     secure_cookies: bool = True,
     google: GoogleSignIn | None = None,
+    submissions: SubmissionStore | None = None,
+    reviewers: set[str] | None = None,
 ) -> FastAPI:
     """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
     start from. `accounts` keeps learners' accounts and paths; in memory unless given.
@@ -285,6 +314,26 @@ def create_app(
             return JSONResponse(
                 {"detail": "Requests from this site are not allowed."}, 403
             )
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def bounded_uploads(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """A project upload is refused by its declared size, before any of it is read or kept on disk."""
+        if request.method == "POST" and request.url.path.startswith("/me/submissions/"):
+            declared = request.headers.get("content-length", "")
+            if not declared.isdigit():
+                return JSONResponse({"detail": "Send the size of the upload."}, 411)
+            if (
+                int(declared) > MAX_ARCHIVE_BYTES + 64 * 1024
+            ):  # the archive and the form around it
+                return JSONResponse(
+                    {
+                        "detail": f"The archive is over {MAX_ARCHIVE_BYTES // (1024 * 1024)} MB."
+                    },
+                    413,
+                )
         return await call_next(request)
 
     question_ids = {question.id for question in newest.roadmap.questions}
@@ -323,6 +372,15 @@ def create_app(
         if account is None:
             raise HTTPException(401, "Sign in to keep a path and track your progress.")
         return account
+
+    reviewer_emails = {email.strip().lower() for email in reviewers or set()}
+
+    def account_out(account: Account) -> AccountOut:
+        return AccountOut(
+            email=account.email,
+            has_password=account.has_password,
+            reviewer=account.email in reviewer_emails,
+        )
 
     def start_session(response: Response, token: str) -> None:
         response.set_cookie(
@@ -412,7 +470,7 @@ def create_app(
         if account is None:
             return SessionResponse(account=None)
         return SessionResponse(
-            account=AccountOut(email=account.email, has_password=account.has_password),
+            account=account_out(account),
             path=store.path_of(account),
         )
 
@@ -422,7 +480,7 @@ def create_app(
         start_session(response, token)
         path = store.claim_draft(account, draft_id) if draft_id else None
         return SessionResponse(
-            account=AccountOut(email=account.email, has_password=account.has_password),
+            account=account_out(account),
             path=path or store.path_of(account),
         )
 
@@ -463,6 +521,8 @@ def create_app(
             store.delete(account, body.confirmation)
         except AccountError as error:
             raise HTTPException(401, str(error)) from error
+        if submissions is not None:
+            submissions.delete_for(account.id)
         end_session(response)
         return SessionResponse(account=None)
 
@@ -686,6 +746,130 @@ def create_app(
         record(updated, EventKind.FINISHED, module_id)
         return updated
 
+    # Projects
+
+    uploads = RateLimiter(20, 3600)
+
+    def submission_store() -> SubmissionStore:
+        if submissions is None:
+            raise HTTPException(404, "Project submissions are not set up.")
+        return submissions
+
+    def reviewer(request: Request) -> Account:
+        account = signed_in(request)
+        if account.email not in reviewer_emails:
+            raise HTTPException(403, "Only reviewers can do this.")
+        return account
+
+    @app.post("/me/submissions/{module_id:path}")
+    def submit(
+        module_id: str,
+        request: Request,
+        link: Annotated[str | None, Form()] = None,
+        note: Annotated[str, Form(max_length=MAX_NOTE_LENGTH)] = "",
+        archive: Annotated[UploadFile | None, File()] = None,
+    ) -> Submission:
+        """Hands in the module's project: a link, an archive, or both. A new submission replaces the last."""
+        found = submission_store()
+        account = signed_in(request)
+        if not uploads.allow(account.id):
+            raise HTTPException(429, "Too many submissions. Try again later.")
+        try:
+            checked_link = check_link(link)
+            if checked_link is None and archive is None:
+                raise SubmissionError(
+                    "Give a link to your project, attach an archive, or both."
+                )
+            path = store.path_of(account)
+            if path is None:
+                raise HTTPException(404, "You have no path yet.")
+            # Checks the path's rules before anything is kept.
+            path.with_submission(module_id)
+            stored = None
+            if archive is not None:
+                name, size = found.keep_archive(archive.file)
+                stored = (name, size, safe_file_name(archive.filename))
+        except SubmissionError as error:
+            raise HTTPException(422, str(error)) from error
+        except PathStateError as error:
+            raise HTTPException(409, str(error)) from error
+        except KeyError as error:
+            raise HTTPException(404, str(error.args[0])) from error
+        change(account, lambda current: current.with_submission(module_id))
+        item = path.item(module_id)
+        return found.submit(
+            account_id=account.id,
+            email=account.email,
+            module_id=module_id,
+            module_title=item.module.full_title,
+            curriculum_version=path.curriculum_version,
+            link=checked_link,
+            note=note.strip(),
+            archive=stored,
+        )
+
+    @app.get("/me/submissions/{module_id:path}")
+    def my_submission(module_id: str, request: Request) -> Submission | None:
+        return submission_store().for_module(signed_in(request).id, module_id)
+
+    @app.get("/submissions/{submission_id}/archive")
+    def submission_archive(submission_id: str, request: Request) -> FileResponse:
+        """The archive, as a download, for its learner and for reviewers only."""
+        found = submission_store()
+        account = signed_in(request)
+        submission = found.get(submission_id)
+        allowed = submission is not None and (
+            submission.account_id == account.id or account.email in reviewer_emails
+        )
+        archive = found.archive_of(submission_id) if allowed else None
+        if submission is None or archive is None or not archive.is_file():
+            raise HTTPException(404, "No such archive.")
+        return FileResponse(
+            archive,
+            media_type="application/octet-stream",  # downloaded, never shown in the browser
+            filename=submission.file_name or "project",
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
+
+    @app.get("/review/submissions")
+    def review_queue(request: Request) -> dict[str, list[Submission]]:
+        reviewer(request)
+        found = submission_store()
+        return {"waiting": found.waiting(), "reviewed": found.recent()}
+
+    @app.post("/review/submissions/{submission_id}")
+    def review(submission_id: str, body: ReviewRequest, request: Request) -> Submission:
+        """Accepts a project, which finishes the learner's module, or sends it back with a comment."""
+        reviewer(request)
+        found = submission_store()
+        submission = found.get(submission_id)
+        if submission is None:
+            raise HTTPException(404, "No such submission.")
+        if not body.accept and not body.comment:
+            raise HTTPException(422, "Say what to change when you send a project back.")
+        learner = store.account_by_id(submission.account_id)
+        if learner is None:
+            raise HTTPException(404, "The learner's account no longer exists.")
+        try:
+            reviewed = found.review(submission_id, body.accept, body.comment)
+        except SubmissionError as error:
+            raise HTTPException(409, str(error)) from error
+        try:
+            updated = store.change_path(
+                learner,
+                lambda path: path.with_review(
+                    submission.module_id, body.accept, body.comment
+                ),
+            )
+            if body.accept:
+                record(updated, EventKind.FINISHED, submission.module_id)
+        except (LookupError, PathStateError) as error:
+            # The learner started over or changed the module: the review stands on its own.
+            logger.info(
+                "Review of %s not applied to the path: %s", submission_id, error
+            )
+        return reviewed
+
     @app.post("/me/path/done")
     def done(body: ModuleAction, request: Request) -> LearningPath:
         """Marks a module without a checkpoint as done."""
@@ -782,6 +966,10 @@ class ApiSettings(Settings):
     google_client_secret: SecretStr | None = None
     # The API's own address, as learners' browsers reach it; Google sends them back to it.
     api_public_url: str = "http://localhost:8000"
+    # Accounts that may review submitted projects, comma-separated emails.
+    api_reviewer_emails: str = ""
+    # Archives learners submit with their projects; data/uploads unless set.
+    api_uploads_dir: Path | None = None
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -794,6 +982,18 @@ class ApiSettings(Settings):
     @property
     def accounts_file(self) -> Path:
         return self.api_accounts_file or self.data_dir / "accounts.sqlite"
+
+    @property
+    def uploads_dir(self) -> Path:
+        return self.api_uploads_dir or self.data_dir / "uploads"
+
+    @property
+    def reviewers(self) -> set[str]:
+        return {
+            email.strip().lower()
+            for email in self.api_reviewer_emails.split(",")
+            if email.strip()
+        }
 
     @property
     def google(self) -> GoogleSignIn | None:
@@ -829,6 +1029,8 @@ def _app() -> FastAPI:
         accounts=AccountStore(settings.accounts_file),
         secure_cookies=settings.api_cookie_secure,
         google=settings.google,
+        submissions=SubmissionStore(settings.accounts_file, settings.uploads_dir),
+        reviewers=settings.reviewers,
     )
 
 

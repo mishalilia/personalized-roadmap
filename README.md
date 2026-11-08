@@ -249,6 +249,12 @@ next attempt shows the next five questions. The coding problem, where there is o
 browser with Pyodide; the server cannot run a learner's code safely, so it takes the browser's word that the
 tests passed.
 
+A capstone has no checkpoint: the learner submits their project, as a link, a .zip or .tar.gz archive of up to
+20 MB, or both, and a reviewer (`API_REVIEWER_EMAILS`) accepts it or sends it back with a comment on the
+site's `/review` page. The server never fetches the link and never unpacks or runs the archive: it checks that
+the file starts like a zip or gzip file, keeps it under a random name, and hands it only to its learner and to
+reviewers, as a download.
+
 The path lives on the server, so a learner cannot undo a lock or replay an old attempt: each attempt must
 follow the one the server stored. The coding problem is the exception: it counts as solved on the browser's
 word. See [checkpoints/README.md](checkpoints/README.md) for how

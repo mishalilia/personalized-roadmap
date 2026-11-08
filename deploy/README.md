@@ -66,7 +66,7 @@ After pulling changes in either repository:
 docker compose up -d --build
 ```
 
-Accounts, learners' paths and shared progress live in the `api-state` volume and survive a rebuild. Back it
+Accounts, learners' paths, submitted projects and shared progress live in the `api-state` volume and survive a rebuild. Back it
 up: it is the only copy of learners' progress. When `config/curriculum.yaml` gains a new curriculum version, keep the old
 one listed for as long as learners may still be working through paths planned for it.
 

@@ -25,6 +25,8 @@ USER roadmap
 ENV API_EVENTS_FILE=/app/state/events.sqlite
 # Accounts and their paths, in the same volume.
 ENV API_ACCOUNTS_FILE=/app/state/accounts.sqlite
+# Archives of submitted projects, in the same volume.
+ENV API_UPLOADS_DIR=/app/state/uploads
 EXPOSE 8000
 # One worker: the rate limit is kept in memory. --proxy-headers: behind Caddy, the client is the learner.
 # --no-access-log: the access log would keep learners' IP addresses, which we do not store.

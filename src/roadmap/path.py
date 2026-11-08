@@ -53,6 +53,8 @@ class Progress(StrEnum):
     PRACTICE = "practice"
     PASSED = "passed"
     FAILED = "failed"  # until the learner passes the checkpoint on a later attempt
+    SUBMITTED = "submitted"  # a project, waiting for a reviewer
+    RETURNED = "returned"  # a project the reviewer sent back with a comment; does not lock what follows
 
 
 class PathItem(BaseModel):
@@ -298,7 +300,33 @@ class LearningPath(BaseModel):
     def marked_done(self, module_id: str) -> "LearningPath":
         """The learner finished a module that has no checkpoint."""
         item = self._check_open(module_id)
+        if item.module.is_project:
+            raise PathStateError("Submit the project for review instead")
         return self._replace(item.model_copy(update={"progress": Progress.DONE}))
+
+    def with_submission(self, module_id: str) -> "LearningPath":
+        """The learner submitted the module's project; it waits for a reviewer."""
+        item = self._check_open(module_id)
+        if not item.module.is_project:
+            raise PathStateError(f"'{module_id}' has no project to submit")
+        if item.progress is Progress.DONE:
+            raise PathStateError("This project has already been accepted")
+        return self._replace(
+            item.model_copy(update={"progress": Progress.SUBMITTED, "adjustment": None})
+        )
+
+    def with_review(
+        self, module_id: str, accepted: bool, comment: str
+    ) -> "LearningPath":
+        """A reviewer accepted the project, which finishes the module, or sent it back with a comment."""
+        item = self.item(module_id)
+        if item.progress is not Progress.SUBMITTED:
+            raise PathStateError("This project is not waiting for a review")
+        progress = Progress.DONE if accepted else Progress.RETURNED
+        note = f"Reviewer: {comment}" if comment else None
+        return self._replace(
+            item.model_copy(update={"progress": progress, "adjustment": note})
+        )
 
     def with_proposals(self, proposals: list["Proposal"]) -> "LearningPath":
         """Keeps only proposals that lighten a module the learner has not started."""
