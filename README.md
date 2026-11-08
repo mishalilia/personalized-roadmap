@@ -249,11 +249,20 @@ next attempt shows the next five questions. The coding problem, where there is o
 browser with Pyodide; the server cannot run a learner's code safely, so it takes the browser's word that the
 tests passed.
 
-A capstone has no checkpoint: the learner submits their project, as a link, a .zip or .tar.gz archive of up to
-20 MB, or both, and a reviewer (`API_REVIEWER_EMAILS`) accepts it or sends it back with a comment on the
-site's `/review` page. The server never fetches the link and never unpacks or runs the archive: it checks that
-the file starts like a zip or gzip file, keeps it under a random name, and hands it only to its learner and to
-reviewers, as a download.
+A capstone has no checkpoint: the learner submits their project, as a public GitHub repository link, a .zip or
+.tar.gz archive of up to 20 MB, or both, and an AI reviewer grades it against the capstone's own rubric within
+about half a minute (`src/roadmap/project_review.py`). The model says, for each criterion, whether it is met,
+with a file and a quote as evidence; code checks that every quote is really in the project, so a criterion
+counts only with evidence that holds up, and the project passes when every criterion of the rubric's passing
+level counts. Three reviews run at once and each criterion is decided by majority, so a borderline criterion
+does not pass or fail by chance. The model cannot run the code, so results the learner reports in the README
+count as evidence. People listed in `API_REVIEWER_EMAILS` see every decision on the site's `/review` page and
+can change it; projects no model could review wait for them there.
+
+The server never unpacks an archive to disk or runs it: it reads members in memory within limits on their
+number and size, keeps the archive under a random name, and hands it only to its learner and to reviewers, as a
+download. A link is read only if it is a GitHub repository, through GitHub's own download address, so a link
+cannot make the server reach anything else.
 
 The path lives on the server, so a learner cannot undo a lock or replay an old attempt: each attempt must
 follow the one the server stored. The coding problem is the exception: it counts as solved on the browser's

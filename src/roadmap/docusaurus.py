@@ -161,7 +161,28 @@ def _module(
         checklist=_checklist(page.body, completion_headings),
         topics=_topics(page.body),
         hours=_hours(page.body, resources),
+        project_brief=(
+            _project_brief(page.body) if page_id.endswith("/capstone") else ""
+        ),
     )
+
+
+# The parts of a capstone page a review grades against, in the words the authors use for their headings.
+_BRIEF_HEADINGS = (
+    "Real-World Problem",
+    "Project Scope",
+    "Deliverables",
+    "Key Analysis Questions",
+    "Evaluation Rubric",
+)
+
+
+def _project_brief(body: str) -> str:
+    parts = []
+    for heading in _BRIEF_HEADINGS:
+        if text := _section_text(body, heading).strip():
+            parts.append(f"## {heading}\n\n{text}")
+    return "\n\n".join(parts)
 
 
 def _prerequisites(body: str) -> list[str]:

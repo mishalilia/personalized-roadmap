@@ -21,6 +21,7 @@ class Roadmap:
     ) -> None:
         self.curriculum = curriculum
         self.questions = questions
+        self.llm = llm  # also reviews submitted projects
         self._assessor = LevelAssessor(llm, questions) if llm is not None else None
         self._planner: Planner | None = (
             LLMPlanner(llm, curriculum, questions) if llm is not None else None

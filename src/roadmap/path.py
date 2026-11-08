@@ -318,10 +318,12 @@ class LearningPath(BaseModel):
     def with_review(
         self, module_id: str, accepted: bool, comment: str
     ) -> "LearningPath":
-        """A reviewer accepted the project, which finishes the module, or sent it back with a comment."""
+        """A reviewer accepted the project, which finishes the module, or sent it back with a comment. A person
+        may decide otherwise than the model did, so a decision can follow an earlier one.
+        """
         item = self.item(module_id)
-        if item.progress is not Progress.SUBMITTED:
-            raise PathStateError("This project is not waiting for a review")
+        if item.progress not in (Progress.SUBMITTED, Progress.RETURNED, Progress.DONE):
+            raise PathStateError("This project has not been submitted")
         progress = Progress.DONE if accepted else Progress.RETURNED
         note = f"Reviewer: {comment}" if comment else None
         return self._replace(

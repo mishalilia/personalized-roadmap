@@ -1,5 +1,6 @@
-"""Project submissions: a learner hands in a capstone as a link, an archive, or both, and a reviewer accepts it
-or sends it back with a comment.
+"""Project submissions: a learner hands in a capstone as a link, an archive, or both. A model reviews it against
+the capstone's rubric (roadmap.project_review) and it is accepted or sent back with feedback; a person who
+reviews can look at every review and decide otherwise.
 
 The server never opens what it is given. A link is stored as text and shown as a link; it is never fetched,
 so it cannot make the server reach anything. An archive is checked to be a zip or a gzip file by its first
@@ -22,6 +23,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .project_review import ProjectReview
+
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
 MAX_LINK_LENGTH = 500
 MAX_NOTE_LENGTH = 2000
@@ -41,7 +44,8 @@ class SubmissionError(ValueError):
 
 
 class Status(StrEnum):
-    SUBMITTED = "submitted"
+    REVIEWING = "reviewing"  # the model is reading it
+    SUBMITTED = "submitted"  # waiting for a person: no model could review it
     ACCEPTED = "accepted"
     RETURNED = "returned"
 
@@ -61,6 +65,8 @@ class Submission(BaseModel):
     review_comment: str | None
     submitted_at: datetime
     reviewed_at: datetime | None
+    reviewed_by: str | None = None  # "model", or the email of the person
+    ai_review: ProjectReview | None = None
 
 
 def check_link(link: str | None) -> str | None:
@@ -103,6 +109,14 @@ class SubmissionStore:
                 " review_comment TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT,"
                 " UNIQUE (account_id, module_id))"
             )
+            columns = {
+                row[1] for row in self._db.execute("PRAGMA table_info(submissions)")
+            }
+            for column in ("reviewed_by", "ai_review"):
+                if column not in columns:  # databases made before reviews by a model
+                    self._db.execute(
+                        f"ALTER TABLE submissions ADD COLUMN {column} TEXT"
+                    )
 
     def keep_archive(self, upload: BinaryIO) -> tuple[str, int]:
         """Copies an uploaded archive to the uploads folder under a random name; returns the name and size.
@@ -193,12 +207,14 @@ class SubmissionStore:
         return next(self._select("id = ?", (submission_id,)), None)
 
     def waiting(self) -> list[Submission]:
-        """Submissions a reviewer has yet to look at, oldest first."""
+        """Submissions no model could review, for a person, oldest first."""
         return list(self._select("status = ?", (Status.SUBMITTED,)))
 
     def recent(self, limit: int = 50) -> list[Submission]:
         """The latest reviewed submissions, newest first."""
-        found = list(self._select("status != ?", (Status.SUBMITTED,)))
+        found = list(
+            self._select("status IN (?, ?)", (Status.ACCEPTED, Status.RETURNED))
+        )
         return sorted(
             found, key=lambda s: s.reviewed_at or s.submitted_at, reverse=True
         )[:limit]
@@ -210,21 +226,40 @@ class SubmissionStore:
             ).fetchone()
         return self._uploads / row[0] if row and row[0] else None
 
-    def review(self, submission_id: str, accepted: bool, comment: str) -> Submission:
+    def set_status(self, submission_id: str, status: Status) -> None:
+        with self._lock, self._db:
+            self._db.execute(
+                "UPDATE submissions SET status = ? WHERE id = ?",
+                (status, submission_id),
+            )
+
+    def review(
+        self,
+        submission_id: str,
+        accepted: bool,
+        comment: str,
+        reviewed_by: str,
+        ai_review: ProjectReview | None = None,
+    ) -> Submission:
+        """Records a decision: the model's, or a person's, who may also decide otherwise than the model did.
+        Not while the model is still reading the project."""
         with self._lock, self._db:
             changed = self._db.execute(
-                "UPDATE submissions SET status = ?, review_comment = ?, reviewed_at = ?"
-                " WHERE id = ? AND status = ?",
+                "UPDATE submissions SET status = ?, review_comment = ?, reviewed_at = ?,"
+                " reviewed_by = ?, ai_review = COALESCE(?, ai_review)"
+                " WHERE id = ? AND status != ?",
                 (
                     Status.ACCEPTED if accepted else Status.RETURNED,
                     comment or None,
                     datetime.now(UTC).isoformat(),
+                    reviewed_by,
+                    ai_review.model_dump_json() if ai_review else None,
                     submission_id,
-                    Status.SUBMITTED,
+                    Status.REVIEWING if reviewed_by != "model" else "",
                 ),
             ).rowcount
         if not changed:
-            raise SubmissionError("This submission is not waiting for a review.")
+            raise SubmissionError("The model is still reviewing this submission.")
         found = self.get(submission_id)
         assert found is not None  # nosec B101: just updated
         return found
@@ -246,12 +281,15 @@ class SubmissionStore:
         with self._lock:
             rows = self._db.execute(
                 "SELECT id, account_id, email, module_id, module_title, curriculum_version, link,"
-                " note, file_name, file_size, status, review_comment, submitted_at, reviewed_at"
+                " note, file_name, file_size, status, review_comment, submitted_at, reviewed_at,"
+                " reviewed_by, ai_review"
                 f" FROM submissions WHERE {where} ORDER BY submitted_at",  # nosec B608: fixed clauses
                 args,
             ).fetchall()
         for row in rows:
+            *fields, review = row
             yield Submission(
+                ai_review=ProjectReview.model_validate_json(review) if review else None,
                 **dict(
                     zip(
                         (
@@ -269,9 +307,10 @@ class SubmissionStore:
                             "review_comment",
                             "submitted_at",
                             "reviewed_at",
+                            "reviewed_by",
                         ),
-                        row,
+                        fields,
                         strict=True,
                     )
-                )
+                ),
             )

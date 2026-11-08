@@ -25,7 +25,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
+import httpx
 from fastapi import (
+    BackgroundTasks,
     Depends,
     FastAPI,
     File,
@@ -57,17 +59,26 @@ from .checkpoints import (
     Status,
 )
 from .config import Settings
-from .curriculum import Level
+from .curriculum import Level, Module
 from .events import EventKind, EventLog, Report
 from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
-from .llm import LLMUnavailable
+from .llm import LLMClient, LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, PathStateError, Progress
+from .project_files import (
+    ProjectError,
+    ProjectFiles,
+    github_repository,
+    read_archive,
+    read_github,
+)
+from .project_review import ProjectReview, ProjectReviewer
 from .service import Roadmap
 from .submissions import (
     MAX_ARCHIVE_BYTES,
     MAX_NOTE_LENGTH,
+    Status as SubmissionStatus,
     Submission,
     SubmissionError,
     SubmissionStore,
@@ -279,6 +290,9 @@ def create_app(
     google: GoogleSignIn | None = None,
     submissions: SubmissionStore | None = None,
     reviewers: set[str] | None = None,
+    github: httpx.Client | None = None,
+    github_token: str | None = None,
+    review_runs: int = 3,
 ) -> FastAPI:
     """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
     start from. `accounts` keeps learners' accounts and paths; in memory unless given.
@@ -749,6 +763,9 @@ def create_app(
     # Projects
 
     uploads = RateLimiter(20, 3600)
+    # A review reads up to about 30 000 tokens of the project, so each learner gets a few a day.
+    ai_reviews = RateLimiter(5, 24 * 3600)
+    github_client = github or httpx.Client(timeout=30)
 
     def submission_store() -> SubmissionStore:
         if submissions is None:
@@ -765,15 +782,20 @@ def create_app(
     def submit(
         module_id: str,
         request: Request,
+        background: BackgroundTasks,
         link: Annotated[str | None, Form()] = None,
         note: Annotated[str, Form(max_length=MAX_NOTE_LENGTH)] = "",
         archive: Annotated[UploadFile | None, File()] = None,
     ) -> Submission:
-        """Hands in the module's project: a link, an archive, or both. A new submission replaces the last."""
+        """Hands in the module's project: a link, an archive, or both. A new submission replaces the last. A
+        model reviews it right after this answers; the learner's page asks for the result.
+        """
         found = submission_store()
         account = signed_in(request)
-        if not uploads.allow(account.id):
-            raise HTTPException(429, "Too many submissions. Try again later.")
+        if not uploads.allow(account.id) or not ai_reviews.allow(account.id):
+            raise HTTPException(
+                429, "You can submit a project 5 times a day. Try again tomorrow."
+            )
         try:
             checked_link = check_link(link)
             if checked_link is None and archive is None:
@@ -797,7 +819,7 @@ def create_app(
             raise HTTPException(404, str(error.args[0])) from error
         change(account, lambda current: current.with_submission(module_id))
         item = path.item(module_id)
-        return found.submit(
+        submission = found.submit(
             account_id=account.id,
             email=account.email,
             module_id=module_id,
@@ -807,6 +829,83 @@ def create_app(
             note=note.strip(),
             archive=stored,
         )
+        edition = edition_of(path)
+        if edition.roadmap.llm is None:
+            return submission  # waits for a person
+        found.set_status(submission.id, SubmissionStatus.REVIEWING)
+        module = next(
+            (m for m in edition.roadmap.curriculum.modules if m.id == module_id),
+            item.module,
+        )
+        background.add_task(
+            review_by_model, submission.id, account, module, edition.roadmap.llm
+        )
+        return found.get(submission.id) or submission
+
+    def project_files(submission: Submission) -> ProjectFiles:
+        archive = submission_store().archive_of(submission.id)
+        if archive is not None and archive.is_file():
+            return read_archive(archive.read_bytes())
+        if repository := github_repository(submission.link):
+            return read_github(*repository, github_client, github_token)
+        raise ProjectError(
+            "The review reads an archive or a public GitHub repository. Attach an archive of your code, "
+            "or give the repository's GitHub link."
+        )
+
+    def review_by_model(
+        submission_id: str, account: Account, module: Module, llm: LLMClient
+    ) -> None:
+        """Runs after the submission is answered. The project is read, the model grades it, code checks the
+        model's evidence and decides; the learner's path follows. Without a usable answer from any model, the
+        submission waits for a person."""
+        found = submission_store()
+        submission = found.get(submission_id)
+        if submission is None:
+            return
+        try:
+            files = project_files(submission)
+        except ProjectError as error:
+            decide(submission, account, False, str(error), "model")
+            return
+        try:
+            result = ProjectReviewer(llm, runs=review_runs).review(module, files)
+        except LLMUnavailable as error:
+            logger.warning("No review of %s by a model: %s", submission_id, error)
+            found.set_status(submission_id, SubmissionStatus.SUBMITTED)
+            return
+        except (
+            Exception
+        ):  # noqa: BLE001 - a background task: nobody else would see the error
+            logger.exception("The review of %s failed", submission_id)
+            found.set_status(submission_id, SubmissionStatus.SUBMITTED)
+            return
+        decide(submission, account, result.passed, result.feedback, "model", result)
+
+    def decide(
+        submission: Submission,
+        learner: Account,
+        accept: bool,
+        comment: str,
+        by: str,
+        result: ProjectReview | None = None,
+    ) -> Submission:
+        reviewed = submission_store().review(
+            submission.id, accept, comment, by, ai_review=result
+        )
+        try:
+            updated = store.change_path(
+                learner,
+                lambda path: path.with_review(submission.module_id, accept, comment),
+            )
+            if accept:
+                record(updated, EventKind.FINISHED, submission.module_id)
+        except (LookupError, PathStateError, KeyError) as error:
+            # The learner started over or changed the module: the review stands on its own.
+            logger.info(
+                "Review of %s not applied to the path: %s", submission.id, error
+            )
+        return reviewed
 
     @app.get("/me/submissions/{module_id:path}")
     def my_submission(module_id: str, request: Request) -> Submission | None:
@@ -833,6 +932,8 @@ def create_app(
 
     @app.get("/review/submissions")
     def review_queue(request: Request) -> dict[str, list[Submission]]:
+        """Projects no model could review, then the latest decisions, the model's included, which a person
+        may change."""
         reviewer(request)
         found = submission_store()
         return {"waiting": found.waiting(), "reviewed": found.recent()}
@@ -840,9 +941,8 @@ def create_app(
     @app.post("/review/submissions/{submission_id}")
     def review(submission_id: str, body: ReviewRequest, request: Request) -> Submission:
         """Accepts a project, which finishes the learner's module, or sends it back with a comment."""
-        reviewer(request)
-        found = submission_store()
-        submission = found.get(submission_id)
+        person = reviewer(request)
+        submission = submission_store().get(submission_id)
         if submission is None:
             raise HTTPException(404, "No such submission.")
         if not body.accept and not body.comment:
@@ -851,24 +951,9 @@ def create_app(
         if learner is None:
             raise HTTPException(404, "The learner's account no longer exists.")
         try:
-            reviewed = found.review(submission_id, body.accept, body.comment)
+            return decide(submission, learner, body.accept, body.comment, person.email)
         except SubmissionError as error:
             raise HTTPException(409, str(error)) from error
-        try:
-            updated = store.change_path(
-                learner,
-                lambda path: path.with_review(
-                    submission.module_id, body.accept, body.comment
-                ),
-            )
-            if body.accept:
-                record(updated, EventKind.FINISHED, submission.module_id)
-        except (LookupError, PathStateError) as error:
-            # The learner started over or changed the module: the review stands on its own.
-            logger.info(
-                "Review of %s not applied to the path: %s", submission_id, error
-            )
-        return reviewed
 
     @app.post("/me/path/done")
     def done(body: ModuleAction, request: Request) -> LearningPath:
@@ -970,6 +1055,8 @@ class ApiSettings(Settings):
     api_reviewer_emails: str = ""
     # Archives learners submit with their projects; data/uploads unless set.
     api_uploads_dir: Path | None = None
+    # Optional: raises GitHub's limit on reading public repositories for reviews (60 an hour without it).
+    github_token: SecretStr | None = None
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -1031,6 +1118,9 @@ def _app() -> FastAPI:
         google=settings.google,
         submissions=SubmissionStore(settings.accounts_file, settings.uploads_dir),
         reviewers=settings.reviewers,
+        github_token=(
+            settings.github_token.get_secret_value() if settings.github_token else None
+        ),
     )
 
 

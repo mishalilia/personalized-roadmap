@@ -59,6 +59,9 @@ class Module(BaseModel):
     # The authors' estimate of the module's workload, or the sum of its resources' durations; None when
     # neither is stated.
     hours: Hours | None = None
+    # For a capstone: what the project must solve and deliver, and its evaluation rubric, as Markdown. A review
+    # of a submitted project grades against it, from the curriculum version the path was planned for.
+    project_brief: str = ""
 
     @property
     def can_be_proved(self) -> bool:
