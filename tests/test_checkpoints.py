@@ -194,6 +194,15 @@ def test_generated_questions_must_name_the_modules_own_topics(curriculum):
         CheckpointGenerator(llm, "some-model").generate(curriculum.modules[0], "v1")
 
 
+def test_a_topic_named_without_its_heading_number_is_the_modules_own(curriculum):
+    generated = [question(n) | {"topic": "shell basics"} for n in range(1, 16)]
+    llm = FakeLLM({"questions": generated})
+
+    found = CheckpointGenerator(llm, "some-model").generate(curriculum.modules[0], "v1")
+
+    assert {q.topic for q in found.questions} == {"1. Shell Basics"}
+
+
 def test_an_answer_with_the_wrong_number_of_questions_is_rejected(curriculum):
     llm = FakeLLM({"questions": [question(n) for n in range(1, 6)]})
 

@@ -36,6 +36,7 @@ PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
 GENERATED_QUESTIONS = 15
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_NUMBERING = re.compile(r"^\s*\d+[.)]\s*")
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -310,8 +311,14 @@ class CheckpointGenerator:
             GeneratedQuestions,
             check=lambda response: _check_generated(response, module),
         )
+        titles = [topic.title for topic in module.topics]
         questions = [
-            question.model_copy(update={"id": f"q{number}"})
+            question.model_copy(
+                update={
+                    "id": f"q{number}",
+                    "topic": _module_topic(question.topic, titles) or question.topic,
+                }
+            )
             for number, question in enumerate(response.questions, start=1)
         ]
         return Checkpoint(
@@ -332,11 +339,24 @@ def _check_generated(response: GeneratedQuestions, module: Module) -> None:
     if len(texts) != len(response.questions):
         raise UnusableAnswer("Questions repeat")
     # A failed attempt sends the learner back to these topics, so they must be the module's own.
-    titles = {topic.title for topic in module.topics}
-    if titles and (unknown := {q.topic for q in response.questions} - titles):
+    titles = [topic.title for topic in module.topics]
+    unknown = {
+        q.topic for q in response.questions if _module_topic(q.topic, titles) is None
+    }
+    if titles and unknown:
         raise UnusableAnswer(
             f"Topics the module does not have: {', '.join(sorted(unknown))}"
         )
+
+
+def _module_topic(topic: str, titles: list[str]) -> str | None:
+    """The module's own title for a topic the model named, which may leave out the heading's number, as
+    "Collaboration and handover" for "4. Collaboration and handover"."""
+
+    def key(title: str) -> str:
+        return _NUMBERING.sub("", title).strip().casefold()
+
+    return next((title for title in titles if key(title) == key(topic)), None)
 
 
 def module_brief(module: Module) -> str:
