@@ -239,3 +239,17 @@ def test_a_saved_checkpoint_marks_its_commit_hash_for_the_secret_scanner(
 
     assert "# pragma: allowlist secret" in file.read_text().splitlines()[1]
     assert store.load(found.module_id) == found
+
+
+def test_verify_names_a_missing_package_instead_of_running(monkeypatch):
+    problem = CodingProblem(
+        title="t",
+        prompt="p",
+        starter_code="def f():\n    ...",
+        tests="assert f() == 1",
+        solution="def f():\n    return 1",
+        packages=["surely_not_installed_pkg"],
+    )
+    assert verify_problem(problem) == (
+        "needs surely_not_installed_pkg: pip install surely_not_installed_pkg"
+    )

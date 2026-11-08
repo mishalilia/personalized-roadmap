@@ -86,7 +86,7 @@ def test_an_incomplete_plan_falls_back_to_the_course_order(curriculum, questions
 def test_a_perfect_first_checkpoint_brings_lighter_suggestions_for_later_modules(
     curriculum, questions
 ):
-    from roadmap.checkpoints import Grade
+    from roadmap.checkpoints import Grade, QuestionFeedback
 
     terminal, algebra = "basics/terminal", "basics/algebra"
     llm = FakeLLM(
@@ -104,7 +104,16 @@ def test_a_perfect_first_checkpoint_brings_lighter_suggestions_for_later_modules
         {"programming": "Bash every day"}, Level.BEGINNER
     ).confirm()
     grade = Grade(
-        attempt=0, score=5, total=5, passed=True, effortless=True, feedback=[]
+        attempt=0,
+        score=5,
+        total=5,
+        passed=True,
+        effortless=True,
+        feedback=[
+            QuestionFeedback(id="q1", topic="Pipes", correct=True),
+            QuestionFeedback(id="q2", topic="Pipes", correct=True),
+            QuestionFeedback(id="q3", topic="Paths", correct=True),
+        ],
     )
 
     after = roadmap.after_checkpoint(path, terminal, grade)
@@ -114,6 +123,7 @@ def test_a_perfect_first_checkpoint_brings_lighter_suggestions_for_later_modules
         (algebra, Choice.SKIP)
     ]
     assert "passed the checkpoint" in llm.prompts[-1]
+    assert "answering questions on: Pipes; Paths." in llm.prompts[-1]
     assert "Bash every day" in llm.prompts[-1]  # planned again from the stored answers
 
 

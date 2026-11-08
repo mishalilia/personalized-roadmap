@@ -82,7 +82,8 @@ class Roadmap:
         )
         if not grade.effortless:
             return path
-        return path.with_proposals(self._lighter_after(path, module_id))
+        topics = list(dict.fromkeys(feedback.topic for feedback in grade.feedback))
+        return path.with_proposals(self._lighter_after(path, module_id, topics))
 
     def change_goal(self, path: LearningPath, goal: str) -> LearningPath:
         """The path replanned for a new goal, keeping what the learner has started. Raises
@@ -101,11 +102,19 @@ class Roadmap:
         answers = {**path.answers, "goal": goal}
         return path.with_new_goal(goal, self._planner.plan(answers, path.level, note))
 
-    def _lighter_after(self, path: LearningPath, module_id: str) -> list[Proposal]:
+    def _lighter_after(
+        self, path: LearningPath, module_id: str, topics: list[str]
+    ) -> list[Proposal]:
         if self._planner is None:
             return []
         title = path.item(module_id).module.full_title
-        note = f"the learner passed the checkpoint of '{title}' without a mistake at the first try."
+        current = "; ".join(f"{item.module.id}: {item.choice}" for item in path.items)
+        note = (
+            f"the learner passed the checkpoint of '{title}' without a mistake at the first try, "
+            f"answering questions on: {'; '.join(topics)}. Their current decisions are: {current}. "
+            "Return these decisions unchanged, except for a later module that teaches these topics again "
+            "or builds directly on them, which may now be lighter."
+        )
         try:
             items = self._planner.plan(path.answers, path.level, note)
         except LLMUnavailable as error:

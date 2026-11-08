@@ -12,6 +12,7 @@ copied from the linked third-party material.
 from __future__ import annotations
 
 import ast
+import importlib.util
 import random
 import re
 import subprocess  # nosec B404: only runs a reviewer's own checkpoint files, see verify_problem
@@ -220,6 +221,10 @@ def verify_problem(problem: CodingProblem, timeout: float = 20) -> str | None:
     """Runs the reference solution against the tests in a separate Python; None if they pass, else the
     error. For a reviewer checking a checkpoint on their own machine: the code comes from the checkpoint
     file, so run it only on files you have read."""
+    if missing := [
+        name for name in problem.packages if importlib.util.find_spec(name) is None
+    ]:
+        return f"needs {', '.join(missing)}: pip install {' '.join(missing)}"
     with tempfile.TemporaryDirectory() as directory:
         script = Path(directory) / "check.py"
         script.write_text(f"{problem.solution}\n\n{problem.tests}\n", encoding="utf-8")
