@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     llm_provider: str | None = None  # a provider from config/llm.yaml
     llm_api_key_groq: SecretStr | None = None
     llm_api_key_google: SecretStr | None = None
+    llm_api_key_openai: SecretStr | None = None
     config_dir: Path = Path("config")
     data_dir: Path = Path("data")
     output_dir: Path = Path("out")  # where saved paths are looked for; git-ignored
@@ -23,7 +24,11 @@ class Settings(BaseSettings):
     @property
     def llm_api_keys(self) -> dict[str, SecretStr]:
         """Keys by provider name, for the providers that have one."""
-        keys = {"groq": self.llm_api_key_groq, "google": self.llm_api_key_google}
+        keys = {
+            "groq": self.llm_api_key_groq,
+            "google": self.llm_api_key_google,
+            "openai": self.llm_api_key_openai,
+        }
         return {provider: key for provider, key in keys.items() if key is not None}
 
     @property
