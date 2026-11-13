@@ -15,6 +15,7 @@ venv/
 # Data and generated output
 data/raw/
 data/curriculum/
+data/curricula/
 out/
 *.log
 

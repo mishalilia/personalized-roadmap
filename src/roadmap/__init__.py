@@ -2,7 +2,7 @@
 
 from .__version__ import __version__
 from .config import Settings
-from .curriculum import Attribution, Curriculum, Level, Module, Resource
+from .curriculum import Attribution, Curriculum, Hours, Level, Module, Resource
 from .level import Confidence, LevelAssessment
 from .onboarding import Answers, LearnerProfile, Question, load_profiles
 from .path import CHANGES_NOTICE, Choice, LearningPath, PathItem, path_difference
@@ -15,6 +15,7 @@ __all__ = [
     "Attribution",
     "Confidence",
     "Curriculum",
+    "Hours",
     "LearnerProfile",
     "LearningPath",
     "Level",

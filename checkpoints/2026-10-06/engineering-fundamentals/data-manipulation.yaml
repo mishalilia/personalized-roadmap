@@ -1,0 +1,142 @@
+module_id: engineering-fundamentals/data-manipulation
+curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # pragma: allowlist secret
+status: draft
+generated_by: Claude, in a development session, from the module brief; not the generator pipeline
+reviewed_by: null
+questions:
+- id: q1
+  topic: 1. NumPy Foundations
+  text: After `a = np.arange(12).reshape(3, 4)`, what is `a[1:, ::2].shape`?
+  options:
+  - (3, 2)
+  - (2, 4)
+  - (2, 2)
+  - (1, 2)
+  answer: 2
+  explanation: '`1:` keeps rows 1 and 2, and `::2` keeps columns 0 and 2, so two rows by two columns.'
+- id: q2
+  topic: 2. Pandas & Data Cleaning
+  text: The column `df["age"]` has some missing values (NaN). What does `df["age"].mean()` return?
+  options:
+  - The mean of the values that are present
+  - NaN, because a value is missing
+  - An error until the missing values are filled
+  - The mean with each missing value counted as 0
+  answer: 0
+  explanation: Pandas skips missing values by default (`skipna=True`), so the mean is taken over the values that
+    are present.
+- id: q3
+  topic: 2. Pandas & Data Cleaning
+  text: You want the rows where age is over 30 and the city is Seoul. Which expression does it?
+  options:
+  - '`df[df["age"] > 30 and df["city"] == "Seoul"]`'
+  - '`df[df["age"] > 30, df["city"] == "Seoul"]`'
+  - '`df.filter(age > 30, city == "Seoul")`'
+  - '`df[(df["age"] > 30) & (df["city"] == "Seoul")]`'
+  answer: 3
+  explanation: Conditions on columns combine element by element with `&`, and each needs its own parentheses; `and`
+    raises an error on a Series.
+- id: q4
+  topic: 4. SQL
+  text: You need the customers with more than five orders. Which query returns them?
+  options:
+  - '`SELECT customer_id FROM orders WHERE COUNT(*) > 5 GROUP BY customer_id;`'
+  - '`SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) > 5;`'
+  - '`SELECT customer_id, COUNT(*) > 5 FROM orders;`'
+  - '`SELECT customer_id FROM orders ORDER BY COUNT(*) > 5;`'
+  answer: 1
+  explanation: '`WHERE` filters rows before grouping and cannot use an aggregate; `HAVING` filters the groups after
+    `GROUP BY`.'
+- id: q5
+  topic: 3. Basic Data Visualization with Matplotlib
+  text: You cleaned a column of house prices and want to see whether it is skewed or has outliers. Which plot shows
+    that best?
+  options:
+  - A pie chart of the prices
+  - A line plot of the prices in row order
+  - A histogram of the prices
+  - A bar chart of the first ten prices
+  answer: 2
+  explanation: A histogram shows how values are distributed, so a long tail or isolated bars stand out.
+- id: q6
+  topic: 1. NumPy Foundations
+  text: What does `a[a > 0].sum()` return for `a = np.array([3, -1, 4, -2])`?
+  options:
+  - '4'
+  - '7'
+  - '2'
+  - '10'
+  answer: 1
+  explanation: The boolean mask keeps 3 and 4, and their sum is 7.
+- id: q7
+  topic: 2. Pandas & Data Cleaning
+  text: Which line gives the average salary in each department?
+  options:
+  - '`df["salary"].mean()`'
+  - '`df.sort_values("department")["salary"].mean()`'
+  - '`df[df["department"]]["salary"].mean()`'
+  - '`df.groupby("department")["salary"].mean()`'
+  answer: 3
+  explanation: '`groupby` splits the rows by department and `mean` is taken within each group; the others give one
+    number for all rows or fail.'
+- id: q8
+  topic: 4. SQL
+  text: You need every customer, including those who never ordered, with their orders where they have any. Which
+    join does that?
+  options:
+  - '`customers LEFT JOIN orders ON customers.id = orders.customer_id`'
+  - '`customers INNER JOIN orders ON customers.id = orders.customer_id`'
+  - '`orders LEFT JOIN customers ON customers.id = orders.customer_id`'
+  - '`customers CROSS JOIN orders`'
+  answer: 0
+  explanation: A LEFT JOIN keeps every row of the left table, here customers, and fills the order columns with NULL
+    where there is no match.
+- id: q9
+  topic: 4. SQL
+  text: Which query returns the three most expensive products?
+  options:
+  - '`SELECT * FROM products WHERE price = MAX(price) LIMIT 3;`'
+  - '`SELECT * FROM products ORDER BY price LIMIT 3;`'
+  - '`SELECT * FROM products ORDER BY price DESC LIMIT 3;`'
+  - '`SELECT TOP(price, 3) FROM products;`'
+  answer: 2
+  explanation: Sorting by price in descending order puts the most expensive first, and `LIMIT 3` keeps three rows.
+- id: q10
+  topic: 5. Software Engineering Tools
+  text: You want to try a risky change to your analysis without touching the working version on `main`. What do
+    you do first?
+  options:
+  - Copy the project folder and edit the copy
+  - Create a branch, for example `git switch -c experiment`, and commit there
+  - Edit on `main` and run `git reset` if it fails
+  - Commit on `main` with a message that says it is an experiment
+  answer: 1
+  explanation: A branch keeps the experiment's commits apart from `main`; you merge it if it works and delete it
+    if not.
+problem:
+  title: Scale each column to 0–1
+  prompt: 'Write `min_max_scale(a)` for a 2-D NumPy array: scale each column so that its smallest value becomes
+    0 and its largest 1, without a Python loop. A column whose values are all equal becomes all zeros.
+
+
+    Example: the column `[1, 3, 2]` becomes `[0, 1, 0.5]`.'
+  starter_code: "import numpy as np\n\n\ndef min_max_scale(a: np.ndarray) -> np.ndarray:\n    \"\"\"Each column\
+    \ scaled to 0..1; a constant column becomes zeros.\"\"\"\n    ..."
+  tests: 'import numpy as np
+
+
+    a = np.array([[1.0, 10.0], [3.0, 10.0], [2.0, 10.0]])
+
+    result = min_max_scale(a)
+
+    assert result.shape == (3, 2), "the shape stays the same"
+
+    assert np.allclose(result[:, 0], [0.0, 1.0, 0.5]), "the first column is scaled"
+
+    assert np.allclose(result[:, 1], 0.0), "a constant column becomes zeros"
+
+    assert np.allclose(min_max_scale(np.array([[0.0], [4.0]]))[:, 0], [0.0, 1.0]), "one column works too"'
+  solution: "import numpy as np\n\n\ndef min_max_scale(a):\n    low = a.min(axis=0)\n    span = a.max(axis=0) -\
+    \ low\n    return np.divide(a - low, span, out=np.zeros_like(a, dtype=float), where=span != 0)"
+  packages:
+  - numpy

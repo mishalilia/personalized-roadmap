@@ -1,10 +1,27 @@
-# The curriculum paths are built through, pinned to one commit so that every path can be reproduced.
-# `python -m roadmap fetch` checks this version out into data/curriculum/ (git-ignored).
+# The curriculum paths are built through. Each version is pinned to one commit so that every path can be
+# reproduced, and names the version of the curriculum site with the same content, so that a path links to the
+# pages the planner saw. `python -m roadmap fetch` checks every version out into data/curricula/ (git-ignored).
+#
+# New paths use the first version. Paths planned for another listed version keep working, so learners do not
+# lose their progress when the course moves on. When the site publishes a new snapshot, the old "current"
+# becomes a dated version: add the new commit first and rename the old entry after the snapshot.
 
 repository: https://github.com/humblebeeai/int.academy-curriculum
-version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # full commit hash, 7 September 2026  # pragma: allowlist secret
 docs_dir: docs
-site_url: https://roadmap.humblebee.ai/docs
+
+versions:
+  - name: current
+    label: Current curriculum (22 October 2026)
+    ref: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+    site_url: https://roadmap.humblebee.ai/docs
+    # Modules state what finishes them under "Expected output" and "Finish this module", not in tick boxes.
+    completion_headings: true
+  # The site's 2026-10-06 snapshot differs from this commit only in links rewritten to the snapshot. The
+  # model runs of 21 October and the expected decisions in docs/test-results/ use this version.
+  - name: "2026-10-06"
+    label: October 6, 2026
+    ref: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # 7 September 2026  # pragma: allowlist secret
+    site_url: https://roadmap.humblebee.ai/docs/2026-10-06
 
 attribution:
   title: HumbleBeeAI Open Curriculum

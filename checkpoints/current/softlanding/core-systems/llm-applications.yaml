@@ -1,0 +1,208 @@
+module_id: softlanding/core-systems/llm-applications
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: LLM fundamentals
+  text: You send two different prompts to the same model without changing its settings. Which part of the generation
+    process is expected to change as a result?
+  options:
+  - The model’s learned weights are updated to fit each prompt.
+  - The input-dependent representations and next-token probabilities change.
+  - The model’s pretraining data is replaced with the new prompt.
+  - The model’s vocabulary is rebuilt around the new prompt.
+  answer: 1
+  explanation: The prompt changes the input and the resulting activations and next-token probabilities. The model’s
+    learned weights do not change just because it receives a different prompt.
+- id: q2
+  topic: LLM fundamentals
+  text: A model gives different answers for the word “bank” in “sat by the bank” and “deposited money at the bank.”
+    Which explanation best fits the transformer mental model?
+  options:
+  - The model selects a different fixed embedding for each complete sentence.
+  - Attention lets the word’s representation reflect surrounding context.
+  - The model updates its learned weights after reading each sentence.
+  - The tokenizer looks up the intended meaning in an external dictionary.
+  answer: 1
+  explanation: Attention allows a token’s representation to incorporate information from other tokens in the current
+    context. This can support different next-token predictions without changing learned weights.
+- id: q3
+  topic: LLM fundamentals
+  text: A team wants a model to return a brief answer in a particular format, but does not need a lasting change
+    to the model itself. What should they try first?
+  options:
+  - Add a clear instruction and an example to the prompt.
+  - Fine-tune the model on examples of the desired format.
+  - Replace the model’s learned weights with prompt-specific weights.
+  - Pretrain the model again using the latest user request.
+  answer: 0
+  explanation: A clear prompt with an example can guide the model’s response without changing its weights. Fine-tuning
+    is a possible weight-changing approach, but is unnecessary as a first step for this need.
+- id: q4
+  topic: LLM fundamentals
+  text: A long conversation has pushed an earlier instruction out of the model’s available context. Which change
+    most directly addresses this problem?
+  options:
+  - Increase the temperature so the model recalls the instruction.
+  - Include the relevant instruction again in the supplied context.
+  - Ask the model to search its training data for the conversation.
+  - Use a structured response so the instruction is stored permanently.
+  answer: 1
+  explanation: The model can use information supplied in its current context, so including the relevant instruction
+    again directly addresses its absence. Temperature and response formatting do not restore omitted conversation
+    history.
+- id: q5
+  topic: LLM fundamentals
+  text: You provide a report and ask for a figure that the report does not contain. The model replies confidently
+    with a number. What is the best next step?
+  options:
+  - Treat the number as reliable because the answer is confident.
+  - Check whether the report supports the number and ask for a source.
+  - Increase the output limit so the number has more explanation.
+  - Use a strict JSON schema to make the number factually correct.
+  answer: 1
+  explanation: A confident response is not evidence that the figure is supported. Checking the supplied source—or
+    establishing that the source cannot answer the question—helps distinguish grounded information from a hallucination.
+- id: q6
+  topic: LLM fundamentals
+  text: An application needs short, consistently formatted answers, but users also need accurate facts. Which approach
+    best addresses both needs?
+  options:
+  - Use an output limit and a structured format, then validate the facts separately.
+  - Use a higher temperature and rely on the format to catch factual errors.
+  - Use a lower temperature and assume valid JSON means the claims are true.
+  - Use a larger context window and skip checking well-formed responses.
+  answer: 0
+  explanation: Output limits and structured responses can help control length and format, but they do not establish
+    factual accuracy. The content still needs to be checked against reliable information.
+- id: q7
+  topic: LLM fundamentals
+  text: An assistant must answer questions about a frequently updated internal handbook that is too large to include
+    in every prompt. Which approach most directly supplies relevant handbook information at answer time?
+  options:
+  - Fine-tune the model once on the handbook and stop updating it.
+  - Retrieve relevant handbook passages and include them in the prompt.
+  - Increase the temperature so the model explores more handbook facts.
+  - Use embeddings as the final answer instead of generating text.
+  answer: 1
+  explanation: Retrieval can find relevant passages from an external source and supply them as context for a response.
+    Fine-tuning may not reflect updates promptly, and embeddings are useful for finding related content rather than
+    serving as the final answer.
+- id: q8
+  topic: Agent-assisted engineering
+  text: An agent is asked to add a feature, but its first plan includes changes across many unrelated files. Which
+    task revision is most likely to make the work manageable?
+  options:
+  - State the relevant files, limit the feature’s scope, and define acceptance criteria.
+  - Ask for the feature in one sentence and let the agent choose its own scope.
+  - List implementation steps but leave the expected behavior unspecified.
+  - Ask the agent to edit everything first and decide what is needed afterward.
+  answer: 0
+  explanation: A bounded task with relevant files and clear acceptance criteria gives the agent a manageable target
+    and gives the learner a basis for reviewing the result.
+- id: q9
+  topic: Agent-assisted engineering
+  text: A project instruction file describes conventions that should apply to all work. You also have a tested procedure
+    for preparing release notes that you want to reuse when needed. Where should each go?
+  options:
+  - Put both in the project instructions so every task runs the procedure.
+  - Put both in the reusable skill so project conventions stay optional.
+  - Put conventions in project instructions and the procedure in a skill.
+  - Put conventions in a hook and the procedure in a subagent.
+  answer: 2
+  explanation: Project instructions communicate context and conventions that apply broadly, while a reusable skill
+    provides a procedure to invoke for a particular kind of task.
+- id: q10
+  topic: Agent-assisted engineering
+  text: An agent needs to inspect files and run tests, but any command that changes project files should be reviewed
+    first. Which permission approach best matches this constraint?
+  options:
+  - Allow every tool action because the tests will reveal unwanted changes.
+  - Allow inspection and test commands, and require approval for file changes.
+  - Block all tool actions and ask the agent to describe the project from memory.
+  - Allow file changes automatically, and review only the final summary.
+  answer: 1
+  explanation: This grants the access needed for inspection and verification while keeping consequential file changes
+    under review. Reviewing only a completion summary does not provide the same control.
+- id: q11
+  topic: Agent-assisted engineering
+  text: An agent edits a function and reports that it is finished. What should you do before accepting the change?
+  options:
+  - Accept it if the agent’s summary lists the intended behavior.
+  - Review the diff and run checks that exercise expected behavior.
+  - Ask the agent to restate the task and accept its revised summary.
+  - Run the test suite before reviewing what files were changed.
+  answer: 1
+  explanation: A diff shows what actually changed, and tests help establish whether behavior meets the requirements.
+    A completion summary alone is not verification.
+- id: q12
+  topic: Agent-assisted engineering
+  text: An agent’s first attempt fails a relevant test. Which next step is most useful for getting an engineering
+    improvement rather than an unexplained patch?
+  options:
+  - Ask the agent to inspect the failure, explain its cause, and revise the approach.
+  - Ask the agent to change the test so it accepts the current implementation.
+  - Ask for a fresh implementation without sharing the failure details.
+  - Stop checking the behavior and use the agent’s final description.
+  answer: 0
+  explanation: The failure is useful evidence. Asking the agent to diagnose it and explain a revised approach supports
+    a targeted correction that can be reviewed and tested.
+- id: q13
+  topic: Agent-assisted engineering
+  text: You want a test command to run automatically after an agent makes changes, so failures are visible during
+    the workflow. What should you configure?
+  options:
+  - A project instruction that recommends running the command.
+  - A verification hook or equivalent automated check that runs the command.
+  - A reusable skill that the agent may choose to run later.
+  - A subagent that summarizes the code after each change.
+  answer: 1
+  explanation: A verification hook or equivalent check runs the validation command automatically at the relevant
+    point. Instructions and skills can guide or enable an action, but do not by themselves ensure it runs.
+- id: q14
+  topic: Agent-assisted engineering
+  text: A task cannot be completed in the current agent session, and another session will continue the work. What
+    is the most useful way to preserve continuity?
+  options:
+  - Leave the repository unchanged and rely on the next session to infer the plan.
+  - Record the current state, remaining work, constraints, and checks in project context.
+  - Move all project instructions into the conversation transcript only.
+  - Ask the next session to restart the task without reviewing existing changes.
+  answer: 1
+  explanation: A concise handoff with the current state, remaining work, constraints, and checks helps a fresh or
+    resumed session continue effectively without guessing.
+- id: q15
+  topic: Agent-assisted engineering
+  text: An agent’s change passes the main success test, but you have not checked what happens for invalid input.
+    What is the best next verification step?
+  options:
+  - Test a meaningful failure case and compare the behavior with the acceptance criteria.
+  - Rerun only the success test and rely on the passing result.
+  - Ask the agent whether invalid input should work and accept its response.
+  - Review the project instructions again without exercising the changed code.
+  answer: 0
+  explanation: Testing a meaningful failure case checks behavior that a success-only test cannot establish. Comparing
+    it with the acceptance criteria helps determine whether the implementation is suitable.
+problem:
+  title: Report Failed Verification Checks
+  prompt: 'Write `failed_checks`, which takes a list of check records. Each record is a dictionary with a string
+    `name` and a boolean `passed`. Return the names of the checks that did not pass, in their original order.
+
+
+    Example: `failed_checks([{"name": "unit tests", "passed": True}, {"name": "lint", "passed": False}])` returns
+    `["lint"]`.'
+  starter_code: "def failed_checks(checks):\n    \"\"\"Return the names of checks that did not pass, preserving\
+    \ their order.\"\"\"\n    ..."
+  tests: 'assert failed_checks([]) == [], "empty reports should have no failures"
+
+    assert failed_checks([{"name": "tests", "passed": True}]) == [], "passing checks should be omitted"
+
+    assert failed_checks([{"name": "tests", "passed": False}]) == ["tests"], "a failed check should be reported"
+
+    assert failed_checks([{"name": "lint", "passed": False}, {"name": "tests", "passed": True}, {"name": "build",
+    "passed": False}]) == ["lint", "build"], "failures should retain their original order"'
+  solution: "def failed_checks(checks):\n    \"\"\"Return the names of checks that did not pass, preserving their\
+    \ order.\"\"\"\n    return [check[\"name\"] for check in checks if not check[\"passed\"]]"
+  packages: []

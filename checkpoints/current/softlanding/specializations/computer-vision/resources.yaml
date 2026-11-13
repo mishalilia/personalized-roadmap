@@ -1,0 +1,215 @@
+module_id: softlanding/specializations/computer-vision/resources
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Curriculum
+  text: A PyTorch image batch has shape `(8, 3, 224, 224)`. Which interpretation is correct?
+  options:
+  - 8 images, each with 3 channels and height and width 224
+  - 3 images, each with 8 channels and height and width 224
+  - 8 images, each with height 3 and width 224 and 224 channels
+  - 224 images, each with 8 channels and height and width 3
+  answer: 0
+  explanation: PyTorch image batches commonly use the order batch, channels, height, width. Here the batch contains
+    8 RGB images of size 224 by 224.
+- id: q2
+  topic: Curriculum
+  text: A convolution receives a 32 × 32 feature map and uses a 3 × 3 kernel, padding 1, and stride 2. What is the
+    output's spatial size?
+  options:
+  - 15 × 15
+  - 16 × 16
+  - 17 × 17
+  - 32 × 32
+  answer: 1
+  explanation: The convolution output size is ⌊(32 + 2·1 − 3)/2⌋ + 1 = 16 in each dimension. Padding preserves size
+    only when the stride is 1.
+- id: q3
+  topic: Curriculum
+  text: A CNN's first layers respond to edges, while later layers respond to combinations of shapes that often indicate
+    object parts. Which change would most directly help the network build more complex visual representations?
+  options:
+  - Replace all convolutions with a single global average
+  - Add learned layers that combine earlier feature maps
+  - Convert every intermediate feature map to class probabilities
+  - Keep only the first layer's feature maps for classification
+  answer: 1
+  explanation: Successive learned layers can combine simpler patterns into more complex features. Turning every
+    layer into class probabilities or discarding later features would not support that hierarchy.
+- id: q4
+  topic: Curriculum
+  text: A model must assign each image to exactly one of five classes. Which output and loss pairing best fits this
+    task?
+  options:
+  - Five sigmoid outputs with binary cross-entropy
+  - One linear output with mean squared error
+  - Five softmax scores with cross-entropy
+  - Five ReLU outputs with intersection over union
+  answer: 2
+  explanation: Softmax scores represent a distribution over mutually exclusive classes, and cross-entropy compares
+    that distribution with the target class. Sigmoid outputs are more natural when classes can occur independently.
+- id: q5
+  topic: Curriculum
+  text: A training loop calls `loss.backward()` and `optimizer.step()` on every batch, but never clears gradients.
+    What is the likely result?
+  options:
+  - Gradients accumulate across batches, changing the intended updates
+  - The model's parameters are reset before every optimizer step
+  - Autograd computes gradients only for the final batch
+  - The loss is averaged automatically across the whole epoch
+  answer: 0
+  explanation: PyTorch accumulates gradients in parameter `.grad` fields until they are cleared. Without clearing
+    them, each update uses gradients from the current and earlier batches.
+- id: q6
+  topic: Curriculum
+  text: Training with a fixed learning rate makes progress uneven because gradients vary considerably from batch
+    to batch. Which approach is a reasonable first choice to try?
+  options:
+  - Use an optimizer such as Adam that adapts updates using gradient history
+  - Remove the loss function so the optimizer can infer the target
+  - Increase the batch size until each update contains the whole dataset
+  - Replace gradient updates with random changes to the parameters
+  answer: 0
+  explanation: Adam adapts parameter updates using estimates based on recent gradients, which can help when gradients
+    vary across batches. The other choices either remove necessary training information or change the process into
+    something other than gradient-based learning.
+- id: q7
+  topic: Curriculum
+  text: A vision model performs well on its training images but poorly on new images. Which change is most directly
+    aimed at reducing overfitting?
+  options:
+  - Apply varied, label-preserving image augmentations during training
+  - Tune hyperparameters repeatedly against the test set
+  - Increase the model's capacity without changing the training data
+  - Evaluate only on training images to avoid noisy measurements
+  answer: 0
+  explanation: Label-preserving augmentation exposes the model to more varied training examples and can improve
+    generalization. Repeatedly using the test set for tuning leaks evaluation information rather than addressing
+    overfitting cleanly.
+- id: q8
+  topic: Curriculum
+  text: You have a pretrained CNN and a small labeled dataset for a related image task. Which plan is a sensible
+    starting point?
+  options:
+  - Discard the pretrained weights and train the entire network from scratch
+  - Freeze the feature layers, train a new task-specific head, then consider unfreezing some layers
+  - Freeze the classifier head and train only the final output labels
+  - Use the pretrained model without changing its output layer or evaluating it
+  answer: 1
+  explanation: A new head adapts the model to the target labels while frozen pretrained features reduce the amount
+    of data needed initially. If appropriate, unfreezing some feature layers allows further fine-tuning.
+- id: q9
+  topic: Curriculum
+  text: An image contains two dogs and a bicycle, and the application needs a class and a location for each object.
+    Which model output is needed?
+  options:
+  - One class label for the entire image
+  - A class label and bounding box for each detected object
+  - One bounding box around the full image with no class labels
+  - A pixel intensity estimate for each image channel
+  answer: 1
+  explanation: Object detection must identify multiple objects and localize each one, typically with a class label
+    and bounding box. A single image-level label does not say how many objects are present or where they are.
+- id: q10
+  topic: Curriculum
+  text: A predicted box overlaps the ground-truth box, but also extends far beyond it. Which change would increase
+    their Intersection over Union (IoU)?
+  options:
+  - Move the predicted box so its overlap with the ground-truth box increases and its excess area decreases
+  - Increase the predicted box's area while leaving the overlap unchanged
+  - Lower the confidence score while keeping both boxes unchanged
+  - Add more predicted classes while keeping both boxes unchanged
+  answer: 0
+  explanation: IoU is intersection area divided by union area, so increasing overlap and reducing excess area raises
+    the ratio. Changing confidence or class count does not alter the IoU of these two boxes.
+- id: q11
+  topic: Curriculum
+  text: A detector misses many true objects. Lowering its confidence threshold finds more objects, but also adds
+    more false detections. What is the likely metric effect?
+  options:
+  - Recall tends to increase while precision may decrease
+  - Precision tends to increase while recall must remain unchanged
+  - Both precision and recall must decrease
+  - Neither precision nor recall can change
+  answer: 0
+  explanation: A lower threshold generally accepts more predictions, including some previously missed true objects,
+    raising recall. It can also admit more false positives, which may lower precision.
+- id: q12
+  topic: Curriculum
+  text: A system must process video on a device with limited compute, and small increases in localization accuracy
+    are less important than low latency. Which detector design is a reasonable fit?
+  options:
+  - A two-stage detector that first proposes regions and then classifies each region
+  - A one-stage detector that predicts classes and boxes directly in one pass
+  - A sliding-window classifier run at many scales for every frame
+  - A classifier that outputs only the most likely class for each frame
+  answer: 1
+  explanation: One-stage detectors predict boxes and classes in a single pass and are often chosen when inference
+    speed matters. Two-stage and sliding-window approaches generally require more sequential work, while an image
+    classifier does not localize objects.
+- id: q13
+  topic: Curriculum
+  text: In a grid-based detector, an object's center falls inside one grid cell. Which prediction responsibility
+    is most consistent with that setup?
+  options:
+  - The cell predicts information for the object, including its class and box
+  - Every cell predicts the same full-image class distribution
+  - The cell predicts only the object's color, leaving location to postprocessing
+  - The cell is ignored unless the object's corners also fall inside it
+  answer: 0
+  explanation: In grid-based formulations, the cell containing an object's center is commonly assigned responsibility
+    for predicting that object's class and localization. Requiring the entire object to fit inside one cell would
+    make many ordinary detections impossible.
+- id: q14
+  topic: Curriculum
+  text: After applying a crop to a training image, the image changes but its bounding-box labels are left as they
+    were. What is the main likely consequence?
+  options:
+  - The labels no longer match the objects' locations in the transformed image
+  - The labels become more precise because the image has fewer pixels
+  - The model automatically recovers the original box coordinates during training
+  - The crop changes the class labels but leaves box coordinates valid
+  answer: 0
+  explanation: Geometric image transforms change object positions, so corresponding boxes must be transformed or
+    invalid boxes removed. Unchanged coordinates provide incorrect localization targets.
+- id: q15
+  topic: Curriculum
+  text: Two detection models are evaluated on the same dataset. Model A has higher precision at one chosen confidence
+    threshold, but Model B has higher mAP across the evaluated classes and IoU criteria. Which conclusion is best
+    supported?
+  options:
+  - Model A is necessarily better because one threshold determines all detector quality
+  - Model B performs better on the evaluated aggregate detection metric
+  - The models must have identical recall because their precision values differ
+  - Neither model can be compared unless their training losses are identical
+  answer: 1
+  explanation: mAP summarizes average precision across classes and specified IoU criteria, so Model B is better
+    by that evaluated aggregate metric. A single precision measurement at one threshold does not establish overall
+    superiority.
+problem:
+  title: Compute Bounding-Box IoU
+  prompt: Write `box_iou(box_a, box_b)` for two bounding boxes represented as `(x1, y1, x2, y2)`, where the first
+    corner is the top-left and the second is the bottom-right. Return the intersection area divided by the union
+    area. Treat boxes that only touch at an edge as having zero intersection, and return `0.0` if the union area
+    is zero. For example, `box_iou((0, 0, 2, 2), (1, 1, 3, 3))` returns `1/7`.
+  starter_code: "def box_iou(box_a, box_b):\n    \"\"\"Return the intersection-over-union of two (x1, y1, x2, y2)\
+    \ boxes.\"\"\"\n    ..."
+  tests: 'assert abs(box_iou((0, 0, 2, 2), (1, 1, 3, 3)) - 1 / 7) < 1e-9, "overlapping boxes should have IoU 1/7"
+
+    assert box_iou((0, 0, 1, 1), (1, 0, 2, 1)) == 0.0, "edge-touching boxes should have zero intersection"
+
+    assert box_iou((0, 0, 2, 2), (0, 0, 2, 2)) == 1.0, "identical boxes should have IoU 1"
+
+    assert box_iou((0, 0, 0, 1), (0, 0, 1, 1)) == 0.0, "zero-area union should return zero"
+
+    assert abs(box_iou((0, 0, 4, 2), (1, 0, 3, 2)) - 0.5) < 1e-9, "contained boxes should use the union area"'
+  solution: "def box_iou(box_a, box_b):\n    \"\"\"Return the intersection-over-union of two (x1, y1, x2, y2) boxes.\"\
+    \"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n\n    intersection_width = max(0, min(ax2,\
+    \ bx2) - max(ax1, bx1))\n    intersection_height = max(0, min(ay2, by2) - max(ay1, by1))\n    intersection =\
+    \ intersection_width * intersection_height\n\n    area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)\n    area_b\
+    \ = max(0, bx2 - bx1) * max(0, by2 - by1)\n    union = area_a + area_b - intersection\n    return intersection\
+    \ / union if union > 0 else 0.0"
+  packages: []

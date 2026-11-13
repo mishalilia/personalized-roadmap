@@ -1,0 +1,215 @@
+module_id: softlanding/core-systems/systems-networking-data
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Systems, Networking, and Data Foundations
+  text: A laptop needs to send a packet to a server on a different IP subnet. Which device should the laptop send
+    the packet to first?
+  options:
+  - A switch that connects devices on the laptop's local subnet
+  - The router serving as the laptop's default gateway
+  - The server's DNS resolver, which forwards packets between subnets
+  - The server's listening port, which routes packets to other networks
+  answer: 1
+  explanation: The default gateway is the router the laptop uses to reach destinations outside its local subnet.
+    A switch forwards traffic within a local network.
+- id: q2
+  topic: Systems, Networking, and Data Foundations
+  text: A host has address `10.0.2.17/24`. Which address is on the same subnet and can be reached locally without
+    routing to another subnet?
+  options:
+  - 10.0.3.90
+  - 10.0.20.90
+  - 10.1.2.90
+  - 10.0.2.90
+  answer: 3
+  explanation: A `/24` subnet keeps the first three address groups the same, so `10.0.2.90` is in the host's subnet.
+    The other addresses differ within those subnet-defining groups.
+- id: q3
+  topic: Systems, Networking, and Data Foundations
+  text: You are diagramming a small web service that should be reachable from the internet. Which design best limits
+    exposure while still allowing the service to use its database?
+  options:
+  - Expose the public entry point, route allowed traffic to the application, and allow the application to reach
+    a private database
+  - Expose the application and database publicly, and use separate ports to distinguish their traffic
+  - Expose the database publicly, and have the application connect to it through the public entry point
+  - Keep the application public, and allow the database to accept connections from any network
+  answer: 0
+  explanation: The public entry point can accept external traffic and pass only the needed traffic to the application.
+    Keeping the database private and allowing access from the application limits its exposure.
+- id: q4
+  topic: Systems, Networking, and Data Foundations
+  text: An application listens on port 8000, but a different machine cannot reach it. The machine running the app
+    can reach it locally, and `ss -ltn` shows `127.0.0.1:8000`. What is the most likely fix?
+  options:
+  - Change the app to use a public DNS name instead of an IP address
+  - Change the client to use port 443 while leaving the app unchanged
+  - Configure the app to listen on an address reachable from the other machine
+  - Restart the app with the same loopback listening address
+  answer: 2
+  explanation: '`127.0.0.1` is the loopback address, so the app accepts connections only from its own machine. It
+    needs to listen on an appropriate network interface address to accept remote connections.'
+- id: q5
+  topic: Systems, Networking, and Data Foundations
+  text: Your application is listening on port 8000, but your test command is `curl http://localhost:8001/`. The
+    connection fails. What should you try first?
+  options:
+  - Change the URL to use the application's listening port, 8000
+  - Replace `localhost` with the application's public IP address
+  - Add an HTTP `Host` header for port 8000
+  - Restart the application with the same configuration
+  answer: 0
+  explanation: The client is connecting to port 8001, while the application listens on port 8000. Matching the URL's
+    port to the listening port is the first thing to try.
+- id: q6
+  topic: Systems, Networking, and Data Foundations
+  text: '`curl -i http://localhost:8000/missing` returns an HTTP `404` response. What does this result most strongly
+    suggest?'
+  options:
+  - The request could not reach any HTTP server on the machine
+  - The DNS name could not be translated into an IP address
+  - The server rejected the connection before receiving the request
+  - An HTTP server responded, but it did not find that route or resource
+  answer: 3
+  explanation: A `404` is an HTTP response, so the request reached a server that returned a response. It indicates
+    that the requested resource or route was not found.
+- id: q7
+  topic: Systems, Networking, and Data Foundations
+  text: A client sends JSON in the body of a POST request. Which request header best tells the server how to interpret
+    that body?
+  options:
+  - '`Content-Type: application/json`'
+  - '`Accept: application/json`'
+  - '`Content-Length: application/json`'
+  - '`Host: application/json`'
+  answer: 0
+  explanation: '`Content-Type` describes the format of the request body, so `application/json` tells the server
+    to interpret it as JSON. `Accept` instead describes the response format the client can accept.'
+- id: q8
+  topic: Systems, Networking, and Data Foundations
+  text: A request to a service's IP address succeeds, but a request to its hostname fails before an HTTP response
+    appears. Which check should you make first?
+  options:
+  - Whether the application's database transaction was committed
+  - Whether DNS resolves the hostname to the expected IP address
+  - Whether the server's HTTP response has a `Content-Type` header
+  - Whether the server's process has permission to read its logs
+  answer: 1
+  explanation: Because the IP address works but the hostname does not, name resolution is a likely point of failure.
+    Checking the DNS result can show whether the hostname maps to the expected address.
+- id: q9
+  topic: Systems, Networking, and Data Foundations
+  text: A browser reaches a service over HTTPS but reports that the certificate is for a different hostname. What
+    is the most appropriate next step?
+  options:
+  - Assume the encrypted connection proves the service is the intended one
+  - Switch to plain HTTP so the hostname check no longer applies
+  - Investigate why the certificate does not match the hostname being used
+  - Change the request's `Content-Type` header to the certificate's hostname
+  answer: 2
+  explanation: HTTPS uses certificates to help verify the server's identity as well as encrypt traffic. A hostname
+    mismatch should be investigated rather than treated as proof that the intended service was reached.
+- id: q10
+  topic: Systems, Networking, and Data Foundations
+  text: A local request to an application's expected port is refused. `ss -ltnp` shows no process listening on that
+    port, and a process listing shows the application is absent. What should you investigate first?
+  options:
+  - Whether the application process stopped or failed to start
+  - Whether the DNS record points to the local machine
+  - Whether the remote firewall allows traffic to the port
+  - Whether the client sent the expected HTTP header
+  answer: 0
+  explanation: There is no listening process and the application process is absent, so the immediate issue is likely
+    that it stopped or failed to start. DNS, remote firewall rules, and HTTP headers do not explain the missing
+    local listener.
+- id: q11
+  topic: Systems, Networking, and Data Foundations
+  text: A service listens on `0.0.0.0:8080`, and a request from the server itself succeeds. A remote request times
+    out. Which investigation is most useful next?
+  options:
+  - Whether the service's DNS name has a different spelling in the request
+  - Whether the service returned a `404` for the remote client's route
+  - Whether the database connection uses a parameterized query
+  - Whether routing or firewall rules allow remote traffic to port 8080
+  answer: 3
+  explanation: '`0.0.0.0` indicates the service is listening on all IPv4 interfaces, and the local request succeeds.
+    A remote timeout makes the network path or firewall rules a useful next place to investigate.'
+- id: q12
+  topic: Systems, Networking, and Data Foundations
+  text: You need to SSH into an assigned machine using a key pair. Which setup allows the server to authenticate
+    your key without sending your private key to the server?
+  options:
+  - Copy the private key into the server's `authorized_keys` file
+  - Put the public key in the server user's `authorized_keys` file and keep the private key on your machine
+  - Put the public key in the server's `known_hosts` file and send the private key with each command
+  - Store both keys in the server user's `authorized_keys` file
+  answer: 1
+  explanation: The server checks the client's key using the public key in `authorized_keys`, while the private key
+    stays with the client. The private key should not be copied to the server.
+- id: q13
+  topic: Systems, Networking, and Data Foundations
+  text: You want `app.py` to read `APP_PORT` as `9000` only while it runs. Which command sets that environment variable
+    for the application process?
+  options:
+  - '`python app.py APP_PORT=9000`'
+  - '`APP_PORT=9000 python app.py`'
+  - '`python APP_PORT=9000 app.py`'
+  - '`APP_PORT python app.py 9000`'
+  answer: 1
+  explanation: The `NAME=value command` form starts that command with the variable in its environment. The other
+    forms pass the value as an argument or do not set the variable as intended.
+- id: q14
+  topic: Systems, Networking, and Data Foundations
+  text: A user supplies `email`, and you need to find a matching row in SQLite. Which query approach safely treats
+    the value as data rather than SQL syntax?
+  options:
+  - '`cursor.execute("SELECT * FROM users WHERE email = ?", (email,))`'
+  - '`cursor.execute("SELECT * FROM users WHERE email = ''" + email + "''")`'
+  - '`cursor.execute(f"SELECT * FROM users WHERE email = ''{email}''")`'
+  - '`cursor.execute("SELECT * FROM users WHERE email = ?", email)`'
+  answer: 0
+  explanation: A placeholder lets SQLite bind the supplied value separately from the SQL statement. The one-element
+    tuple `(email,)` provides the parameter in the expected form.
+- id: q15
+  topic: Systems, Networking, and Data Foundations
+  text: Your SQLite code inserts a row and then closes the connection, but the row is missing when the database
+    is reopened. What should you do before closing the connection?
+  options:
+  - Run the insert a second time using the same cursor
+  - Open a new connection and query the row before closing the first one
+  - Commit the transaction containing the insert
+  - Set the database filename as an environment variable
+  answer: 2
+  explanation: The insert is part of a transaction, and committing it makes the change persist in the database.
+    Closing a connection with an uncommitted transaction can discard the change.
+problem:
+  title: Persist and retrieve SQLite events
+  prompt: 'Write `persist_events(db_path, messages)`. It should create an `events` table if needed, append each
+    message to the database, commit the inserts, close the connection, and return all messages in insertion order.
+    Calling it again with the same database path should preserve earlier messages.
+
+
+    Example call: `persist_events("events.db", ["started", "ready"])` should return `["started", "ready"]`.'
+  starter_code: "def persist_events(db_path, messages):\n    \"\"\"Append messages to a SQLite database and return\
+    \ all messages in order.\"\"\"\n    ..."
+  tests: "import os\nimport tempfile\n\n# Windows cannot delete a database file that is still open, so a connection\
+    \ left open must not fail the tests.\nwith tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:\n\
+    \    path = os.path.join(directory, \"events.db\")\n    assert persist_events(path, [\"started\", \"ready\"\
+    ]) == [\"started\", \"ready\"], \"should save and return new messages\"\n    assert persist_events(path, [\"\
+    stopped\"]) == [\"started\", \"ready\", \"stopped\"], \"should preserve messages across calls\"\n    assert\
+    \ persist_events(path, []) == [\"started\", \"ready\", \"stopped\"], \"no new messages should still return the\
+    \ saved ones\""
+  solution: "import sqlite3\nfrom contextlib import closing\n\n\ndef persist_events(db_path, messages):\n    \"\"\
+    \"Append messages to a SQLite database and return all messages in order.\"\"\"\n    # `with connection` only\
+    \ commits; `closing` is what closes the connection.\n    with closing(sqlite3.connect(db_path)) as connection:\n\
+    \        with connection:\n            connection.execute(\n                \"CREATE TABLE IF NOT EXISTS events\
+    \ (id INTEGER PRIMARY KEY, message TEXT NOT NULL)\"\n            )\n            connection.executemany(\n  \
+    \              \"INSERT INTO events (message) VALUES (?)\",\n                [(message,) for message in messages],\n\
+    \            )\n        rows = connection.execute(\"SELECT message FROM events ORDER BY id\").fetchall()\n \
+    \   return [row[0] for row in rows]"
+  packages:
+  - sqlite3

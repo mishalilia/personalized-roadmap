@@ -1,0 +1,211 @@
+module_id: engineering-fundamentals/math-for-ai
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Linear algebra
+  text: A model combines two feature vectors using a dot product. What does `u = [2, -1]; v = [3, 4]; sum(a*b for
+    a, b in zip(u, v))` produce?
+  options:
+  - '2'
+  - '10'
+  - '14'
+  - '-2'
+  answer: 0
+  explanation: 'The dot product is the sum of corresponding products: 2×3 + (−1)×4 = 2.'
+- id: q2
+  topic: Linear algebra
+  text: A matrix `A` has shape `(2, 3)` and a matrix `B` has shape `(3, 1)`. What shape does `A @ B` have?
+  options:
+  - (3, 1)
+  - (2, 3)
+  - (2, 1)
+  - The multiplication is invalid.
+  answer: 2
+  explanation: The inner dimensions match, so the product is valid; its shape uses the outer dimensions, `(2, 1)`.
+- id: q3
+  topic: Linear algebra
+  text: You want to apply a matrix `A` to each of four column vectors stored as the columns of `X`, where `A` has
+    shape `(3, 2)` and `X` has shape `(2, 4)`. Which operation gives four transformed 3D vectors?
+  options:
+  - '`X @ A`'
+  - '`A @ X`'
+  - '`A + X`'
+  - '`A.T @ X`'
+  answer: 1
+  explanation: '`A @ X` is valid because the inner dimensions are both 2, and its result has shape `(3, 4)`, one
+    3D result per column.'
+- id: q4
+  topic: Linear algebra
+  text: A learner tries to multiply a `(2, 3)` matrix `A` by a `(2, 1)` vector `b` using `A @ b`, but gets a shape
+    error. What change makes the multiplication valid while keeping `b` as a vector?
+  options:
+  - Change `A` to shape `(3, 2)` by transposing it.
+  - Add `A` and `b` instead of multiplying.
+  - Change `b` to shape `(1, 2)`.
+  - Change `b` to shape `(3, 1)`.
+  answer: 3
+  explanation: Matrix multiplication requires the number of columns in `A` to equal the number of rows in `b`. A
+    `(3, 1)` vector satisfies that requirement and produces a `(2, 1)` result.
+- id: q5
+  topic: Linear algebra
+  text: A feature vector should be scaled by 3 without changing its direction. If `x = [1, -2]`, what is the result
+    of `3 * x`?
+  options:
+  - '[3, -6]'
+  - '[4, 1]'
+  - '[1, -6]'
+  - '[3, -2]'
+  answer: 0
+  explanation: Scalar multiplication multiplies every component by 3, giving `[3, -6]`.
+- id: q6
+  topic: Linear algebra
+  text: A data table is stored as a matrix with 5 rows (examples) and 2 columns (features). After transposing it,
+    what do the rows represent?
+  options:
+  - The same 5 examples, with 2 features each
+  - Two feature rows, each containing values for 5 examples
+  - Ten examples, each with one feature
+  - The transpose cannot be formed because the matrix is not square
+  answer: 1
+  explanation: Transposing swaps rows and columns, so each of the 2 features becomes a row containing values for
+    the 5 examples.
+- id: q7
+  topic: Linear algebra
+  text: A computation should leave every vector unchanged before another transformation is applied. Which matrix
+    should be used for that step?
+  options:
+  - A matrix whose entries are all 1
+  - A matrix with all diagonal entries 0
+  - An identity matrix of the matching size
+  - A matrix with the same number of rows but any number of columns
+  answer: 2
+  explanation: Multiplying by a matching-size identity matrix leaves the vector unchanged, just as multiplying a
+    number by 1 does.
+- id: q8
+  topic: Linear algebra
+  text: A model combines two vectors as `2*x + y`. If `x = [1, 3]` and `y = [4, -1]`, what is the combined vector?
+  options:
+  - '[6, 5]'
+  - '[5, 2]'
+  - '[6, 7]'
+  - '[3, 4]'
+  answer: 0
+  explanation: First scale `x` to `[2, 6]`, then add `y` component by component to get `[6, 5]`.
+- id: q9
+  topic: Probability & statistics
+  text: A bag contains 3 red and 2 blue tokens. You draw one token, see that it is red, and do not replace it. What
+    is the probability the next token is red?
+  options:
+  - 3/5
+  - 2/5
+  - 1/2
+  - 3/4
+  answer: 2
+  explanation: After a red token is removed, 2 red tokens remain among 4 total tokens, so the probability is 2/4
+    = 1/2.
+- id: q10
+  topic: Probability & statistics
+  text: A poll about a citywide issue surveys only people leaving one downtown office building. What is the most
+    likely problem when using this poll to estimate the views of all city residents?
+  options:
+  - The poll is biased because this group may not represent all residents.
+  - The sample mean must equal the population mean.
+  - The poll has no sampling uncertainty because everyone was asked at that location.
+  - The poll is necessarily representative if it includes many people.
+  answer: 0
+  explanation: People leaving one office building may differ from other city residents, so the sample can systematically
+    miss parts of the population.
+- id: q11
+  topic: Probability & statistics
+  text: A researcher increases the size of each independent random sample from 25 people to 100 people. What generally
+    happens to the standard error of the sample mean?
+  options:
+  - It doubles.
+  - It stays the same.
+  - It becomes four times as large.
+  - It becomes about half as large.
+  answer: 3
+  explanation: The standard error of a mean decreases in proportion to `1/√n`; quadrupling the sample size makes
+    it about half as large.
+- id: q12
+  topic: Probability & statistics
+  text: A study reports a 95% confidence interval for a population mean of `[10, 14]`. Which interpretation is appropriate?
+  options:
+  - There is a 95% chance that every individual measurement is between 10 and 14.
+  - The method used to make such intervals would capture the true population mean in about 95% of repeated samples.
+  - Exactly 95% of the sample values are between 10 and 14.
+  - The population mean must be 12.
+  answer: 1
+  explanation: A confidence interval describes the long-run performance of the interval-making method across repeated
+    samples, not the spread of individual values.
+- id: q13
+  topic: Probability & statistics
+  text: A one-sample significance test gives a p-value of 0.03, and the chosen significance level is 0.05. What
+    is the appropriate conclusion?
+  options:
+  - The null hypothesis is proven false with 97% probability.
+  - The result is not statistically significant because 0.03 is less than 0.05.
+  - Reject the null hypothesis at this significance level; the data would be relatively unusual under the null model.
+  - Accept the null hypothesis because the p-value is close to zero.
+  answer: 2
+  explanation: Since 0.03 is below 0.05, the result is statistically significant at the chosen level. A p-value
+    is not the probability that the null hypothesis is true.
+- id: q14
+  topic: Probability & statistics
+  text: A dataset has values `[2, 3, 3, 4, 28]`. Which summary is less affected by the unusually large value 28?
+  options:
+  - The median
+  - The mean
+  - The range
+  - The maximum
+  answer: 0
+  explanation: The median is the middle value, 3, and is less affected by an extreme value than the mean, range,
+    or maximum.
+- id: q15
+  topic: Probability & statistics
+  text: A fair coin is flipped twice. What is the probability of getting exactly one head?
+  options:
+  - 1/4
+  - 1/2
+  - 3/4
+  - '1'
+  answer: 1
+  explanation: The equally likely outcomes are HH, HT, TH, and TT; exactly one head occurs in HT and TH, so the
+    probability is 2/4 = 1/2.
+problem:
+  title: Calculate a Sample Mean and Standard Error
+  prompt: Write `sample_mean_and_se(values)` to return the sample mean and the standard error of the mean as a tuple
+    `(mean, standard_error)`. Use the sample standard deviation, calculated with denominator `n - 1`, and then divide
+    it by `sqrt(n)`. Assume the input contains at least two numbers. For example, `sample_mean_and_se([2, 4, 6])`
+    should return `(4.0, 1.1547005383792517)` (approximately).
+  starter_code: "def sample_mean_and_se(values):\n    \"\"\"Return the sample mean and its standard error.\"\"\"\
+    \n    ..."
+  tests: 'import math
+
+
+    mean, se = sample_mean_and_se([2, 4, 6])
+
+    assert math.isclose(mean, 4.0), "mean should be the average of the values"
+
+    assert math.isclose(se, math.sqrt(4 / 3)), "SE should use sample standard deviation"
+
+
+    mean, se = sample_mean_and_se([5, 5, 5, 5])
+
+    assert math.isclose(mean, 5.0), "mean should handle repeated values"
+
+    assert math.isclose(se, 0.0), "identical values should have zero standard error"
+
+
+    mean, se = sample_mean_and_se([1, 2])
+
+    assert math.isclose(mean, 1.5), "mean should work for a two-value sample"
+
+    assert math.isclose(se, 0.5), "two-value sample should use denominator n - 1"'
+  solution: "import math\n\ndef sample_mean_and_se(values):\n    \"\"\"Return the sample mean and its standard error.\"\
+    \"\"\n    n = len(values)\n    mean = sum(values) / n\n    sample_variance = sum((value - mean) ** 2 for value\
+    \ in values) / (n - 1)\n    standard_error = math.sqrt(sample_variance) / math.sqrt(n)\n    return mean, standard_error"
+  packages: []

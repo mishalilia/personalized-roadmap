@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     config_dir: Path = Path("config")
     data_dir: Path = Path("data")
     output_dir: Path = Path("out")  # where saved paths are looked for; git-ignored
+    # Reviewed checkpoint questions: checkpoints/<curriculum version>/<module id>.yaml.
+    checkpoints_dir: Path = Path("checkpoints")
 
     @property
     def llm_api_keys(self) -> dict[str, SecretStr]:
@@ -48,8 +50,9 @@ class Settings(BaseSettings):
         return self.config_dir / "profiles.yaml"
 
     @property
-    def curriculum_checkout(self) -> Path:
-        return self.data_dir / "curriculum"
+    def curricula_dir(self) -> Path:
+        """One shared clone of the curriculum and a checkout per version."""
+        return self.data_dir / "curricula"
 
 
 def read_yaml(path: Path) -> Any:

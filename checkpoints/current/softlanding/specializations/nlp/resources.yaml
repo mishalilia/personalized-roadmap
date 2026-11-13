@@ -1,0 +1,234 @@
+module_id: softlanding/specializations/nlp/resources
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Curriculum
+  text: You are preparing short reviews for a bag-of-words classifier. The labels depend on words such as “not,”
+    so removing every common stopword could remove useful signals. What is the best preprocessing choice?
+  options:
+  - Lowercase and tokenize the reviews, then remove stopwords only if they are not useful for the task
+  - Remove all stopwords first, then lowercase only the words that remain
+  - Keep the text unchanged because bag-of-words models require original capitalization
+  - Replace each review with its most frequent word before building features
+  answer: 0
+  explanation: Lowercasing and tokenization are useful preprocessing steps, but stopword removal should depend on
+    the task. Removing “not” could erase information important for sentiment.
+- id: q2
+  topic: Curriculum
+  text: A term appears in nearly every document in a collection. You switch from raw word counts to TF-IDF features.
+    What is the likely effect on that term’s feature values?
+  options:
+  - Its values increase because its frequent occurrence makes it more informative
+  - Its values decrease because appearing in many documents makes it less distinctive
+  - Its values stay the same because TF-IDF only changes the vocabulary order
+  - Its values become zero in every document once the term is sufficiently common
+  answer: 1
+  explanation: TF-IDF downweights terms that occur across many documents, since they help distinguish documents
+    less. The term can still have nonzero values.
+- id: q3
+  topic: Curriculum
+  text: A text classifier uses unigrams, then you add bigrams. What is a likely trade-off as a result?
+  options:
+  - The feature space grows, and phrase-specific signals may improve while the representation becomes sparser
+  - The feature space shrinks, and each feature represents a broader range of phrases
+  - The feature space stays the same, but word order is removed from the representation
+  - The feature space grows, and the model automatically learns the meaning of every phrase
+  answer: 0
+  explanation: Bigrams add features for adjacent word pairs, which can capture useful phrases but usually enlarge
+    the vocabulary and increase sparsity. They do not automatically encode phrase meaning.
+- id: q4
+  topic: Curriculum
+  text: In a corpus, “doctor” and “nurse” often appear near similar words. A team wants a representation in which
+    these words may be close even though they are different tokens. Which approach best fits that goal?
+  options:
+  - Use raw counts for each word, keeping every word in a separate feature dimension
+  - Remove both words as stopwords before counting the remaining terms
+  - Train word embeddings to learn representations from patterns of surrounding words
+  - Increase the number of bigrams until the words share the same feature
+  answer: 2
+  explanation: Embeddings can place words with similar usage contexts near one another, even when their surface
+    forms differ. Separate count features do not inherently capture that similarity.
+- id: q5
+  topic: Curriculum
+  text: You want a Word2Vec model to predict a target word from the surrounding context words. Which architecture
+    matches this training setup?
+  options:
+  - Skip-gram, because it predicts context words from a target word
+  - CBOW, because it predicts a target word from its context
+  - GloVe, because it predicts each next word using a causal attention mask
+  - Skip-gram, because it averages all context words to predict one target
+  answer: 1
+  explanation: CBOW uses surrounding context to predict the center word. Skip-gram uses the center word to predict
+    surrounding context words.
+- id: q6
+  topic: Curriculum
+  text: An embedding model produces a strong similarity between two occupations and a demographic group, reflecting
+    patterns in its training text. What is the most responsible next step before using it in a product?
+  options:
+  - Treat the similarity as evidence that the association is objectively correct
+  - Remove the demographic words from the vocabulary and assume the pattern is gone
+  - Check for bias patterns and evaluate their likely impact in the intended use
+  - Increase the vector dimensions so the association becomes less influential
+  answer: 2
+  explanation: Embeddings can encode social biases present in their training data, so the association should be
+    investigated and assessed in context. Removing a few words or changing dimensionality does not guarantee that
+    the bias is eliminated.
+- id: q7
+  topic: Curriculum
+  text: In self-attention, a token’s query is compared with keys from other tokens to produce attention weights.
+    What happens next?
+  options:
+  - The weights combine the corresponding value vectors into a context-aware representation
+  - The weights replace the value vectors, which are then used as position identifiers
+  - The keys are averaged first, and the query is added unchanged to that average
+  - The values are used to compute the weights, while queries are summed into the output
+  answer: 0
+  explanation: Attention scores derived from queries and keys are normalized into weights, which are then used to
+    combine value vectors. This gives each token a representation informed by relevant tokens.
+- id: q8
+  topic: Curriculum
+  text: A self-attention layer receives the same token embeddings for “dog bites person” and “person bites dog,”
+    with no positional information. Why might it struggle to distinguish the two sequences?
+  options:
+  - The attention layer cannot compare representations unless the tokens are all unique
+  - Without positional information, it has no direct signal for the tokens’ sequence order
+  - Self-attention always reads tokens from right to left, regardless of the input
+  - The attention layer discards the token embeddings and uses only the sequence length
+  answer: 1
+  explanation: Self-attention needs positional information to represent where tokens occur in a sequence. Without
+    it, the layer has no direct way to distinguish the order of the same tokens.
+- id: q9
+  topic: Curriculum
+  text: A team is choosing between an RNN and a Transformer for training on long sequences. Which advantage can
+    a Transformer offer during training?
+  options:
+  - It processes tokens sequentially, so each token can use the completed hidden state of the previous token
+  - It can compute representations for multiple positions in parallel, rather than relying on a recurrent step for
+    each token
+  - It requires no training data because attention weights are determined by token order
+  - It guarantees lower memory use than an RNN for every sequence length
+  answer: 1
+  explanation: Transformers can process many sequence positions in parallel during training, unlike architectures
+    that depend on sequential recurrent steps. This does not guarantee lower memory use in every setting.
+- id: q10
+  topic: Curriculum
+  text: A model is trained to generate the next word in a sentence without looking at later words. Which setup is
+    most appropriate?
+  options:
+  - A masked language model that predicts randomly hidden words using both directions
+  - A causal language model that restricts each position to current and earlier tokens
+  - A bag-of-words model that predicts the next token from document-level counts
+  - A causal language model that allows every position to attend to later tokens
+  answer: 1
+  explanation: Next-token generation uses a causal objective, where a position cannot use future tokens when making
+    its prediction. Masked language models instead predict hidden tokens using surrounding context.
+- id: q11
+  topic: Curriculum
+  text: A general-purpose language model performs poorly on a company’s specialized support style, even when given
+    clear instructions in the prompt. The team has examples of the desired responses and wants to adapt the model’s
+    behavior. Which next step best fits?
+  options:
+  - Continue prompting with the same instructions, without providing examples
+  - Fine-tune the model on suitable examples of the desired task and style
+  - Pretrain a new model from scratch using only the company’s examples
+  - Use a masked language model to generate every support response
+  answer: 1
+  explanation: Fine-tuning can adapt a pretrained model to task-specific examples and style. Pretraining from scratch
+    is generally unnecessary for this goal, while repeating the same prompt may not address the limitation.
+- id: q12
+  topic: Curriculum
+  text: A team needs to adapt a large model but has limited GPU memory. It wants to train fewer parameters while
+    leaving the original model weights mostly unchanged. Which approach is the best fit?
+  options:
+  - Full fine-tuning, updating every model parameter with a smaller learning rate
+  - LoRA, adding trainable low-rank updates while keeping the base weights frozen
+  - Prompting, updating all model weights after each prompt
+  - Increasing the model size so its existing representations cover the task
+  answer: 1
+  explanation: LoRA trains small low-rank adaptation matrices rather than updating all base-model parameters, which
+    reduces memory and training demands. Full fine-tuning still updates the full set of weights.
+- id: q13
+  topic: Curriculum
+  text: An engineer wants to fine-tune a large model on a single GPU with limited memory. Which description best
+    captures why QLoRA may help?
+  options:
+  - It quantizes the base model to reduce memory use and trains low-rank adapters
+  - It removes the model’s attention layers and trains the remaining weights in full precision
+  - It stores all gradients in the dataset so the GPU does not need model weights
+  - It replaces fine-tuning with retrieval, so the model parameters never affect outputs
+  answer: 0
+  explanation: QLoRA combines a quantized base model, which uses less memory, with trainable low-rank adapters.
+    It does not remove the model’s attention layers or replace training with retrieval.
+- id: q14
+  topic: Curriculum
+  text: A RAG system retrieves documents for questions about a long technical manual. Retrieval often returns chunks
+    that omit the sentence explaining an important term. What is a sensible next experiment?
+  options:
+  - Use larger or overlapping chunks and compare retrieval quality on representative questions
+  - Remove overlap and use smaller chunks so each result contains fewer words
+  - Ask the language model to answer from its general knowledge instead of retrieving documents
+  - Increase the embedding dimension without changing the chunking or evaluation
+  answer: 0
+  explanation: Larger or overlapping chunks can keep related context together, which may help retrieval return the
+    relevant explanation. The team should compare the change on representative questions rather than assume it will
+    always help.
+- id: q15
+  topic: Curriculum
+  text: A support assistant must check an order’s current shipping status. The information is available from an
+    order-status API. Which design is most appropriate?
+  options:
+  - Have the model invent a likely status based on the customer’s message
+  - Use retrieval over old support conversations as a substitute for checking the order
+  - Let the assistant call a defined tool that queries the API, then use its result in the response
+  - Ask a second language model to estimate the status from the first model’s response
+  answer: 2
+  explanation: A tool call lets the assistant obtain the current status from the authoritative API and use that
+    result in its response. Guessing or consulting old conversations cannot reliably provide current order data.
+problem:
+  title: Build TF-IDF features
+  prompt: Write `tfidf_features(documents)` for a list of strings, where each document contains whitespace-separated
+    words. Treat words case-insensitively, split on whitespace, and return `(vocabulary, vectors)`. `vocabulary`
+    should be a sorted list of all unique terms. `vectors` should be a list of dictionaries, one per document, containing
+    each present term’s TF-IDF value. Use term frequency `count / number_of_terms_in_document` and smoothed inverse
+    document frequency `log((N + 1) / (df + 1)) + 1`, where `N` is the number of documents and `df` is the number
+    of documents containing the term. Omit terms with zero count; an empty document has an empty vector. For example,
+    `tfidf_features(["Red fox", "red bird"])` should return a vocabulary of `["bird", "fox", "red"]` and two vectors
+    containing their nonzero weights.
+  starter_code: "def tfidf_features(documents):\n    \"\"\"Return a sorted vocabulary and one TF-IDF dictionary\
+    \ per document.\"\"\"\n    ..."
+  tests: 'import math
+
+
+    vocab, vectors = tfidf_features(["Red fox", "red bird"])
+
+    assert vocab == ["bird", "fox", "red"], "vocabulary should be sorted and case-insensitive"
+
+    assert len(vectors) == 2, "return one vector per document"
+
+    assert math.isclose(vectors[0]["red"], 0.5), "term frequency should divide by document length"
+
+    assert math.isclose(vectors[0]["fox"], 0.5 * (math.log(3 / 2) + 1)), "use smoothed IDF"
+
+    assert "bird" not in vectors[0], "omit terms absent from a document"
+
+
+    vocab, vectors = tfidf_features(["", "Maple maple"])
+
+    assert vocab == ["maple"], "ignore empty tokens and lowercase terms"
+
+    assert vectors[0] == {}, "an empty document should have an empty vector"
+
+    assert math.isclose(vectors[1]["maple"], math.log(3 / 2) + 1), "repeated terms should use normalized term frequency"'
+  solution: "from collections import Counter\nfrom math import log\n\n\ndef tfidf_features(documents):\n    \"\"\
+    \"Return a sorted vocabulary and one TF-IDF dictionary per document.\"\"\"\n    token_lists = [document.lower().split()\
+    \ for document in documents]\n    vocabulary = sorted({token for tokens in token_lists for token in tokens})\n\
+    \    document_count = len(token_lists)\n    document_frequency = Counter(\n        token for tokens in token_lists\
+    \ for token in set(tokens)\n    )\n\n    vectors = []\n    for tokens in token_lists:\n        counts = Counter(tokens)\n\
+    \        length = len(tokens)\n        vector = {}\n        if length:\n            for token, count in counts.items():\n\
+    \                tf = count / length\n                idf = log((document_count + 1) / (document_frequency[token]\
+    \ + 1)) + 1\n                vector[token] = tf * idf\n        vectors.append(vector)\n\n    return vocabulary,\
+    \ vectors"
+  packages: []

@@ -19,9 +19,25 @@ class Resource(BaseModel):
     title: str
     url: str
     type: str
-    difficulty: Level
-    duration: str
+    difficulty: Level | None = (
+        None  # the current curriculum leaves it out of most resources
+    )
+    duration: str = ""
     note: str  # why the curriculum authors recommend it
+
+
+class Hours(BaseModel):
+    """A time estimate, as a range."""
+
+    low: float
+    high: float
+
+
+class Topic(BaseModel):
+    """A part of a module, as its authors head it, with the outcomes they list for it."""
+
+    title: str
+    outcomes: list[str] = []
 
 
 class Module(BaseModel):
@@ -37,6 +53,12 @@ class Module(BaseModel):
     # The authors' completion checklist, as Markdown. A learner who can already do all of
     # it may prove the module instead of studying it.
     checklist: list[str]
+    # The module's parts and their stated outcomes: what a checkpoint asks about. Paths saved before
+    # checkpoints existed have none.
+    topics: list[Topic] = []
+    # The authors' estimate of the module's workload, or the sum of its resources' durations; None when
+    # neither is stated.
+    hours: Hours | None = None
 
     @property
     def can_be_proved(self) -> bool:
@@ -58,6 +80,8 @@ class Attribution(BaseModel):
 
 
 class Curriculum(BaseModel):
-    version: str
+    version: str  # the commit
+    # The curriculum site's name for this version, such as "current" or "2026-10-06", where known.
+    site_version: str | None = None
     attribution: Attribution
     modules: list[Module]
