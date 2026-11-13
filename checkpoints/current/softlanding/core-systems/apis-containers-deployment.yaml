@@ -1,0 +1,213 @@
+module_id: softlanding/core-systems/apis-containers-deployment
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: APIs, Containers, and Deployment
+  text: 'Given `class Request(BaseModel): text: str` and a `POST /predict` route that accepts `Request`, a client
+    sends `{}`. What should the route normally return?'
+  options:
+  - A successful response with an empty string for `text`
+  - A validation error response, normally with status 422
+  - A server error because the route cannot be registered
+  - A successful response with `text` set to `None`
+  answer: 1
+  explanation: The request model requires `text`, so FastAPI rejects a body that omits it before calling the route.
+    Invalid request data normally produces a 422 response.
+- id: q2
+  topic: APIs, Containers, and Deployment
+  text: A route declares `response_model=PublicResult` and returns a dictionary containing all fields in `PublicResult`
+    plus an internal `debug_token`. With default Pydantic behavior, what does the client receive?
+  options:
+  - The declared fields, with `debug_token` omitted
+  - Every field, because the route returned a dictionary
+  - A validation error because dictionaries cannot be responses
+  - A server error because response models reject extra fields
+  answer: 0
+  explanation: FastAPI validates and serializes the result using the response model. With the default handling of
+    extra fields, `debug_token` is excluded from the response.
+- id: q3
+  topic: APIs, Containers, and Deployment
+  text: Your endpoint receives valid input, but the model service it calls is temporarily unavailable. Which response
+    is the best fit?
+  options:
+  - Return 200 with a prediction of `null`
+  - Return 422 because the prediction could not be computed
+  - Return a 503 error indicating the service is temporarily unavailable
+  - Return 404 because the model service could not be reached
+  answer: 2
+  explanation: The input is valid, but a required service is unavailable, so a 503 communicates a temporary service
+    failure. A 422 is for invalid client input.
+- id: q4
+  topic: APIs, Containers, and Deployment
+  text: A browser page at `http://localhost:5173` needs to call your API at `http://localhost:8000` using an authorization
+    header. Which CORS setup is the best starting point?
+  options:
+  - Allow every origin and every header, with credentials enabled
+  - Allow only `http://localhost:8000` and the API's GET method
+  - Disable CORS because both URLs use localhost
+  - Allow `http://localhost:5173` and the required method and headers
+  answer: 3
+  explanation: CORS checks the browser page's origin, which is `http://localhost:5173`, not the API's origin. The
+    API should allow that origin and the methods and headers the client actually uses.
+- id: q5
+  topic: APIs, Containers, and Deployment
+  text: You use FastAPI's lifespan context to load a model before `yield` and release it after `yield`. If the app
+    runs with multiple worker processes, when is the model loaded?
+  options:
+  - Once for the whole deployment, shared by every worker
+  - Once per request, just before inference
+  - Once per worker process when that worker starts
+  - Only when the first request reaches the prediction route
+  answer: 2
+  explanation: Each worker is a separate process with its own app lifespan, so it loads and releases its own model
+    resource. This avoids loading the resource anew for every request.
+- id: q6
+  topic: APIs, Containers, and Deployment
+  text: You want to check feature-preparation logic independently of HTTP routing. Which test is the best fit?
+  options:
+  - Call the pure feature-preparation function with input data and assert its result
+  - Start the deployed service and inspect its access logs
+  - Call the route through a browser and compare the page layout
+  - Build a Docker image and check that its size is unchanged
+  answer: 0
+  explanation: Calling the pure function directly tests inference-related logic without involving HTTP handling.
+    Route and deployment tests can be added separately.
+- id: q7
+  topic: APIs, Containers, and Deployment
+  text: A route calls `run_inference(data)`. You want an HTTP test to verify that an inference exception becomes
+    a 5xx response without loading the real model. What is the best approach?
+  options:
+  - Send malformed JSON and expect the route to raise an inference exception
+  - Replace or mock `run_inference` in the test so it raises, then call the route
+  - Skip the route test and assert that the model file exists
+  - Change the route to return a successful response when inference raises
+  answer: 1
+  explanation: Replacing the inference call lets the test exercise the route's error handling without depending
+    on a real model. Malformed JSON tests request parsing, not inference failure.
+- id: q8
+  topic: APIs, Containers, and Deployment
+  text: The app exposes a basic readiness endpoint, and the model must be loaded before predictions can work. What
+    should the endpoint do if startup has not loaded the model?
+  options:
+  - Return 200 because the HTTP server accepted the request
+  - Run a full prediction on every health check
+  - Return 404 because the prediction route is not ready
+  - Report that the app is not ready, using a non-2xx status
+  answer: 3
+  explanation: A readiness check should not report the service ready when a required resource is unavailable. It
+    can check resource state without running an expensive prediction for every probe.
+- id: q9
+  topic: APIs, Containers, and Deployment
+  text: A container starts the API server on `127.0.0.1:8000` inside the container. The port is published to the
+    host, but requests from the host cannot reach the API. What change is most likely needed?
+  options:
+  - Bind the server to `0.0.0.0` inside the container
+  - Change the API route prefix from `/` to `/api`
+  - Set the container's CORS origins to `0.0.0.0`
+  - Run the server on a different loopback address
+  answer: 0
+  explanation: Binding to `0.0.0.0` lets the server accept connections on the container's network interfaces. Binding
+    only to `127.0.0.1` limits it to loopback inside the container.
+- id: q10
+  topic: APIs, Containers, and Deployment
+  text: The same image must run in local and assigned hosted environments, each with a different model path. What
+    is the best way to supply that value?
+  options:
+  - Edit the Dockerfile and rebuild a separate image for each environment
+  - Read it from a runtime environment variable configured for each environment
+  - Set it to the local developer's path in the Python source
+  - Pass it as an extra field in every prediction request
+  answer: 1
+  explanation: A runtime setting lets the same image be configured differently in each environment. The application
+    should read the setting rather than baking an environment-specific path into the image.
+- id: q11
+  topic: APIs, Containers, and Deployment
+  text: You changed the Dockerfile to include a new dependency, but a fresh container still behaves as if the old
+    image is running. What should you do next?
+  options:
+  - Change the service's health endpoint to return the dependency version
+  - Restart the existing container without changing its image
+  - Rebuild the image from the updated Dockerfile, then start a container from it
+  - Add the dependency to the request body sent by the client
+  answer: 2
+  explanation: A container uses the image it was created from; changing a Dockerfile does not update an existing
+    image. Rebuild the image and run a fresh container from that build.
+- id: q12
+  topic: APIs, Containers, and Deployment
+  text: You want the automated workflow to catch broken tests before changes are merged. Which setup best meets
+    that goal?
+  options:
+  - Run tests only after deployment, and only when someone checks logs
+  - Build a Docker image on pushes but do not install test dependencies
+  - Run tests manually from a developer's machine before opening a pull request
+  - Run the test command in CI on pushes and pull requests after installing dependencies
+  answer: 3
+  explanation: A CI workflow that installs dependencies and runs tests on pushes and pull requests can report failures
+    before changes are merged. Building an image alone does not verify the tests pass.
+- id: q13
+  topic: APIs, Containers, and Deployment
+  text: The CI test job passes, but a new version is not appearing in the assigned hosted environment. What should
+    you check?
+  options:
+  - Whether the workflow has a deployment step targeting that environment and the required configuration
+  - Whether the local API's CORS settings include the CI runner
+  - Whether the tests also print the model's evaluation metrics
+  - Whether the health endpoint returns the version of Python on the developer's machine
+  answer: 0
+  explanation: Passing tests verifies the test job, but does not itself deploy the service. Check that deployment
+    is configured for the assigned environment and has the settings it needs.
+- id: q14
+  topic: APIs, Containers, and Deployment
+  text: A deployed API returns 500 responses, while it works locally. What is a useful first diagnostic step?
+  options:
+  - Change the request model to accept every possible input
+  - Check the deployed service's logs and compare its runtime configuration with the expected settings
+  - Re-run the model evaluation and treat its score as the server error cause
+  - Increase the browser client's CORS permissions
+  answer: 1
+  explanation: Logs can reveal the exception behind the 500, and a configuration difference may explain why it happens
+    only after deployment. Model evaluation scores do not diagnose an HTTP server error.
+- id: q15
+  topic: APIs, Containers, and Deployment
+  text: Your endpoint expects a JSON object in a POST request. Which command sends a JSON body with an appropriate
+    content type?
+  options:
+  - '`curl -X POST http://localhost:8000/predict -d ''{"text":"hello"}''`'
+  - '`curl -X GET http://localhost:8000/predict -H ''Content-Type: application/json''`'
+  - '`curl -X POST http://localhost:8000/predict -H ''Content-Type: application/json'' -d ''{"text":"hello"}''`'
+  - '`curl -X POST http://localhost:8000/predict -H ''Accept: application/json''`'
+  answer: 2
+  explanation: The command uses POST, includes the JSON request body, and identifies that body as JSON with `Content-Type`.
+    `Accept` describes the response format the client can receive, not the request body format.
+problem:
+  title: Format a Prediction Result
+  prompt: 'Write `format_prediction(probabilities, labels)` for a small inference layer that is kept separate from
+    HTTP handling. The two lists must be non-empty and have the same length. Every probability must be a finite
+    number from 0 to 1, and every label must be a non-empty string. Return a dictionary with the label paired with
+    the highest probability and that probability as `confidence`. If probabilities tie, use the first matching label.
+    Raise `ValueError` for invalid input.
+
+
+    Example: `format_prediction([0.2, 0.8], ["cat", "dog"])` returns `{"label": "dog", "confidence": 0.8}`.'
+  starter_code: "def format_prediction(probabilities, labels):\n    \"\"\"Validate prediction data and return the\
+    \ winning label and confidence.\"\"\"\n    ..."
+  tests: "assert format_prediction([0.2, 0.8], [\"cat\", \"dog\"]) == {\"label\": \"dog\", \"confidence\": 0.8},\
+    \ \"selects the highest probability\"\nassert format_prediction([0.7, 0.7], [\"first\", \"second\"]) == {\"\
+    label\": \"first\", \"confidence\": 0.7}, \"keeps the first label on a tie\"\nassert format_prediction([1.0],\
+    \ [\"ready\"]) == {\"label\": \"ready\", \"confidence\": 1.0}, \"accepts a single result\"\nfor probabilities,\
+    \ labels in [([], []), ([0.4], [\"a\", \"b\"]), ([1.2], [\"a\"]), ([float(\"nan\")], [\"a\"]), ([0.5], [\"\"\
+    ])]:\n    try:\n        format_prediction(probabilities, labels)\n    except ValueError:\n        pass\n   \
+    \ else:\n        raise AssertionError(\"invalid prediction data should raise ValueError\")"
+  solution: "import math\n\n\ndef format_prediction(probabilities, labels):\n    \"\"\"Validate prediction data\
+    \ and return the winning label and confidence.\"\"\"\n    if not probabilities or len(probabilities) != len(labels):\n\
+    \        raise ValueError(\"probabilities and labels must have the same non-zero length\")\n    if any(not isinstance(label,\
+    \ str) or not label.strip() for label in labels):\n        raise ValueError(\"labels must be non-empty strings\"\
+    )\n    for probability in probabilities:\n        if isinstance(probability, bool) or not isinstance(probability,\
+    \ (int, float)):\n            raise ValueError(\"probabilities must be numbers\")\n        if not math.isfinite(probability)\
+    \ or not 0 <= probability <= 1:\n            raise ValueError(\"probabilities must be finite values from 0 to\
+    \ 1\")\n    best_index = max(range(len(probabilities)), key=probabilities.__getitem__)\n    return {\"label\"\
+    : labels[best_index], \"confidence\": probabilities[best_index]}"
+  packages: []

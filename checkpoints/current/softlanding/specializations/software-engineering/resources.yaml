@@ -1,0 +1,215 @@
+module_id: softlanding/specializations/software-engineering/resources
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: 1. Networking Fundamentals
+  text: A user enters `https://shop.example/items` in a browser. Which sequence best describes how the browser reaches
+    the server?
+  options:
+  - Send the HTTP request, resolve the domain, then establish TCP and TLS
+  - Resolve the domain, establish TCP and TLS, then send the HTTP request
+  - Establish TLS, send the HTTP request, then resolve the domain
+  - Resolve the domain, send the HTTP request, then establish TCP and TLS
+  answer: 1
+  explanation: The client first resolves the domain to an address, then establishes a TCP connection and negotiates
+    TLS before sending the HTTPS request.
+- id: q2
+  topic: 1. Networking Fundamentals
+  text: A video service sends small live updates where late data is less useful than fresh data. Which transport
+    choice best fits, and what trade-off should the team expect?
+  options:
+  - TCP, because it prioritizes low latency over delivery guarantees
+  - UDP, because it provides retransmission while keeping latency low
+  - UDP, because it avoids connection setup but may lose packets
+  - TCP, because it avoids connection setup but may reorder packets
+  answer: 2
+  explanation: UDP avoids TCP's connection setup and retransmission behavior, which can help keep updates timely.
+    The trade-off is that packets may be lost or arrive out of order.
+- id: q3
+  topic: 2. Architecture Principles
+  text: An API instance stores a user's session only in its own memory. After adding a load balancer and several
+    instances, users sometimes appear logged out on the next request. Which change best supports horizontal scaling?
+  options:
+  - Keep sessions in each instance and use round-robin routing
+  - Move session state to a shared backing service
+  - Increase each instance's memory to retain more sessions
+  - Route each user to a different instance on every request
+  answer: 1
+  explanation: A shared backing service makes session state available to any instance, allowing requests to be handled
+    by different instances without losing the session.
+- id: q4
+  topic: 2. Architecture Principles
+  text: A team wants to deploy the same application image to staging and production while using different database
+    URLs. Which approach best supports this goal?
+  options:
+  - Store each database URL in a separate version of the application code
+  - Build a separate container image for each environment
+  - Read the database URL from environment-specific configuration
+  - Let the application choose a database URL from the request hostname
+  answer: 2
+  explanation: Keeping configuration outside the application image lets the same build run in multiple environments
+    with different settings.
+- id: q5
+  topic: 3. API Design & Implementation
+  text: A client needs to change only the `status` field of an existing order. Which REST request is the best fit
+    for a partial update?
+  options:
+  - '`PUT /orders/42` with only the new status field'
+  - '`PATCH /orders/42` with only the new status field'
+  - '`POST /orders/42` with only the new status field'
+  - '`GET /orders/42` with the new status in the query string'
+  answer: 1
+  explanation: PATCH is intended for partial updates to a resource, so the client can send only the field it wants
+    to change.
+- id: q6
+  topic: 3. API Design & Implementation
+  text: 'A FastAPI endpoint accepts a Pydantic model requiring an integer `quantity`. A client sends `{"quantity":
+    "many"}`. What should the client expect from the default request validation behavior?'
+  options:
+  - The endpoint receives the string and stores it unchanged
+  - The endpoint receives zero because the value cannot be converted
+  - FastAPI rejects the request with a validation error response
+  - FastAPI skips the endpoint and returns a successful empty response
+  answer: 2
+  explanation: FastAPI validates request data against the Pydantic model before calling the endpoint. A value that
+    cannot satisfy the required integer field is rejected with a validation error response.
+- id: q7
+  topic: 4. Database Design & Management
+  text: An `Orders` table repeats a customer's name and address on every order row. The team wants to reduce update
+    inconsistencies while keeping orders linked to customers. Which redesign is most appropriate?
+  options:
+  - Keep the repeated fields and add an index on the customer name
+  - Move customer details to a Customers table and reference its key
+  - Store all orders and customer details in one JSON column
+  - Split the order date and customer address into separate order tables
+  answer: 1
+  explanation: Storing customer details once in a Customers table and referencing that row from Orders reduces duplicated
+    facts and the inconsistencies they can cause.
+- id: q8
+  topic: 4. Database Design & Management
+  text: A bank transfer must subtract money from one account and add it to another. If the second update fails,
+    the first must not remain applied. Which approach best meets this requirement?
+  options:
+  - Run both updates in a single database transaction
+  - Run the updates as separate queries and retry whichever fails
+  - Update the destination account first, then update the source
+  - Run both updates in parallel and keep whichever result succeeds
+  answer: 0
+  explanation: 'A transaction makes the two updates atomic: both commit together, or neither change remains if an
+    operation fails.'
+- id: q9
+  topic: 5. Testing Strategies
+  text: A test should verify that an API endpoint correctly saves a record to the real test database and then returns
+    it in the response. Which test type is the best fit?
+  options:
+  - A unit test that replaces the database and endpoint with mocks
+  - An integration test that exercises the endpoint and database together
+  - An end-to-end test that also drives a user's browser
+  - A coverage check that measures executed lines without assertions
+  answer: 1
+  explanation: This test checks that multiple components—the endpoint and database—work together, which is the purpose
+    of an integration test.
+- id: q10
+  topic: 5. Testing Strategies
+  text: A unit test for an order service should verify how it handles a payment provider's timeout without making
+    a real network request. What is the best approach?
+  options:
+  - Mock the payment provider to raise a timeout
+  - Call the real payment provider and wait for its response
+  - Skip the test whenever the payment provider is unavailable
+  - Replace the order service with a mock and call the provider
+  answer: 0
+  explanation: Mocking the provider lets the test reliably simulate a timeout while keeping the test focused on
+    the order service's behavior.
+- id: q11
+  topic: 6. DevOps & Deployment
+  text: A team wants every pull request checked for style and tests, and wants production deployment to happen only
+    after those checks pass. Which pipeline design best fits?
+  options:
+  - Deploy each commit first, then run style and test checks
+  - Run style and tests in CI, then gate deployment on success
+  - Run style checks locally and deploy every merged change
+  - Deploy from the test job while the style check runs separately
+  answer: 1
+  explanation: A CI/CD pipeline can run linting and tests automatically, then use their successful completion as
+    a condition for deployment.
+- id: q12
+  topic: 6. DevOps & Deployment
+  text: An application needs an API service and a database service to run together in development. The team wants
+    one configuration to define both services and their connection. Which tool or approach is most appropriate?
+  options:
+  - Use Docker Compose to define and run the multi-container setup
+  - Place both services in one container image and start them manually
+  - Use a CI workflow to create a separate container for each request
+  - Use a load balancer to define the services and their connection
+  answer: 0
+  explanation: Docker Compose is designed to define and run multi-container applications, including the API, database,
+    and their configuration.
+- id: q13
+  topic: 7. Specialization (Choose One)
+  text: A mobile frontend calls a protected API endpoint. The user is signed in, and the API expects a bearer token.
+    Which request approach matches that contract?
+  options:
+  - Send the token in the URL path so the API can identify the user
+  - Send the token in the Authorization header as a bearer credential
+  - Send the token as a field in every response body from the API
+  - Send the token in a query parameter so it is easy to cache
+  answer: 1
+  explanation: A bearer token is conventionally sent in the Authorization header, allowing the API to authenticate
+    the request without putting the credential in the URL.
+- id: q14
+  topic: 7. Specialization (Choose One)
+  text: A web dashboard lets users filter data shown in a chart. When the filter changes, the chart should display
+    results for the new selection. Which frontend approach best supports this behavior?
+  options:
+  - Keep the filter only in a local variable and draw the chart once
+  - Track the filter in component state and refresh the displayed data when it changes
+  - Store the filter in the chart image and reload the same image
+  - Change the API route definition each time the user selects a filter
+  answer: 1
+  explanation: State lets the frontend respond to a filter change by fetching or selecting the corresponding data
+    and rendering the updated visualization.
+- id: q15
+  topic: Capstone Project
+  text: In a full-stack application, a frontend needs to display a user's saved projects. Which design keeps the
+    API as the boundary between the frontend and persistent data?
+  options:
+  - Have the frontend query the database directly and format the results
+  - Have the API read the database and return project data to the frontend
+  - Have the database call the frontend with each project's data
+  - Have the frontend read project files from the API container's disk
+  answer: 1
+  explanation: The API should handle access to persistent data and expose it through a defined interface; the frontend
+    then requests and displays that data.
+problem:
+  title: Build a Pagination Helper
+  prompt: 'Implement `paginate(items, page, page_size)` for a REST API. Pages are **1-indexed**. Return a dictionary
+    with `items` (the selected page as a list), `total` (the number of input items), `page`, `page_size`, and `pages`
+    (the total number of pages). If there are no items, `pages` should be `0`. You may assume `page` and `page_size`
+    are positive integers.
+
+
+    Example: `paginate(["a", "b", "c"], 2, 2)` returns `{"items": ["c"], "total": 3, "page": 2, "page_size": 2,
+    "pages": 2}`.'
+  starter_code: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items\
+    \ and pagination metadata.\"\"\"\n    ..."
+  tests: 'assert paginate(["a", "b", "c"], 2, 2) == {"items": ["c"], "total": 3, "page": 2, "page_size": 2, "pages":
+    2}, "second page should contain the remaining item"
+
+    assert paginate([1, 2, 3, 4], 1, 2) == {"items": [1, 2], "total": 4, "page": 1, "page_size": 2, "pages": 2},
+    "first page should contain the first items"
+
+    assert paginate([1, 2, 3, 4], 3, 2) == {"items": [], "total": 4, "page": 3, "page_size": 2, "pages": 2}, "a
+    page beyond the end should be empty"
+
+    assert paginate([], 1, 5) == {"items": [], "total": 0, "page": 1, "page_size": 5, "pages": 0}, "empty input
+    should have zero pages"'
+  solution: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items and\
+    \ pagination metadata.\"\"\"\n    total = len(items)\n    pages = (total + page_size - 1) // page_size\n   \
+    \ start = (page - 1) * page_size\n    end = start + page_size\n    return {\n        \"items\": list(items[start:end]),\n\
+    \        \"total\": total,\n        \"page\": page,\n        \"page_size\": page_size,\n        \"pages\": pages,\n\
+    \    }"
+  packages: []

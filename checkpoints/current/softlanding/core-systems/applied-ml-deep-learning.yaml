@@ -1,0 +1,213 @@
+module_id: softlanding/core-systems/applied-ml-deep-learning
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Applied ML and evaluation
+  text: You want to compare models with cross-validation and standardize numeric features. Which approach keeps
+    the validation folds from influencing the scaling?
+  options:
+  - Scale the full dataset once, then run cross-validation on the scaled values.
+  - Put the scaler and model in a pipeline, then cross-validate the pipeline.
+  - Scale each validation fold separately, then train on the unscaled training fold.
+  - Run cross-validation first, then fit one scaler using all fold predictions.
+  answer: 1
+  explanation: A pipeline fits the scaler separately on each training fold and applies it to that fold's validation
+    data. Scaling the full dataset first lets information from validation folds influence preprocessing.
+- id: q2
+  topic: Applied ML and evaluation
+  text: A screening model should miss as few people with a condition as possible, even if it flags some people who
+    do not have it. Which metric should you prioritize?
+  options:
+  - Precision, because it measures how many positive predictions are correct.
+  - Accuracy, because it measures the share of all predictions that are correct.
+  - Recall, because it measures how many actual positive cases are found.
+  - Specificity, because it measures how many actual negative cases are found.
+  answer: 2
+  explanation: Recall measures the fraction of actual positive cases the model identifies, so it directly reflects
+    how often the screening model misses cases. Prioritizing recall is consistent with accepting more false positives.
+- id: q3
+  topic: Applied ML and evaluation
+  text: You are building a classifier for a dataset where 90% of examples belong to class 0. Before trying more
+    complex models, what is a useful baseline?
+  options:
+  - A classifier that always predicts class 0, evaluated with your chosen task metric.
+  - A classifier that predicts each class in proportion to its frequency, evaluated on training data.
+  - A classifier that predicts the correct label for each example, to establish a maximum score.
+  - A classifier that predicts class 1 for every example, evaluated with accuracy only.
+  answer: 0
+  explanation: A majority-class baseline shows how well a simple strategy performs under the chosen evaluation setup.
+    Comparing candidate models to it helps reveal whether they add value beyond class imbalance.
+- id: q4
+  topic: Applied ML and evaluation
+  text: On a test set, a classifier has 18 true positives, 6 false positives, and 12 false negatives. What are its
+    precision and recall, respectively?
+  options:
+  - 0.60 precision and 0.75 recall
+  - 0.75 precision and 0.60 recall
+  - 0.75 precision and 0.33 recall
+  - 0.60 precision and 0.33 recall
+  answer: 1
+  explanation: Precision is TP divided by TP + FP, or 18/24 = 0.75. Recall is TP divided by TP + FN, or 18/30 =
+    0.60.
+- id: q5
+  topic: Applied ML and evaluation
+  text: You have train, validation, and test splits. You try several models and preprocessing choices, then choose
+    the best validation result. What should you do with the test split?
+  options:
+  - Use it after every experiment to check whether the validation score is stable.
+  - Use it to choose the preprocessing that gives the best final score.
+  - Keep it untouched until choices are finished, then evaluate the selected approach once.
+  - Combine it with the training data before comparing models on the validation split.
+  answer: 2
+  explanation: The test split should provide a final estimate after model and preprocessing choices are complete.
+    Repeatedly using it to guide choices leaks information from the test set into the development process.
+- id: q6
+  topic: Applied ML and evaluation
+  text: For a regression task, large prediction errors are especially costly, and you want the evaluation metric
+    to penalize them more strongly than small errors. Which metric is a good choice?
+  options:
+  - Mean absolute error, which gives each absolute error a linear contribution.
+  - Root mean squared error, which gives large errors a stronger penalty.
+  - Accuracy, which counts the fraction of predictions that match the target.
+  - Recall, which measures how many actual positive cases were found.
+  answer: 1
+  explanation: Root mean squared error squares each error before averaging, so large errors contribute disproportionately.
+    Mean absolute error is less sensitive to large errors because it uses a linear penalty.
+- id: q7
+  topic: Applied ML and evaluation
+  text: You want to compare a decision tree and a random forest on a small dataset. Which setup makes the comparison
+    most meaningful?
+  options:
+  - Give each model its own split and preprocessing, then compare their best scores.
+  - Use the same split and preprocessing rules, then compare the same task metric.
+  - Train the tree on all data and the forest on only the training portion.
+  - Choose the metric separately for each model based on which score looks better.
+  answer: 1
+  explanation: Holding the split, preprocessing, and evaluation metric constant makes differences in results more
+    attributable to the models. Changing those conditions makes the comparison difficult to interpret.
+- id: q8
+  topic: Applied ML and evaluation
+  text: A single decision tree fits the training set closely but performs poorly on validation data. You try a random
+    forest and see a smaller gap between training and validation performance. Which explanation is most plausible?
+  options:
+  - A forest averages many trees, which can reduce the variance of predictions.
+  - A forest guarantees that every training example is predicted incorrectly.
+  - A forest removes the need to check performance on held-out data.
+  - A forest converts the classification task into a regression task.
+  answer: 0
+  explanation: A random forest combines predictions from many trees, which can reduce the variability of a single
+    tree and improve generalization. It still needs evaluation on held-out data.
+- id: q9
+  topic: Deep learning and pretrained models
+  text: A PyTorch model contains dropout. After training, you want predictions that do not randomly drop units.
+    Which step should you take before inference?
+  options:
+  - Call `model.train()` so dropout uses the learned training behavior.
+  - Call `model.eval()` so dropout is disabled for inference.
+  - Call `loss.backward()` once so dropout stops changing predictions.
+  - Call `optimizer.step()` so the model switches to inference mode.
+  answer: 1
+  explanation: '`model.eval()` switches modules such as dropout into evaluation behavior, making predictions consistent
+    with inference. It does not itself update the model''s weights.'
+- id: q10
+  topic: Deep learning and pretrained models
+  text: A batch contains 32 examples, each with 4 input features. In `torch.nn.Linear(4, 2)`, what output shape
+    should you expect?
+  options:
+  - '`(32, 4)`, because a linear layer preserves the input feature count.'
+  - '`(32, 2)`, because the layer maps each example to 2 output features.'
+  - '`(4, 32)`, because the layer swaps the batch and feature dimensions.'
+  - '`(2, 32)`, because the layer places output features before the batch.'
+  answer: 1
+  explanation: A linear layer with `in_features=4` and `out_features=2` maps the last dimension from 4 to 2. It
+    preserves the batch dimension, so the output shape is `(32, 2)`.
+- id: q11
+  topic: Deep learning and pretrained models
+  text: 'What shape results from this subtraction in PyTorch? `pred` has shape `(5, 1)` and `target` has shape `(5,)`.
+
+    `error = pred - target`'
+  options:
+  - '`(5,)`, because PyTorch removes the final size-one dimension.'
+  - '`(5, 1)`, because the target is automatically reshaped to match.'
+  - '`(5, 5)`, because broadcasting aligns the two differently shaped dimensions.'
+  - An error, because tensors with different shapes cannot be subtracted.
+  answer: 2
+  explanation: The shapes align as `(5, 1)` and `(1, 5)` under broadcasting, producing a `(5, 5)` result. Reshaping
+    one tensor to match the other avoids this unintended pairwise subtraction.
+- id: q12
+  topic: Deep learning and pretrained models
+  text: Which sequence is the usual order for one PyTorch training step?
+  options:
+  - Compute loss, clear gradients, update weights, then backpropagate.
+  - Clear gradients, compute predictions and loss, backpropagate, then update weights.
+  - Backpropagate, compute predictions and loss, update weights, then clear gradients.
+  - Update weights, clear gradients, compute loss, then backpropagate.
+  answer: 1
+  explanation: A training step clears old gradients, computes the current loss, calculates gradients with backpropagation,
+    and then updates weights with the optimizer. Clearing gradients prevents them from accumulating across steps
+    unintentionally.
+- id: q13
+  topic: Deep learning and pretrained models
+  text: During training, the loss repeatedly jumps between high and low values instead of settling down. Which first
+    adjustment is most likely to help if the learning rate is too large?
+  options:
+  - Increase the learning rate so each update moves farther toward a minimum.
+  - Lower the learning rate so updates are smaller and less likely to overshoot.
+  - Remove the loss calculation so the optimizer can update the weights directly.
+  - Switch to evaluation mode so training gradients become more stable.
+  answer: 1
+  explanation: A learning rate that is too large can make updates overshoot useful parameter values, causing unstable
+    loss. Reducing it makes each update smaller.
+- id: q14
+  topic: Deep learning and pretrained models
+  text: You need to classify short text using an available pretrained text-classification model and have no labeled
+    examples for further training. Which approach best fits this situation?
+  options:
+  - 'Use pretrained inference: pass text through the model''s expected tokenizer and prediction interface.'
+  - 'Train a transformer from scratch: initialize new weights and fit them on the unlabeled text.'
+  - 'Fine-tune the model: update its weights using the available unlabeled text as class labels.'
+  - 'Use only the model''s raw weights: skip input preparation to preserve pretrained features.'
+  answer: 0
+  explanation: Pretrained inference applies an already trained model to new inputs without updating its weights,
+    while still using the input preparation it expects. Fine-tuning requires suitable task-specific training data
+    and labels.
+- id: q15
+  topic: Deep learning and pretrained models
+  text: You saved a PyTorch model's `state_dict` and want to use the learned weights in a separate inference script.
+    What should the script do?
+  options:
+  - Create the same model architecture, load the saved state dict, and set the model to evaluation mode.
+  - Create any model architecture, load the saved state dict, and begin another training loop.
+  - Load the state dict without creating a model, then call it directly on the input.
+  - Create the same model architecture, but initialize new weights before each prediction.
+  answer: 0
+  explanation: A state dict contains learned parameter values, so the inference script must create a compatible
+    model and load those values into it. Evaluation mode sets inference behavior for modules such as dropout.
+problem:
+  title: Compute binary classification metrics
+  prompt: 'Write `classification_metrics(y_true, y_pred)` for binary labels, where `1` is the positive class. Return
+    a dictionary with `accuracy`, `precision`, `recall`, and `f1`. If precision or recall has a zero denominator,
+    use `0.0` for that metric; if precision and recall are both zero, use `0.0` for F1. For example, `classification_metrics([1,
+    0], [1, 1])` should return `{"accuracy": 0.5, "precision": 0.5, "recall": 1.0, "f1": 0.6666666666666666}`.'
+  starter_code: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and\
+    \ F1 for binary labels.\"\"\"\n    ..."
+  tests: "assert classification_metrics([1, 0, 1, 0], [1, 0, 0, 0]) == {\n    \"accuracy\": 0.75, \"precision\"\
+    : 1.0, \"recall\": 0.5, \"f1\": 2 / 3\n}, \"Metrics should use positive label 1.\"\nassert classification_metrics([1,\
+    \ 1], [0, 0]) == {\n    \"accuracy\": 0.0, \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"Zero denominators\
+    \ should produce zero metrics.\"\nassert classification_metrics([0, 0], [0, 0]) == {\n    \"accuracy\": 1.0,\
+    \ \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"All-negative predictions should handle missing positives.\"\
+    \nassert classification_metrics([1, 0], [1, 1]) == {\n    \"accuracy\": 0.5, \"precision\": 0.5, \"recall\"\
+    : 1.0, \"f1\": 2 / 3\n}, \"Precision and recall should use their respective denominators.\""
+  solution: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and F1 for\
+    \ binary labels.\"\"\"\n    if len(y_true) != len(y_pred):\n        raise ValueError(\"y_true and y_pred must\
+    \ have the same length\")\n    if not y_true:\n        raise ValueError(\"inputs must not be empty\")\n\n  \
+    \  tp = sum(true == 1 and pred == 1 for true, pred in zip(y_true, y_pred))\n    fp = sum(true == 0 and pred\
+    \ == 1 for true, pred in zip(y_true, y_pred))\n    fn = sum(true == 1 and pred == 0 for true, pred in zip(y_true,\
+    \ y_pred))\n    correct = sum(true == pred for true, pred in zip(y_true, y_pred))\n\n    precision = tp / (tp\
+    \ + fp) if tp + fp else 0.0\n    recall = tp / (tp + fn) if tp + fn else 0.0\n    f1 = 2 * precision * recall\
+    \ / (precision + recall) if precision + recall else 0.0\n    return {\n        \"accuracy\": correct / len(y_true),\n\
+    \        \"precision\": precision,\n        \"recall\": recall,\n        \"f1\": f1,\n    }"
+  packages: []

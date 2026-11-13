@@ -19,8 +19,15 @@ next attempt takes the next five questions. A failed attempt shows which answers
 review, but not the right answers; those appear after a pass. Then comes the coding problem, if there is one:
 the learner's code runs in their browser (Pyodide) against the problem's tests.
 
-The files here are drafts written by Claude during development, not by the generator, so that the checkpoint
-flow can be shown: Terminal & Algorithmic Basics and Data Manipulation (Data Foundations in the current
-version) for each version, with ten questions and a coding problem each. They are not reviewed. Questions are
-derived from the curriculum and are licensed CC BY-NC-SA 4.0, like the rest of the curriculum-derived material
-in this repository.
+What is here now, all `status: draft`:
+
+- `current/`: 13 of the 20 modules. Twelve were written by the generator (gpt-6-luna): fifteen questions each,
+  and a coding problem each except Data Science. Data Manipulation was written by Claude during development,
+  not by the generator: ten questions and a coding problem.
+- `2026-10-06/`: Terminal & Algorithmic Basics and Data Manipulation, written by Claude during development: ten
+  questions and a coding problem each.
+- No checkpoint on purpose: the five capstones, which are projects, and the two elective modules, where each
+  learner picks different options, so one set of questions would not fit them.
+
+Questions are derived from the curriculum and are licensed CC BY-NC-SA 4.0, like the rest of the
+curriculum-derived material in this repository.

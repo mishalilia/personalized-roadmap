@@ -1,0 +1,217 @@
+module_id: softlanding/specializations/generative-ai/resources
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Curriculum
+  text: In a corpus, the words “the” and “quasar” appear equally often in one document. “The” occurs in almost every
+    document, while “quasar” occurs in only one. Which TF-IDF behavior should you expect?
+  options:
+  - The two words receive similar weights because their counts in the document match.
+  - “The” receives a higher weight because it occurs in more documents.
+  - “Quasar” receives a higher weight because it is rare across the corpus.
+  - Neither word receives a weight unless the document contains both.
+  answer: 2
+  explanation: TF-IDF downweights terms that appear across many documents and gives more weight to terms that are
+    distinctive to fewer documents. So “quasar” is expected to receive the higher weight.
+- id: q2
+  topic: Curriculum
+  text: A classifier uses Bag-of-Words features for the sentences “the dog chased the cat” and “the cat chased the
+    dog.” What is a likely problem?
+  options:
+  - The sentences can have identical vectors because Bag-of-Words does not represent word order.
+  - The sentences will have different vectors because each word position gets its own feature.
+  - The sentences cannot be vectorized because they contain repeated words.
+  - The sentences will have identical vectors only if their word embeddings are also identical.
+  answer: 0
+  explanation: Bag-of-Words records which words occur and often how often, but not their order. These sentences
+    contain the same word counts, so their vectors can be identical despite their different meanings.
+- id: q3
+  topic: Curriculum
+  text: A résumé search system uses nearest neighbors in pretrained word embeddings. It often places male-associated
+    terms near “engineer” and female-associated terms near “assistant.” What is the best interpretation?
+  options:
+  - The embedding has discovered which occupations each group is naturally suited for.
+  - The embedding may reflect associations in its training text, including social biases.
+  - The results prove the vocabulary needs to be expanded before the system can be used.
+  - The nearest neighbors are reliable because embeddings remove patterns from training data.
+  answer: 1
+  explanation: Embedding similarity reflects patterns learned from the data, which can include biased associations.
+    A nearest neighbor is not evidence that the association is an objective fact.
+- id: q4
+  topic: Curriculum
+  text: A self-attention layer processes the words in “The animal crossed the road because it was tired.” What does
+    the layer use to determine how much information one token gets from another?
+  options:
+  - It compares the values directly and averages every token equally.
+  - It compares query-key compatibility, then uses the resulting weights to combine values.
+  - It matches each token to a fixed dictionary entry and ignores the other tokens.
+  - It uses positional encodings as the attention weights and discards token content.
+  answer: 1
+  explanation: Attention scores come from comparing queries with keys. Those scores determine how strongly the layer
+    combines the corresponding value vectors.
+- id: q5
+  topic: Curriculum
+  text: A transformer receives the same words in two different orders. Which design choice helps it distinguish
+    the sequences?
+  options:
+  - Add positional information to token representations before or during attention.
+  - Replace each token representation with the average of all token representations.
+  - Use the same attention weights at every position in the sequence.
+  - Remove token representations and rely on the sequence length alone.
+  answer: 0
+  explanation: Self-attention alone does not encode token order. Positional information lets the model distinguish
+    sequences with the same tokens in different arrangements.
+- id: q6
+  topic: Curriculum
+  text: A model needs to use different relationships in a sentence at the same time—for example, linking a pronoun
+    to its referent while also tracking nearby word structure. Which approach is most suitable?
+  options:
+  - Use one attention head with a smaller vocabulary.
+  - Use multiple attention heads that can learn different patterns.
+  - Use a single fixed attention pattern for every sentence.
+  - Use more positional information without changing the attention layer.
+  answer: 1
+  explanation: Multiple attention heads let a transformer attend to different relationships or representation subspaces
+    in parallel. This supports learning several kinds of patterns at once.
+- id: q7
+  topic: Curriculum
+  text: A team wants a model that generates a sentence one token at a time without using future tokens. Which training
+    setup matches that goal?
+  options:
+  - A masked-language setup that hides random tokens and predicts them from both sides.
+  - A causal-language setup that predicts the next token using only earlier tokens.
+  - A word-classification setup that predicts a label for the whole sentence.
+  - A bidirectional setup that predicts every token using the complete sentence.
+  answer: 1
+  explanation: Causal language modeling masks future positions so each prediction can depend only on earlier tokens.
+    This matches generation that proceeds from left to right.
+- id: q8
+  topic: Curriculum
+  text: A team has a large pretrained model and wants to adapt it to a small domain dataset using limited GPU memory.
+    Which approach best fits the goal?
+  options:
+  - Fine-tune every model weight and increase the training batch size.
+  - Freeze the base model and train a small set of LoRA adapter parameters.
+  - Train a new model from scratch and reuse the pretrained tokenizer.
+  - Replace the model’s attention layers with a fixed lookup table.
+  answer: 1
+  explanation: LoRA adapts a model by training a comparatively small number of added parameters rather than updating
+    all the base weights. This can reduce memory and training requirements.
+- id: q9
+  topic: Curriculum
+  text: A team trains a VAE on images and wants nearby points in its latent space to decode into gradually changing
+    images. Which approach best supports this?
+  options:
+  - Interpolate between latent vectors and decode points along the path.
+  - Interpolate between the final image pixels and encode only the endpoints.
+  - Choose unrelated latent vectors so the decoder sees more variation.
+  - Interpolate between class labels while keeping the latent vector fixed.
+  answer: 0
+  explanation: A VAE learns a structured latent representation that can support meaningful interpolation. Decoding
+    points between two latent vectors can show gradual changes between their generated images.
+- id: q10
+  topic: Curriculum
+  text: During GAN training, generated images look diverse at first, but later the generator produces nearly the
+    same image for many different inputs. What problem does this suggest?
+  options:
+  - The discriminator has learned to produce the generator’s output directly.
+  - The generator has stopped covering the variety of examples in the data.
+  - The latent vectors have become too large for the discriminator to process.
+  - The training data has become balanced across all possible image types.
+  answer: 1
+  explanation: Mode collapse occurs when a GAN generator produces a narrow range of outputs instead of representing
+    the diversity of the training data.
+- id: q11
+  topic: Curriculum
+  text: A diffusion model is being trained to generate images. What happens to a clean training image during the
+    forward process?
+  options:
+  - It is gradually perturbed with noise according to a schedule.
+  - It is gradually sharpened until only its edges remain.
+  - It is replaced by a class label before the model learns to generate it.
+  - It is compressed into a text embedding and decoded without noise.
+  answer: 0
+  explanation: The forward diffusion process adds noise to data progressively according to a noise schedule. The
+    model learns the reverse process to generate samples by denoising.
+- id: q12
+  topic: Curriculum
+  text: A diffusion model takes too long to generate an image, and the team wants to try sampling with fewer denoising
+    steps. Which approach is designed to allow this?
+  options:
+  - Use DDIM sampling, which can generate samples with fewer steps.
+  - Use a larger forward noise schedule and keep every sampling step.
+  - Use CTC decoding so the model can skip image denoising.
+  - Use a masked-language objective to predict the missing pixels.
+  answer: 0
+  explanation: DDIM is a diffusion sampling approach that can produce samples using fewer steps than the standard
+    DDPM procedure, often reducing sampling time.
+- id: q13
+  topic: Curriculum
+  text: A designer wants a generated image to follow the pose and outline in a supplied sketch while still responding
+    to a text prompt. Which approach is most suitable?
+  options:
+  - Use ControlNet to condition generation on the sketch.
+  - Increase the tokenizer vocabulary to represent more sketch details.
+  - Use a mel spectrogram as the image-generation condition.
+  - Remove text conditioning so the sketch can become the prompt.
+  answer: 0
+  explanation: ControlNet provides structured image conditioning, such as a sketch or pose map, to guide the generated
+    image while allowing text conditioning as well.
+- id: q14
+  topic: Curriculum
+  text: A speech-processing model needs a time-frequency representation that uses a frequency scale better aligned
+    with human hearing than a linear-frequency spectrogram. Which feature should the team use?
+  options:
+  - A mel spectrogram computed from short-time Fourier transforms.
+  - A raw waveform resampled to a higher bit depth.
+  - A bag-of-words vector computed from the transcript.
+  - A sequence of MFCC values computed without any spectral analysis.
+  answer: 0
+  explanation: A mel spectrogram maps frequency information onto the mel scale, which is more aligned with human
+    perception than a linear frequency scale.
+- id: q15
+  topic: Curriculum
+  text: An ASR training dataset provides audio clips and their transcripts, but not the exact frame-by-frame alignment
+    between the two. Which approach is designed to learn from this kind of data?
+  options:
+  - CTC, which can train without a pre-specified alignment.
+  - A vocoder, which converts transcript tokens into aligned audio frames.
+  - A mel filter bank, which assigns transcript words to audio frames.
+  - A causal text decoder, which requires a frame label for every audio sample.
+  answer: 0
+  explanation: CTC supports training speech recognition systems when the transcript is known but the precise alignment
+    between audio frames and text tokens is not.
+problem:
+  title: Calculate Word Error Rate
+  prompt: 'Implement `word_error_rate(reference, hypothesis)` to calculate word error rate (WER) from two transcripts.
+    Split each string on whitespace and treat tokens as case-sensitive. WER is the minimum number of token insertions,
+    deletions, and substitutions needed to change the reference into the hypothesis, divided by the number of reference
+    tokens. If both transcripts are empty, return `0.0`; if the reference is empty and the hypothesis is not, return
+    the number of hypothesis tokens as a float.
+
+
+    Example: `word_error_rate("turn left now", "turn right now")` returns `1 / 3`.'
+  starter_code: "def word_error_rate(reference, hypothesis):\n    \"\"\"Return the word error rate between two whitespace-separated\
+    \ transcripts.\"\"\"\n    ..."
+  tests: 'assert word_error_rate("turn left at the next street", "turn right at the next street") == 1 / 6, "one
+    substitution"
+
+    assert word_error_rate("turn left at the next street", "turn left at next street") == 1 / 6, "one deletion"
+
+    assert word_error_rate("turn left now", "please turn left now") == 1 / 3, "one insertion"
+
+    assert word_error_rate("", "") == 0.0, "both transcripts are empty"
+
+    assert word_error_rate("", "hello there") == 2.0, "empty reference"
+
+    assert word_error_rate("same words", "same words") == 0.0, "identical transcripts"'
+  solution: "def word_error_rate(reference, hypothesis):\n    \"\"\"Return the word error rate between two whitespace-separated\
+    \ transcripts.\"\"\"\n    ref = reference.split()\n    hyp = hypothesis.split()\n    if not ref:\n        return\
+    \ float(len(hyp))\n    previous = list(range(len(hyp) + 1))\n    for i, ref_word in enumerate(ref, start=1):\n\
+    \        current = [i]\n        for j, hyp_word in enumerate(hyp, start=1):\n            cost = 0 if ref_word\
+    \ == hyp_word else 1\n            current.append(min(current[-1] + 1, previous[j] + 1, previous[j - 1] + cost))\n\
+    \        previous = current\n    return previous[-1] / len(ref)"
+  packages: []

@@ -1,127 +1,220 @@
 module_id: engineering-fundamentals/terminal-algorithmic-basics
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
 status: draft
-generated_by: Claude, in a development session, from the module brief; not the generator pipeline
+generated_by: gpt-6-luna
 reviewed_by: null
 questions:
 - id: q1
   topic: Terminal and Filesystem
-  text: You are in `/home/ana/projects/ml`. Where are you after `cd ..`?
+  text: Your current directory is `/home/ana/project`. After running `cd ..` followed by `pwd`, what path is printed?
   options:
-  - '`/home/ana`'
-  - '`/home/ana/projects`'
-  - '`/`'
-  - '`/home/ana/projects/ml/..` as a new folder'
+  - /home/ana/project
+  - /home/ana
+  - /home
+  - /home/ana/project/..
   answer: 1
-  explanation: '`..` is the parent directory, so `cd ..` moves one level up.'
+  explanation: '`cd ..` moves to the parent directory, `/home/ana`. `pwd` prints the current directory''s path.'
 - id: q2
   topic: Terminal and Filesystem
-  text: Which command finds every file under the current folder that contains the text `learning_rate`?
+  text: You need to locate Python files anywhere below the current directory. Which command does that?
   options:
-  - '`grep -r "learning_rate" .`'
-  - '`ls -r learning_rate`'
-  - '`find learning_rate`'
-  - '`cat * | learning_rate`'
+  - '`find . -name "*.py"`'
+  - '`ls . -name "*.py"`'
+  - '`file . -name "*.py"`'
+  - '`cat . -name "*.py"`'
   answer: 0
-  explanation: '`grep -r` searches the contents of files recursively, starting from `.`, the current folder.'
+  explanation: '`find` searches through the directory tree, and `-name` filters paths by filename. The quoted pattern
+    is matched against filenames ending in `.py`.'
 - id: q3
-  topic: Algorithms and Problem Solving
-  text: You must check whether any two numbers in a list of a million add up to a target. Which approach scales
-    best?
-  options:
-  - Compare every pair with two nested loops
-  - Sort the list again for every number
-  - Walk the list once, keeping the numbers seen so far in a set and checking for `target - x`
-  - Try random pairs until one fits
-  answer: 2
-  explanation: With a set, each number is checked in about constant time, so the whole list takes one pass instead
-    of about n² comparisons.
-- id: q4
   topic: Terminal and Filesystem
-  text: You created a file named `.env`, but `ls` does not list it. Why?
+  text: You want to put a second copy of `notes.txt` in `archive/` while keeping the original in the current directory.
+    Which command fits?
   options:
-  - The file was not saved
-  - '`ls` only lists folders'
-  - Files that start with a dot are hidden; `ls -a` shows them
-  - '`.env` files can only be seen by the root user'
-  answer: 2
-  explanation: Names starting with a dot are hidden by convention; `ls -a` lists all entries, including hidden ones.
+  - '`mv notes.txt archive/`'
+  - '`cp notes.txt archive/`'
+  - '`touch notes.txt archive/`'
+  - '`file notes.txt archive/`'
+  answer: 1
+  explanation: '`cp` creates a copy in the destination and leaves the original in place. `mv` would move the file
+    instead.'
+- id: q4
+  topic: Python Environment Setup
+  text: You activate a project virtual environment and then run `python -m pip install requests`. Where should the
+    package be installed?
+  options:
+  - In the active virtual environment for this project
+  - In every Python installation on the computer
+  - In the folder containing the current Python file
+  - In the project's Git repository history
+  answer: 0
+  explanation: When the virtual environment is active, its Python and pip are used, so the package is installed
+    into that environment. This helps keep project dependencies separate.
 - id: q5
   topic: Python Environment Setup
-  text: Project A needs pandas 1.5 and project B needs pandas 2.2 on the same laptop. What is the usual fix?
+  text: A package imports successfully in a terminal after you activate your project environment, but the same import
+    fails in JupyterLab. What should you check first?
   options:
-  - Install both versions globally and pick one at import time
-  - Give each project its own virtual environment
-  - Upgrade project A to pandas 2.2 without testing it
-  - Reinstall pandas each time you switch projects
-  answer: 1
-  explanation: A virtual environment per project keeps each project's packages and versions separate.
-- id: q6
-  topic: Terminal and Filesystem
-  text: What does `cat app.log | grep ERROR | wc -l` print?
-  options:
-  - The number of lines in app.log
-  - Every line that contains ERROR
-  - The number of characters in app.log
-  - The number of lines that contain ERROR
-  answer: 3
-  explanation: The pipe passes the file to `grep`, which keeps the lines with ERROR, and `wc -l` counts those lines.
-- id: q7
-  topic: Terminal and Filesystem
-  text: '`data/` does not exist yet. Which command creates `data/raw/2026` in one go?'
-  options:
-  - '`mkdir data/raw/2026`'
-  - '`mkdir -p data/raw/2026`'
-  - '`touch data/raw/2026`'
-  - '`cd data/raw/2026`'
-  answer: 1
-  explanation: '`-p` creates any missing parent folders; without it, `mkdir` fails because `data/raw` does not exist.'
-- id: q8
-  topic: Algorithms and Problem Solving
-  text: About how many comparisons does binary search need to find a value in a sorted list of 1,000,000 numbers?
-  options:
-  - About 20
-  - About 1,000
-  - About 500,000
-  - About 1,000,000
+  - Whether JupyterLab is using the kernel for that project environment
+  - Whether the notebook file is stored beside the package source
+  - Whether the package is listed in the Git commit message
+  - Whether the terminal and notebook use the same working directory
   answer: 0
-  explanation: Each comparison halves the remaining range, and 2²⁰ is about a million, so about 20 steps are enough.
-- id: q9
-  topic: Terminal and Filesystem
-  text: Both `a.txt` and `b.txt` exist. What does `mv a.txt b.txt` do on Linux?
+  explanation: A notebook runs code through its selected kernel, which may use a different Python environment from
+    the terminal. Selecting the project environment's kernel makes the installed package available to the notebook.
+- id: q6
+  topic: Git and GitHub
+  text: You edited `app.py` and staged it with `git add app.py`. Which command shows the changes currently staged
+    for the next commit?
   options:
-  - Fails because b.txt exists
-  - Appends a.txt to the end of b.txt
-  - Renames a.txt to b.txt, replacing the old b.txt
-  - Creates a copy named b (1).txt
-  answer: 2
-  explanation: '`mv` renames, and by default it replaces an existing target without asking; `mv -i` asks first.'
-- id: q10
-  topic: Terminal and Filesystem
-  text: You are in `/home/ana` and run `python scripts/train.py`. Which file runs?
-  options:
-  - '`/scripts/train.py`'
-  - '`/home/ana/scripts/train.py`'
-  - '`train.py` in the folder where Python is installed'
-  - Any `train.py` that Python finds on the computer
+  - '`git diff`'
+  - '`git diff --staged`'
+  - '`git status --short`'
+  - '`git log -- app.py`'
   answer: 1
-  explanation: A path without a leading `/` is relative to the current folder, here `/home/ana`.
+  explanation: '`git diff --staged` shows the changes in the staging area. Plain `git diff` shows changes that are
+    not staged.'
+- id: q7
+  topic: Git and GitHub
+  text: You have reviewed your changes and staged the files you want to save. Which command creates a commit with
+    a useful description?
+  options:
+  - '`git commit -m "Handle empty input in report"`'
+  - '`git add -m "Handle empty input in report"`'
+  - '`git push -m "Handle empty input in report"`'
+  - '`git status -m "Handle empty input in report"`'
+  answer: 0
+  explanation: '`git commit -m` records the staged changes with the given message. The message briefly describes
+    the change being committed.'
+- id: q8
+  topic: Git and GitHub
+  text: You are on `main` and want to start a new feature branch named `add-search`. Which command creates the branch
+    and switches to it?
+  options:
+  - '`git switch -c add-search`'
+  - '`git switch main add-search`'
+  - '`git branch main add-search`'
+  - '`git merge -c add-search`'
+  answer: 0
+  explanation: '`git switch -c add-search` creates the branch and checks it out, so subsequent work happens on that
+    branch.'
+- id: q9
+  topic: Git and GitHub
+  text: A merge stops because `report.py` has a conflict. You edit the file to keep the intended code and remove
+    the conflict markers. What should you do next to finish the merge?
+  options:
+  - Stage the resolved file, then create the merge commit
+  - Create a new branch, then push the unresolved file
+  - Run `git diff`, then restart the merge from the same branch
+  - Delete the file, then pull the merge from the remote
+  answer: 0
+  explanation: After resolving the conflict in the file, stage it to tell Git the conflict is resolved, then commit
+    to complete the merge.
+- id: q10
+  topic: Git and GitHub
+  text: You committed work on a local feature branch and want to publish it on GitHub so you can open a pull request.
+    Which approach is appropriate?
+  options:
+  - Push the feature branch to the remote, then open a pull request
+  - Merge the feature branch locally, then open a pull request for `main`
+  - Fetch the feature branch from the remote, then open a pull request
+  - Commit the feature branch again, then open a pull request without pushing
+  answer: 0
+  explanation: The remote needs the feature branch before GitHub can use it as the source of a pull request. Push
+    the branch, then create the pull request against the target branch.
+- id: q11
+  topic: Debugging Fundamentals
+  text: 'A Python traceback ends with `TypeError: can only concatenate str (not "int") to str`. What is the most
+    useful first step?'
+  options:
+  - Inspect the traceback's reported line and check the values and types used there
+  - Rewrite the whole function before trying the failing input again
+  - Assume the error comes from the line that called the script
+  - Change every integer in the program to a string
+  answer: 0
+  explanation: The final traceback line gives the exception type and message, while the traceback frames help locate
+    where it occurred. Inspecting the values and types at that location helps identify the specific mismatch.
+- id: q12
+  topic: Debugging Fundamentals
+  text: A function returns the wrong total for one input. Which debugging step is most useful before changing the
+    code?
+  options:
+  - Reproduce the failure and inspect intermediate values as the function runs
+  - Change the function until its output matches that one example
+  - Update the package dependencies and rerun the original input
+  - Move the function to another file and run the full application
+  answer: 0
+  explanation: Reproducing the failure makes it possible to investigate consistently, and checking intermediate
+    values can reveal where the calculation diverges from expectations.
+- id: q13
+  topic: Debugging Fundamentals
+  text: 'The intended behavior is for `first_item([])` to return `None`, but this implementation raises an error
+    on an empty list: `def first_item(items): return items[0]`. What is the smallest suitable fix?'
+  options:
+  - Check whether `items` is empty before returning its first element
+  - Catch every exception and return an empty list
+  - Convert `items` to a string before indexing it
+  - Return the last element instead of the first
+  answer: 0
+  explanation: The empty-list edge case must be handled before indexing, because an empty list has no element at
+    index zero. A guard can return `None` when the list is empty and the first item otherwise.
+- id: q14
+  topic: Algorithms and Problem Solving
+  text: 'What does this code print?
+
+
+    `nums = [2, 5, 4, 7]`
+
+    `count = 0`
+
+    `for i in range(len(nums) - 1):`
+
+    `    if nums[i] < nums[i + 1]: count += 1`
+
+    `print(count)`'
+  options:
+  - '`1`'
+  - '`2`'
+  - '`3`'
+  - '`4`'
+  answer: 1
+  explanation: 'The code checks the three adjacent pairs: `(2, 5)`, `(5, 4)`, and `(4, 7)`. Two pairs are increasing,
+    so it prints `2`.'
+- id: q15
+  topic: Algorithms and Problem Solving
+  text: You need to find whether a list contains any repeated value. Which approach checks each value once and stops
+    as soon as it finds a repeat?
+  options:
+  - Track values seen so far in a set while scanning the list
+  - Sort the list and compare every value with every other value
+  - Count the list length and compare it with its largest value
+  - Build a new list containing each value before checking repeats
+  answer: 0
+  explanation: 'A set of previously seen values lets you check each item as you scan: an item already in the set
+    is a repeat. You can stop immediately when one is found.'
 problem:
-  title: Find the lines that mention a word
-  prompt: 'Write `grep_lines(lines, word)` that returns the line numbers, counted from 1, of the lines that contain
-    `word`, ignoring case: what `grep -n -i word` prints, without the text.
+  title: Longest Increasing Run
+  prompt: 'Write `longest_increasing_run(nums)` to return the length of the longest contiguous run in which each
+    number is strictly greater than the number before it. An empty list has a run length of `0`, and a list with
+    one item has a run length of `1`.
 
 
-    Example: `grep_lines(["Error: disk full", "ok", "error again"], "error")` returns `[1, 3]`.'
-  starter_code: "def grep_lines(lines: list[str], word: str) -> list[int]:\n    \"\"\"Line numbers, from 1, of the\
-    \ lines that contain `word`, ignoring case.\"\"\"\n    ..."
-  tests: 'assert grep_lines(["Error: disk full", "ok", "error again"], "error") == [1, 3], "matches ignore case"
+    Example: `longest_increasing_run([1, 3, 2, 4, 5])` returns `3`, because `[2, 4, 5]` is the longest strictly
+    increasing contiguous run.'
+  starter_code: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly\
+    \ increasing run.\"\"\"\n    ..."
+  tests: 'assert longest_increasing_run([]) == 0, "empty list should have run length 0"
 
-    assert grep_lines([], "x") == [], "no lines, no matches"
+    assert longest_increasing_run([7]) == 1, "one item should have run length 1"
 
-    assert grep_lines(["abc", "ABC", "xyz"], "b") == [1, 2], "a match inside a word counts"
+    assert longest_increasing_run([1, 2, 3, 4]) == 4, "fully increasing list should use the whole list"
 
-    assert grep_lines(["a", "b"], "z") == [], "no line matches"'
-  solution: "def grep_lines(lines, word):\n    word = word.lower()\n    return [number for number, line in enumerate(lines,\
-    \ start=1) if word in line.lower()]"
+    assert longest_increasing_run([4, 3, 2]) == 1, "decreasing list should have run length 1"
+
+    assert longest_increasing_run([1, 3, 2, 4, 5]) == 3, "should find the longest contiguous run"
+
+    assert longest_increasing_run([1, 2, 2, 3]) == 2, "equal neighboring values should break a run"'
+  solution: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly increasing\
+    \ run.\"\"\"\n    if not nums:\n        return 0\n\n    longest = 1\n    current = 1\n    for i in range(1,\
+    \ len(nums)):\n        if nums[i] > nums[i - 1]:\n            current += 1\n        else:\n            current\
+    \ = 1\n        longest = max(longest, current)\n    return longest"
   packages: []

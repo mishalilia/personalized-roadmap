@@ -1,0 +1,188 @@
+module_id: softlanding/specializations/data-science/resources
+curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
+status: draft
+generated_by: gpt-6-luna
+reviewed_by: null
+questions:
+- id: q1
+  topic: Curriculum
+  text: A study tests a null hypothesis using a significance level of 0.05 and obtains a p-value of 0.03. What is
+    the appropriate conclusion?
+  options:
+  - Keep the null hypothesis because the p-value is below the significance level.
+  - Conclude the null hypothesis has a 3% chance of being true.
+  - Reject the null hypothesis; the result is statistically significant at this level.
+  - Conclude the alternative hypothesis is certainly true.
+  answer: 2
+  explanation: Because the p-value is below 0.05, the result is statistically significant under the chosen test.
+    This does not tell us the probability that either hypothesis is true.
+- id: q2
+  topic: Curriculum
+  text: A team wants to know whether the average delivery time differs between two independent groups of orders.
+    Which approach best addresses that question?
+  options:
+  - Estimate and test the difference between the two population means.
+  - Compare the largest delivery time observed in each group.
+  - Test whether the two groups have identical delivery-time distributions in every respect.
+  - Compare the two sample means without considering sample variability.
+  answer: 0
+  explanation: The question concerns a difference in average delivery time, so the relevant target is the difference
+    between the population means. A statistical test accounts for the variability in the samples.
+- id: q3
+  topic: Curriculum
+  text: The same customers rate a service before and after a redesign. To test whether their average rating changed,
+    what should the analysis focus on?
+  options:
+  - Treat the before and after ratings as unrelated samples.
+  - Compare the two groups' variances and ignore their means.
+  - Use only the ratings recorded after the redesign.
+  - Analyze each customer's after-minus-before rating difference.
+  answer: 3
+  explanation: The observations are paired because each customer provides both ratings. Testing the within-customer
+    differences uses that pairing rather than treating the samples as independent.
+- id: q4
+  topic: Curriculum
+  text: Two independent groups have noticeably different sample variances and different sample sizes. The goal is
+    to compare their means. Which test is a sensible choice?
+  options:
+  - A pooled-variance t-test that assumes the population variances are equal.
+  - Welch's t-test, which does not require equal population variances.
+  - A paired t-test, matching each observation in one group with one in the other.
+  - A one-sample t-test applied to the combined observations.
+  answer: 1
+  explanation: Welch's t-test compares independent group means without assuming equal population variances. That
+    is a suitable choice when variances and sample sizes differ.
+- id: q5
+  topic: Curriculum
+  text: A one-way ANOVA comparing four treatment groups gives a statistically significant result. What can the team
+    conclude from this test alone?
+  options:
+  - Every pair of treatment means differs significantly.
+  - The group with the largest sample mean is significantly better than the others.
+  - At least one population mean differs, but follow-up comparisons are needed to locate the difference.
+  - The treatment with the smallest sample variance has the largest population mean.
+  answer: 2
+  explanation: A significant ANOVA indicates evidence that not all population means are equal. It does not identify
+    which groups differ; follow-up comparisons are needed for that.
+- id: q6
+  topic: Curriculum
+  text: A very large study finds a statistically significant difference in average wait time, but the estimated
+    difference is only one second. What is the best interpretation?
+  options:
+  - The difference may be statistically detectable but too small to matter operationally.
+  - Statistical significance proves the difference is large enough to matter.
+  - The result must be invalid because large studies cannot find small effects.
+  - The one-second estimate means the two population averages are equal.
+  answer: 0
+  explanation: A large sample can make a small difference statistically detectable. Whether a one-second change
+    matters in practice is a separate question from statistical significance.
+- id: q7
+  topic: Curriculum
+  text: A fraud detector flags transactions for review. Reviewers want flagged transactions to be fraudulent as
+    often as possible, even if some fraud is missed. Which metric should they prioritize?
+  options:
+  - Recall, because it measures the fraction of all fraud cases found.
+  - Accuracy, because it counts correct decisions across all transactions.
+  - Specificity, because it measures the fraction of legitimate cases left unflagged.
+  - Precision, because it measures the fraction of flagged transactions that are fraud.
+  answer: 3
+  explanation: Precision is the proportion of flagged transactions that are truly fraudulent. Prioritizing it reduces
+    the share of reviewed alerts that are false alarms.
+- id: q8
+  topic: Curriculum
+  text: A screening system must miss as few genuinely ill patients as possible, even if it sends some healthy patients
+    for further testing. Which metric should be emphasized?
+  options:
+  - Precision, the fraction of positive predictions that are correct.
+  - Recall, the fraction of actual positive cases that are detected.
+  - Specificity, the fraction of actual negative cases that are correctly rejected.
+  - Negative predictive value, the fraction of negative predictions that are correct.
+  answer: 1
+  explanation: Recall measures how many actual positive cases the system detects. Emphasizing recall helps reduce
+    false negatives, which are missed ill patients in this scenario.
+- id: q9
+  topic: Curriculum
+  text: Two classifiers have very different precision and recall. A project needs one score that balances both and
+    penalizes a very low value in either. Which metric best fits?
+  options:
+  - Accuracy, which measures the fraction of all predictions that are correct.
+  - Brier score, which measures the squared error of probability predictions.
+  - F1-score, which combines precision and recall using their harmonic mean.
+  - Mean absolute error, which measures average absolute prediction error.
+  answer: 2
+  explanation: The F1-score combines precision and recall using their harmonic mean, so a low value for either pulls
+    the score down. The other metrics evaluate different aspects of model performance.
+- id: q10
+  topic: Curriculum
+  text: Two models predict probabilities for the same binary outcomes. Their Brier scores are 0.12 and 0.19. Assuming
+    the same evaluation data, which model has better probability predictions by this metric?
+  options:
+  - The model with a Brier score of 0.12.
+  - The model with a Brier score of 0.19.
+  - Neither; Brier scores are better when they are larger.
+  - Neither; Brier scores compare only the models' predicted classes.
+  answer: 0
+  explanation: The Brier score measures squared error between predicted probabilities and observed outcomes, so
+    lower is better. A score of 0.12 indicates less error than 0.19.
+- id: q11
+  topic: Curriculum
+  text: A team evaluates a classifier on a dataset where one class is much more common than the other. They want
+    a single metric that reflects performance across all four confusion-matrix outcomes. Which is a good choice?
+  options:
+  - Accuracy, because it weights all four confusion-matrix outcomes equally.
+  - Precision, because it incorporates both true negatives and false negatives.
+  - Recall, because it incorporates both true positives and false positives.
+  - Matthews Correlation Coefficient (MCC), because it uses all four confusion-matrix outcomes.
+  answer: 3
+  explanation: MCC incorporates true positives, true negatives, false positives, and false negatives, making it
+    useful when class frequencies are uneven. Accuracy alone can look strong when a classifier mostly predicts the
+    majority class.
+- id: q12
+  topic: Curriculum
+  text: Two regression models are being compared, and large prediction errors should count especially heavily. Which
+    metric is most directly suited to that preference?
+  options:
+  - Mean absolute error, because it averages absolute errors without squaring them.
+  - Root mean squared error, because squaring errors gives large errors extra weight.
+  - Precision, because it measures the correctness of positive predictions.
+  - F1-score, because it balances errors across two classes.
+  answer: 1
+  explanation: Root mean squared error squares each prediction error before averaging, so large errors contribute
+    disproportionately. Mean absolute error does not apply that extra penalty.
+- id: q13
+  topic: Curriculum
+  text: A team uses K-Means on customer data with features measured in dollars and years. The dollar values are
+    numerically much larger. What is a sensible step before clustering?
+  options:
+  - Duplicate the years feature so its values are closer to the dollar values.
+  - Convert every feature to a binary value before computing distances.
+  - Scale the features so their units do not dominate the distance calculations.
+  - Remove the dollar feature because K-Means cannot use monetary data.
+  answer: 2
+  explanation: K-Means uses distances, so a feature with much larger numerical values can dominate cluster assignments.
+    Scaling features puts them on more comparable ranges.
+- id: q14
+  topic: Curriculum
+  text: A dataset appears to contain curved, irregularly shaped groups, with some observations isolated from dense
+    regions. Which method is most aligned with this structure?
+  options:
+  - DBSCAN, which can find dense, non-spherical groups and label isolated points as noise.
+  - K-Means, which assigns every point to one of a fixed number of centroid-based groups.
+  - A pooled t-test, which groups observations according to their sample means.
+  - ANOVA, which assigns observations to groups based on their variances.
+  answer: 0
+  explanation: DBSCAN forms clusters from dense regions and can mark isolated observations as noise, which suits
+    irregular cluster shapes. K-Means instead assigns points to a preset number of centroid-based clusters.
+- id: q15
+  topic: Curriculum
+  text: A DBSCAN run labels many points as noise. The team finds that some of these points belong to a sparse but
+    meaningful group. What is a reasonable next step?
+  options:
+  - Increase the number of clusters and keep DBSCAN's density settings unchanged.
+  - Replace the distance measure with the F1-score for each pair of points.
+  - Treat every point labeled noise as a data-entry error.
+  - Review the neighborhood radius and minimum-neighbor settings for the data's density.
+  answer: 3
+  explanation: DBSCAN's clusters and noise labels depend on its neighborhood radius and minimum-neighbor settings.
+    Reviewing those settings may help capture meaningful groups that are less dense.
+problem: null
