@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class Planner(Protocol):
-    def plan(self, answers: Answers, level: Level | None) -> list[PathItem]: ...
+    def plan(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> list[PathItem]: ...
 
 
 class ModuleDecision(BaseModel):
@@ -57,10 +59,13 @@ class LLMPlanner:
         self._modules = prompt_ids(curriculum.modules)
         self._questions = questions
 
-    def plan(self, answers: Answers, level: Level | None) -> list[PathItem]:
+    def plan(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> list[PathItem]:
+        """`progress` says what the learner has shown since onboarding, such as a checkpoint passed."""
         response = self._llm.ask(
             prompts.load("path"),
-            self._prompt(answers, level),
+            self._prompt(answers, level, progress),
             PlanDecisions,
             check=self._check_every_module_decided,
         )
@@ -89,7 +94,9 @@ class LLMPlanner:
             return PathItem.suggestion(module, Choice.STUDY, self.NO_CHECKLIST)
         return PathItem.suggestion(module, decision.choice, decision.reason)
 
-    def _prompt(self, answers: Answers, level: Level | None) -> str:
+    def _prompt(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> str:
         outlines = [
             _outline(prompt_id, module) for prompt_id, module in self._modules.items()
         ]
@@ -99,7 +106,8 @@ class LLMPlanner:
         return (
             f"Learner's answers:\n\n{format_answers(self._questions, answers)}\n\n"
             f"Learner's level: {level or 'not assessed'}\n\n"
-            f"Modules in course order:\n\n{modules}"
+            + (f"Since then: {progress}\n\n" if progress else "")
+            + f"Modules in course order:\n\n{modules}"
         )
 
 
@@ -109,7 +117,12 @@ def _outline(prompt_id: str, module: Module) -> dict[str, Any]:
         "title": module.full_title,
         "about": module.description,
         "resources": [
-            f"{resource.title} ({resource.difficulty})" for resource in module.resources
+            (
+                f"{resource.title} ({resource.difficulty})"
+                if resource.difficulty
+                else resource.title
+            )
+            for resource in module.resources
         ],
     }
     if module.prerequisites:
@@ -130,7 +143,9 @@ class CourseOrderPlanner:
     def __init__(self, curriculum: Curriculum) -> None:
         self._curriculum = curriculum
 
-    def plan(self, answers: Answers, level: Level | None) -> list[PathItem]:
+    def plan(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> list[PathItem]:
         return [
             PathItem.suggestion(module, Choice.STUDY, self.REASON)
             for module in self._curriculum.modules

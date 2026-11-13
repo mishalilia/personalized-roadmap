@@ -7,7 +7,9 @@ Decide for every module what the learner should do with it:
 - prove: the module lists a checklist, and the answers show the learner already knows a good part of its
   content, but not all of it or not for certain. The learner then works through the checklist instead of the
   module, and studies the module only if they cannot complete the checklist. Never choose prove for content
-  the answers say the learner has not learned: that learner should study it.
+  the answers say the learner has not learned: that learner should study it. Experience in a related field is
+  not evidence for a library, a tool or a maths topic the learner never names. Maths the learner says they
+  have forgotten, find fuzzy or have not used in years is to study, not to prove.
 - skip: the answers show the learner already knows or uses the module's content in practice, or the module
   does not serve their goal, such as a specialization track for a different field.
 
@@ -17,6 +19,8 @@ How to judge:
 - Where a module lists prerequisites, they name what earlier modules must teach first. A learner who lacks
   them needs those earlier modules; that is never a reason to skip the module itself.
 - Only modules that list a checklist can be proved.
+- If you are told what the learner has shown since onboarding, such as a checkpoint passed without a mistake,
+  count it as evidence alongside their answers, for that module's content and for what builds on it.
 
 Write each reason to the learner in one or two sentences and tie it to what they wrote or to their goal. The
 reason for a skip says why skipping is safe; the reason for prove names what the learner already knows.

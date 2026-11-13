@@ -1,0 +1,127 @@
+module_id: engineering-fundamentals/terminal-algorithmic-basics
+curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # pragma: allowlist secret
+status: draft
+generated_by: Claude, in a development session, from the module brief; not the generator pipeline
+reviewed_by: null
+questions:
+- id: q1
+  topic: 1. Setup & Command Line Interface
+  text: You are in `/home/ana/projects/ml`. Where are you after `cd ..`?
+  options:
+  - '`/home/ana`'
+  - '`/home/ana/projects`'
+  - '`/`'
+  - '`/home/ana/projects/ml/..` as a new folder'
+  answer: 1
+  explanation: '`..` is the parent directory, so `cd ..` moves one level up.'
+- id: q2
+  topic: 1. Setup & Command Line Interface
+  text: Which command finds every file under the current folder that contains the text `learning_rate`?
+  options:
+  - '`grep -r "learning_rate" .`'
+  - '`ls -r learning_rate`'
+  - '`find learning_rate`'
+  - '`cat * | learning_rate`'
+  answer: 0
+  explanation: '`grep -r` searches the contents of files recursively, starting from `.`, the current folder.'
+- id: q3
+  topic: 2. Algorithmic Thinking
+  text: You must check whether any two numbers in a list of a million add up to a target. Which approach scales
+    best?
+  options:
+  - Compare every pair with two nested loops
+  - Sort the list again for every number
+  - Walk the list once, keeping the numbers seen so far in a set and checking for `target - x`
+  - Try random pairs until one fits
+  answer: 2
+  explanation: With a set, each number is checked in about constant time, so the whole list takes one pass instead
+    of about n² comparisons.
+- id: q4
+  topic: 1. Setup & Command Line Interface
+  text: You created a file named `.env`, but `ls` does not list it. Why?
+  options:
+  - The file was not saved
+  - '`ls` only lists folders'
+  - Files that start with a dot are hidden; `ls -a` shows them
+  - '`.env` files can only be seen by the root user'
+  answer: 2
+  explanation: Names starting with a dot are hidden by convention; `ls -a` lists all entries, including hidden ones.
+- id: q5
+  topic: 1. Setup & Command Line Interface
+  text: Project A needs pandas 1.5 and project B needs pandas 2.2 on the same laptop. What is the usual fix?
+  options:
+  - Install both versions globally and pick one at import time
+  - Give each project its own virtual environment
+  - Upgrade project A to pandas 2.2 without testing it
+  - Reinstall pandas each time you switch projects
+  answer: 1
+  explanation: A virtual environment per project keeps each project's packages and versions separate.
+- id: q6
+  topic: 1. Setup & Command Line Interface
+  text: What does `cat app.log | grep ERROR | wc -l` print?
+  options:
+  - The number of lines in app.log
+  - Every line that contains ERROR
+  - The number of characters in app.log
+  - The number of lines that contain ERROR
+  answer: 3
+  explanation: The pipe passes the file to `grep`, which keeps the lines with ERROR, and `wc -l` counts those lines.
+- id: q7
+  topic: 1. Setup & Command Line Interface
+  text: '`data/` does not exist yet. Which command creates `data/raw/2026` in one go?'
+  options:
+  - '`mkdir data/raw/2026`'
+  - '`mkdir -p data/raw/2026`'
+  - '`touch data/raw/2026`'
+  - '`cd data/raw/2026`'
+  answer: 1
+  explanation: '`-p` creates any missing parent folders; without it, `mkdir` fails because `data/raw` does not exist.'
+- id: q8
+  topic: 2. Algorithmic Thinking
+  text: About how many comparisons does binary search need to find a value in a sorted list of 1,000,000 numbers?
+  options:
+  - About 20
+  - About 1,000
+  - About 500,000
+  - About 1,000,000
+  answer: 0
+  explanation: Each comparison halves the remaining range, and 2²⁰ is about a million, so about 20 steps are enough.
+- id: q9
+  topic: 1. Setup & Command Line Interface
+  text: Both `a.txt` and `b.txt` exist. What does `mv a.txt b.txt` do on Linux?
+  options:
+  - Fails because b.txt exists
+  - Appends a.txt to the end of b.txt
+  - Renames a.txt to b.txt, replacing the old b.txt
+  - Creates a copy named b (1).txt
+  answer: 2
+  explanation: '`mv` renames, and by default it replaces an existing target without asking; `mv -i` asks first.'
+- id: q10
+  topic: 1. Setup & Command Line Interface
+  text: You are in `/home/ana` and run `python scripts/train.py`. Which file runs?
+  options:
+  - '`/scripts/train.py`'
+  - '`/home/ana/scripts/train.py`'
+  - '`train.py` in the folder where Python is installed'
+  - Any `train.py` that Python finds on the computer
+  answer: 1
+  explanation: A path without a leading `/` is relative to the current folder, here `/home/ana`.
+problem:
+  title: Find the lines that mention a word
+  prompt: 'Write `grep_lines(lines, word)` that returns the line numbers, counted from 1, of the lines that contain
+    `word`, ignoring case: what `grep -n -i word` prints, without the text.
+
+
+    Example: `grep_lines(["Error: disk full", "ok", "error again"], "error")` returns `[1, 3]`.'
+  starter_code: "def grep_lines(lines: list[str], word: str) -> list[int]:\n    \"\"\"Line numbers, from 1, of the\
+    \ lines that contain `word`, ignoring case.\"\"\"\n    ..."
+  tests: 'assert grep_lines(["Error: disk full", "ok", "error again"], "error") == [1, 3], "matches ignore case"
+
+    assert grep_lines([], "x") == [], "no lines, no matches"
+
+    assert grep_lines(["abc", "ABC", "xyz"], "b") == [1, 2], "a match inside a word counts"
+
+    assert grep_lines(["a", "b"], "z") == [], "no line matches"'
+  solution: "def grep_lines(lines, word):\n    word = word.lower()\n    return [number for number, line in enumerate(lines,\
+    \ start=1) if word in line.lower()]"
+  packages: []

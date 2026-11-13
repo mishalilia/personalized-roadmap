@@ -3,7 +3,12 @@
 Docusaurus conventions this relies on:
 - `_category_.yml` gives a directory its label, its position and, optionally, an overview page (`link.id`);
 - `sidebar_position` orders pages, and items without a position come after those with one;
-- number prefixes such as `02-` are dropped from page ids and URLs, and a `slug` replaces the URL.
+- number prefixes such as `02-` are dropped from page ids and URLs, and a `slug` replaces the URL;
+- `unlisted: true` and `draft: true` pages are not in the sidebar: authors use them for retired modules.
+
+Authors state what finishes a module in two ways: tick boxes under a "Checklist" heading (versions up to
+October 2026), or what the completion headings say: "Finish this module", "Expected output", "Assessment"
+(the current one). `completion_headings` reads the second as well; both become the module's checklist.
 
 A module is a page inside a category, other than a category's overview page. Pages at the top level
 (the site introduction, the contributors guide) are not part of the course.
@@ -21,7 +26,7 @@ from typing import Any
 import yaml
 
 from .config import read_yaml
-from .curriculum import Module, Resource
+from .curriculum import Hours, Module, Resource, Topic
 
 _PAGE_SUFFIXES = (".md", ".mdx")
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -34,15 +39,37 @@ _BULLET = re.compile(r"^\s*[-*]\s+(.+)$", re.MULTILINE)
 _CHECKBOX = re.compile(r"^\s*[-*]\s+\[ \]\s+(.+)$", re.MULTILINE)
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _TAG = re.compile(r"<[^>]*>")
+_HEADING_ID = re.compile(r"\s*\{#[^}]*\}\s*$")
+_TIME_ESTIMATE = re.compile(
+    r"<TimeEstimate\b[^>]*?minHours=\{([\d.]+)\}[^>]*?maxHours=\{([\d.]+)\}", re.DOTALL
+)
+_DURATION = re.compile(
+    r"(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(minutes?|min|hours?|hrs?|h)\b",
+    re.IGNORECASE,
+)
+_COMPLETION_HEADINGS = (
+    "finish this module",
+    "expected output",
+    "assessment",
+    "completion criteria",
+)
+# Headings whose paragraph, when it has no bullet points, still states what this module asks for. The
+# paragraph under "Finish this module" is the same boilerplate on every page, so it is left out.
+_OUTCOME_PARAGRAPHS = ("expected output", "what you’ll build", "what you'll build")
 
 
-def parse_modules(docs_dir: Path, site_url: str) -> list[Module]:
+def parse_modules(
+    docs_dir: Path, site_url: str, completion_headings: bool = False
+) -> list[Module]:
     """The course modules under `docs_dir`, in sidebar order."""
     overview_ids = _overview_ids(docs_dir)
     return [
-        _module(page, section, docs_dir, site_url)
+        _module(page, section, docs_dir, site_url, completion_headings)
         for page, section in _pages_in_sidebar_order(docs_dir, section=[])
-        if section and _page_id(page.path, docs_dir) not in overview_ids
+        if section
+        and _page_id(page.path, docs_dir) not in overview_ids
+        and not page.frontmatter.get("unlisted")
+        and not page.frontmatter.get("draft")
     ]
 
 
@@ -113,7 +140,13 @@ def _sidebar_order(item: _Page | _Category) -> tuple[bool, float]:
     return item.position is None, item.position or 0
 
 
-def _module(page: _Page, section: list[str], docs_dir: Path, site_url: str) -> Module:
+def _module(
+    page: _Page,
+    section: list[str],
+    docs_dir: Path,
+    site_url: str,
+    completion_headings: bool = False,
+) -> Module:
     page_id = _page_id(page.path, docs_dir)
     return Module(
         id=page_id,
@@ -121,22 +154,120 @@ def _module(page: _Page, section: list[str], docs_dir: Path, site_url: str) -> M
         description=page.frontmatter.get("description", ""),
         section=section,
         url=_page_url(page_id, page.frontmatter.get("slug"), site_url),
-        resources=[_resource(card) for card in _RESOURCE_CARD.findall(page.body)],
+        resources=(
+            resources := [_resource(card) for card in _RESOURCE_CARD.findall(page.body)]
+        ),
         prerequisites=_prerequisites(page.body),
-        checklist=_checklist(page.body),
+        checklist=_checklist(page.body, completion_headings),
+        topics=_topics(page.body),
+        hours=_hours(page.body, resources),
     )
 
 
 def _prerequisites(body: str) -> list[str]:
-    """The bullet points under a "Prerequisites" heading, as plain text."""
-    section = _section_text(body, "Prerequisites")
-    return [_plain_text(item) for item in _BULLET.findall(section)]
+    """The bullet points under "Prerequisites" or "Before you start" headings, as plain text; a section
+    without bullet points counts as one item."""
+    items: list[str] = []
+    for section in _sections_titled(body, ("prerequisites", "before you start")):
+        bullets = [_plain_text(item) for item in _BULLET.findall(section)]
+        paragraph = " ".join(_plain_text(line) for line in section.strip().splitlines())
+        items += bullets or ([paragraph] if paragraph else [])
+    return items
 
 
-def _checklist(body: str) -> list[str]:
-    """The tick boxes under a "Checklist" heading, as Markdown so that links stay usable."""
-    section = _section_text(body, "Checklist")
-    return [_TAG.sub("", item).strip() for item in _CHECKBOX.findall(section)]
+def _checklist(body: str, completion_headings: bool = False) -> list[str]:
+    """What finishes the module, as Markdown so that links stay usable: the tick boxes under a "Checklist"
+    heading, or else, if asked, what the completion headings say."""
+    ticks = [
+        _TAG.sub("", item).strip()
+        for item in _CHECKBOX.findall(_section_text(body, "Checklist"))
+    ]
+    if ticks or not completion_headings:
+        return ticks
+    items: list[str] = []
+    for section in _sections_titled(body, _COMPLETION_HEADINGS):
+        items += [_TAG.sub("", item).strip() for item in _BULLET.findall(section)]
+    if not items:
+        for section in _sections_titled(body, _OUTCOME_PARAGRAPHS):
+            paragraph = " ".join(line.strip() for line in section.strip().splitlines())
+            items += [_TAG.sub("", paragraph).strip()] if paragraph else []
+    return [item for item in items if item]
+
+
+def _sections_titled(markdown: str, words: tuple[str, ...]) -> list[str]:
+    """The text under every heading whose title starts with one of `words`."""
+    text = _CODE_BLOCK.sub("", markdown)
+    headings = list(_HEADING.finditer(text))
+    sections = []
+    for index, match in enumerate(headings):
+        if not _plain_text(match.group(2)).lower().startswith(words):
+            continue
+        level = len(match.group(1))
+        ends = (
+            later.start()
+            for later in headings[index + 1 :]
+            if len(later.group(1)) <= level
+        )
+        sections.append(text[match.end() : next(ends, len(text))])
+    return sections
+
+
+def _hours(body: str, resources: list[Resource]) -> Hours | None:
+    """The authors' estimate for the module, or else the sum of its resources' durations, where every
+    duration can be read."""
+    if match := _TIME_ESTIMATE.search(body):
+        return Hours(low=float(match.group(1)), high=float(match.group(2)))
+    spans = [duration_hours(resource.duration) for resource in resources]
+    if not spans or any(span is None for span in spans):
+        return None
+    return Hours(
+        low=round(sum(span.low for span in spans if span), 1),
+        high=round(sum(span.high for span in spans if span), 1),
+    )
+
+
+def duration_hours(duration: str) -> Hours | None:
+    """ "2-3 hours" or "30-45 minutes" as hours; None for anything else, such as "4-6 weeks"."""
+    match = _DURATION.search(duration)
+    if match is None:
+        return None
+    low = float(match.group(1))
+    high = float(match.group(2) or low)
+    if match.group(3).lower().startswith("m"):
+        low, high = low / 60, high / 60
+    return Hours(low=low, high=high)
+
+
+# Parts of a page that are not taught content.
+_NOT_A_TOPIC = (
+    "checklist",
+    "goal",
+    "prerequisites",
+    "resources",
+    "next steps",
+    "workload",
+    "finish this module",
+)
+
+
+def _topics(body: str) -> list[Topic]:
+    """The page's second-level headings with the bullet points under them, as plain text."""
+    text = _CODE_BLOCK.sub("", body)
+    headings = [match for match in _HEADING.finditer(text) if len(match.group(1)) == 2]
+    topics = []
+    for index, match in enumerate(headings):
+        title = _plain_text(match.group(2))
+        if not title or any(word in title.lower() for word in _NOT_A_TOPIC):
+            continue
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        section = text[match.end() : end]
+        outcomes = [
+            _plain_text(item)
+            for item in _BULLET.findall(section)
+            if not item.lstrip().startswith("[")
+        ]
+        topics.append(Topic(title=title, outcomes=outcomes))
+    return topics
 
 
 def _page_id(path: Path, docs_dir: Path) -> str:
@@ -161,9 +292,10 @@ def _resource(card: str) -> Resource:
         {
             "title": attributes["title"],
             "url": attributes["url"],
-            "type": attributes["type"],
-            "difficulty": attributes["difficulty"],
-            "duration": attributes["duration"],
+            "type": attributes.get("type", ""),
+            # The current curriculum leaves these out of most cards.
+            "difficulty": attributes.get("difficulty"),
+            "duration": attributes.get("duration", ""),
             "note": attributes.get("why") or attributes.get("description", ""),
         }
     )
@@ -188,6 +320,7 @@ def _section_text(markdown: str, word: str) -> str:
 
 
 def _plain_text(markdown: str) -> str:
-    text = _LINK.sub(r"\1", markdown)
+    text = _HEADING_ID.sub("", markdown)
+    text = _LINK.sub(r"\1", text)
     text = _TAG.sub("", text)
     return text.replace("**", "").replace("`", "").strip()

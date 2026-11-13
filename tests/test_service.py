@@ -81,3 +81,64 @@ def test_an_incomplete_plan_falls_back_to_the_course_order(curriculum, questions
 
     assert path.personalization_unavailable
     assert all(item.choice is Choice.STUDY for item in path.items)
+
+
+def test_a_perfect_first_checkpoint_brings_lighter_suggestions_for_later_modules(
+    curriculum, questions
+):
+    from roadmap.checkpoints import Grade, QuestionFeedback
+
+    terminal, algebra = "basics/terminal", "basics/algebra"
+    llm = FakeLLM(
+        study_all(curriculum),
+        study_all(
+            curriculum,
+            except_for={
+                terminal: (Choice.SKIP, "Earlier than the checkpoint."),
+                algebra: (Choice.SKIP, "The checkpoint showed you know it."),
+            },
+        ),
+    )
+    roadmap = Roadmap(curriculum, questions, llm)
+    path = roadmap.build_path(
+        {"programming": "Bash every day"}, Level.BEGINNER
+    ).confirm()
+    grade = Grade(
+        attempt=0,
+        score=5,
+        total=5,
+        passed=True,
+        effortless=True,
+        feedback=[
+            QuestionFeedback(id="q1", topic="Pipes", correct=True),
+            QuestionFeedback(id="q2", topic="Pipes", correct=True),
+            QuestionFeedback(id="q3", topic="Paths", correct=True),
+        ],
+    )
+
+    after = roadmap.after_checkpoint(path, terminal, grade)
+
+    assert after.item(terminal).progress == "passed"
+    assert [(p.module_id, p.choice) for p in after.proposals] == [
+        (algebra, Choice.SKIP)
+    ]
+    assert "passed the checkpoint" in llm.prompts[-1]
+    assert "answering questions on: Pipes; Paths." in llm.prompts[-1]
+    assert "Bash every day" in llm.prompts[-1]  # planned again from the stored answers
+
+
+def test_without_a_model_a_checkpoint_still_counts_but_brings_no_suggestions(
+    curriculum, questions
+):
+    from roadmap.checkpoints import Grade
+
+    roadmap = Roadmap(curriculum, questions, llm=None)
+    path = roadmap.build_path({}, None).confirm()
+    grade = Grade(
+        attempt=0, score=5, total=5, passed=True, effortless=True, feedback=[]
+    )
+
+    after = roadmap.after_checkpoint(path, "basics/terminal", grade)
+
+    assert after.item("basics/terminal").progress == "passed"
+    assert after.proposals == []
