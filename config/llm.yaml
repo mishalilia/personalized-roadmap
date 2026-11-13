@@ -10,3 +10,7 @@ google:
 groq:
   base_url: https://api.groq.com/openai/v1
   models: [openai/gpt-oss-120b]
+
+openai:
+  base_url: https://api.openai.com/v1
+  models: [gpt-6-luna]

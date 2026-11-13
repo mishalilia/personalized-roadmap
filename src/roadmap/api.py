@@ -66,6 +66,7 @@ from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, PathStateError, Progress
+from .path_chat import ChatReply, ChatRequest, PathAssistant
 from .project_files import (
     ProjectError,
     ProjectFiles,
@@ -759,6 +760,33 @@ def create_app(
         updated = change(signed_in(request), solved_in)
         record(updated, EventKind.FINISHED, module_id)
         return updated
+
+    # The assistant in the path panel
+
+    # A question sends the path and a module's outline, a few thousand tokens, so each learner gets a share.
+    chats = RateLimiter(40, 24 * 3600)
+
+    @app.post("/me/chat")
+    def chat(body: ChatRequest, request: Request) -> ChatReply:
+        """Answers the learner's question about their path, or the module page they are reading."""
+        account = signed_in(request)
+        path = store.path_of(account)
+        if path is None:
+            raise HTTPException(404, "Plan your path first; then ask about it.")
+        llm = edition_of(path).roadmap.llm
+        if llm is None:
+            raise HTTPException(503, "The assistant is not available right now.")
+        if not chats.allow(account.id):
+            raise HTTPException(
+                429, "You have asked 40 questions today. Ask again tomorrow."
+            )
+        try:
+            return PathAssistant(llm).answer(path, body)
+        except LLMUnavailable as error:
+            logger.warning("No answer for a question: %s", error)
+            raise HTTPException(
+                503, "The assistant cannot answer right now. Try again in a minute."
+            ) from error
 
     # Projects
 

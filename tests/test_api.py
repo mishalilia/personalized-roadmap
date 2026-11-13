@@ -681,3 +681,105 @@ def test_invented_example_learners_are_offered_for_demos(curriculum, questions):
 
     assert [profile["id"] for profile in body] == ["p1", "p2", "p3"]
     assert set(body[0]["answers"]) <= {question.id for question in questions}
+
+
+# The assistant in the path panel
+
+
+def test_the_assistant_answers_from_the_learners_path_and_the_page_they_read(
+    curriculum, questions
+):
+    llm = FakeLLM(
+        study_all(
+            curriculum, except_for={TERMINAL: (Choice.SKIP, "You use the shell daily.")}
+        ),
+        {
+            "reply": "It is skipped because you use the shell daily.",
+            "modules": [TERMINAL],
+        },
+    )
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    response = client.post(
+        "/me/chat",
+        json={
+            "question": "Why is the terminal module skipped?",
+            "history": [
+                {"speaker": "learner", "text": "Hi"},
+                {"speaker": "assistant", "text": "Hello! Ask me about your path."},
+            ],
+            "module_id": TERMINAL,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    reply = response.json()
+    assert reply["reply"] == "It is skipped because you use the shell daily."
+    terminal = next(m for m in curriculum.modules if m.id == TERMINAL)
+    assert reply["modules"] == [{"id": TERMINAL, "title": terminal.title}]
+    prompt = llm.prompts[-1]
+    assert f"[{TERMINAL}]" in prompt and "skip" in prompt
+    assert "You use the shell daily." in prompt  # the planner's reason
+    assert "# The module page they are reading now" in prompt
+    assert "learner: Hi" in prompt
+    assert prompt.rstrip().endswith("Why is the terminal module skipped?")
+
+
+def test_the_assistant_needs_an_account_a_path_and_a_model(curriculum, questions):
+    question = {"question": "What next?"}
+    with_model = site_for(
+        Roadmap(curriculum, questions, FakeLLM(study_all(curriculum)))
+    )
+    assert with_model.learner().post("/me/chat", json=question).status_code == 401
+    assert with_model.signed_in().post("/me/chat", json=question).status_code == 404
+
+    without = site_for(Roadmap(curriculum, questions, llm=None)).signed_in()
+    confirmed_path(without)
+    assert without.post("/me/chat", json=question).status_code == 503
+
+
+def test_an_answer_naming_a_module_the_path_lacks_is_not_shown(curriculum, questions):
+    llm = FakeLLM(
+        study_all(curriculum),
+        {"reply": "Take Quantum Basics.", "modules": ["quantum/basics"]},
+    )
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    response = client.post("/me/chat", json={"question": "What should I add?"})
+
+    assert response.status_code == 503
+
+
+def test_questions_and_histories_are_bounded(curriculum, questions):
+    client = site_for(
+        Roadmap(curriculum, questions, FakeLLM(study_all(curriculum)))
+    ).signed_in()
+    confirmed_path(client)
+
+    too_long = client.post("/me/chat", json={"question": "x" * 1001})
+    too_many = client.post(
+        "/me/chat",
+        json={"question": "Hi", "history": [{"speaker": "learner", "text": "a"}] * 9},
+    )
+    empty = client.post("/me/chat", json={"question": "   "})
+
+    assert {too_long.status_code, too_many.status_code, empty.status_code} == {422}
+
+
+def test_the_assistant_sees_only_the_prerequisites_the_course_states(
+    curriculum, questions
+):
+    llm = FakeLLM(study_all(curriculum), {"reply": "OpenCV basics.", "modules": []})
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    client.post("/me/chat", json={"question": "What do I need for the capstone?"})
+
+    prompt = llm.prompts[-1]
+    assert (
+        "Prerequisites, as the course states them: Python programming (intermediate level); "
+        "Familiarity with NumPy arrays; OpenCV basics"
+    ) in prompt
+    assert prompt.count("Prerequisites, as the course states them") == 1
