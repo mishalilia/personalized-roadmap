@@ -1,0 +1,47 @@
+# The curriculum site with the personal path page, the API, and Caddy for HTTPS, on one server.
+# Run from this directory: docker compose up -d --build   (see deploy/README.md)
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    env_file: .env
+    environment:
+      API_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+    volumes:
+      - api-state:/app/state
+    restart: unless-stopped
+    # Not published: only Caddy reaches it, which is why it may trust the forwarded client address.
+
+  site:
+    build:
+      # The curriculum repository with the personal path page (our fork, branch with the page).
+      context: ${SITE_DIR}
+      args:
+        PERSONAL_PATH_API: https://${API_DOMAIN}
+        REACT_APP_CHAT_LINK: ${REACT_APP_CHAT_LINK:-}
+        PYODIDE_URL: ${PYODIDE_URL:-}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - site
+    restart: unless-stopped
+
+volumes:
+  api-state:
+  caddy-data:
+  caddy-config:

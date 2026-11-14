@@ -1,2 +1,0 @@
-# The demo web interface (app/).
-streamlit>=1.40,<2.0
