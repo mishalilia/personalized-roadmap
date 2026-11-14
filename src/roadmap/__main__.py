@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .checkpoints import CheckpointGenerator, CheckpointStore, Status, verify_problem
 from .curriculum import Module
+from .events import EventLog
 from .config import Settings
 from .curriculum import Level
 from .onboarding import LearnerProfile, load_profiles
@@ -96,6 +97,15 @@ def _parser() -> argparse.ArgumentParser:
         "--force", action="store_true", help="also replace reviewed checkpoints"
     )
     generate.set_defaults(command=_checkpoints)
+
+    report = commands.add_parser(
+        "report",
+        help="where learners who share their progress stop, per module",
+    )
+    report.add_argument(
+        "--curriculum", help="a curriculum version; the newest by default"
+    )
+    report.set_defaults(command=_report)
     return parser
 
 
@@ -229,6 +239,25 @@ def _verify(store: CheckpointStore, modules: list[Module]) -> None:
         )
     if failed:
         sys.exit(1)
+
+
+def _report(args: argparse.Namespace, settings: Settings) -> None:
+    source = CurriculumSource.from_file(settings.curriculum_file)
+    version = source.version(args.curriculum)
+    curriculum = load_curriculum(source, version, settings.curricula_dir)
+    file = settings.events_file
+    if not file.exists():
+        sys.exit(f"No events yet: {file} does not exist.")
+    report = EventLog(file).report(
+        curriculum.version, [m.id for m in curriculum.modules]
+    )
+    print(f"{report.paths} shared paths, curriculum {version.name}\n")
+    print(f"{'module':60} {'included':>8} {'finished':>8} {'failed':>7} {'stopped':>7}")
+    for row in report.modules:
+        print(
+            f"{row.module_id:60} {row.included:8} {row.finished:8} {row.failed_once:7} "
+            f"{row.stopped_here:7}"
+        )
 
 
 if __name__ == "__main__":

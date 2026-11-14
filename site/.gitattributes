@@ -1,0 +1,2 @@
+# Applied with git apply to another repository: keep its line endings as they are.
+*.patch -text
