@@ -19,9 +19,10 @@ class Settings(BaseSettings):
     llm_api_key_openai: SecretStr | None = None
     config_dir: Path = Path("config")
     data_dir: Path = Path("data")
-    output_dir: Path = Path("out")  # where saved paths are looked for; git-ignored
     # Reviewed checkpoint questions: checkpoints/<curriculum version>/<module id>.yaml.
     checkpoints_dir: Path = Path("checkpoints")
+    # Progress that learners chose to share (roadmap.events); data/events.sqlite unless set.
+    api_events_file: Path | None = None
 
     @property
     def llm_api_keys(self) -> dict[str, SecretStr]:
@@ -48,6 +49,10 @@ class Settings(BaseSettings):
     @property
     def profiles_file(self) -> Path:
         return self.config_dir / "profiles.yaml"
+
+    @property
+    def events_file(self) -> Path:
+        return self.api_events_file or self.data_dir / "events.sqlite"
 
     @property
     def curricula_dir(self) -> Path:

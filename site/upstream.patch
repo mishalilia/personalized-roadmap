@@ -1,0 +1,87 @@
+diff --git a/.env.example b/.env.example
+index 8d427d4..37434fa 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1 +1,5 @@
+-REACT_APP_CHAT_LINK=
+\ No newline at end of file
++REACT_APP_CHAT_LINK=
++# The Personalized Roadmap API behind /personal-path; empty turns the page off
++PERSONAL_PATH_API=
++# Where coding problems load Python (Pyodide); empty uses the jsDelivr CDN
++PYODIDE_URL=
+diff --git a/Dockerfile b/Dockerfile
+index b730109..fb0a4c1 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -6,6 +6,11 @@ WORKDIR /app
+ # Add ARG for build-time environment variables
+ ARG REACT_APP_CHAT_LINK
+ ENV REACT_APP_CHAT_LINK=$REACT_APP_CHAT_LINK
++# The Personalized Roadmap API behind /personal-path, and where coding problems load Python from.
++ARG PERSONAL_PATH_API
++ENV PERSONAL_PATH_API=$PERSONAL_PATH_API
++ARG PYODIDE_URL
++ENV PYODIDE_URL=$PYODIDE_URL
+ 
+ # Copy dependency definitions
+ COPY package.json package-lock.json ./
+diff --git a/README.md b/README.md
+index 189669f..33c0658 100644
+--- a/README.md
++++ b/README.md
+@@ -222,6 +222,14 @@ Chat widget endpoint is configured with `REACT_APP_CHAT_LINK`.
+ - Copy `.env.example` to `.env`
+ - Set `REACT_APP_CHAT_LINK` to your chatbot websocket URL (for example, `wss://api.kumush.ai/api/v1/chat/<chatbot-id>/ws`)
+ 
++The personal path page (`/personal-path`) and its decisions and checkpoints on module pages need the
++[Personalized Roadmap API](https://github.com/mishalilia/personalized-roadmap):
++
++- Set `PERSONAL_PATH_API` to the API's address (for example, `https://api.path.example.com`). When it is empty,
++  the page says that personal paths are not set up, and module pages are unchanged.
++- Optionally set `PYODIDE_URL` to where coding problems load Python in the learner's browser. Empty uses the
++  jsDelivr CDN; to serve it from this site, copy Pyodide 0.26.4 into `static/pyodide/` and set `/pyodide/`.
++
+ ### Troubleshooting
+ 
+ - Verify dependencies: `npm install`
+diff --git a/compose.yml b/compose.yml
+index 6fe7e2c..02c03c3 100644
+--- a/compose.yml
++++ b/compose.yml
+@@ -5,6 +5,8 @@ services:
+       dockerfile: Dockerfile
+       args:
+         - REACT_APP_CHAT_LINK=${REACT_APP_CHAT_LINK}
++        - PERSONAL_PATH_API=${PERSONAL_PATH_API:-}
++        - PYODIDE_URL=${PYODIDE_URL:-}
+     image: internal-academy-docs:latest
+     container_name: internal-academy-docs
+     ports:
+diff --git a/docusaurus.config.ts b/docusaurus.config.ts
+index d252c66..2210d43 100644
+--- a/docusaurus.config.ts
++++ b/docusaurus.config.ts
+@@ -16,6 +16,10 @@ const config: Config = {
+       v4: true, // Improve compatibility with the upcoming Docusaurus v4
+     },
+     chatLink: process.env.REACT_APP_CHAT_LINK,
++    // The Personalized Roadmap API that plans personal paths (/personal-path). Empty: the page says so.
++    personalPathApi: process.env.PERSONAL_PATH_API ?? "",
++    // Where coding problems load Python (Pyodide) from; a CDN unless the site serves its own copy.
++    pyodideUrl: process.env.PYODIDE_URL ?? "",
+   },
+ 
+   url: "https://academy.humblebee.ai",
+@@ -119,6 +123,11 @@ const config: Config = {
+             },
+           ],
+         },
++        {
++          to: "/personal-path",
++          label: "Personal path",
++          position: "right",
++        },
+         {
+           href: "https://academy.humblebee.ai",
+           label: "Academy",

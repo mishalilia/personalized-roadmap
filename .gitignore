@@ -9,6 +9,7 @@ venv/
 
 # Secrets
 .env
+deploy/.env
 .env.local
 *.key
 
@@ -16,6 +17,7 @@ venv/
 data/raw/
 data/curriculum/
 data/curricula/
+data/*.sqlite
 out/
 *.log
 
