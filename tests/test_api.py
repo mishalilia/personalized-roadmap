@@ -760,6 +760,22 @@ def test_the_assistant_answers_from_the_learners_path_and_the_page_they_read(
     assert prompt.rstrip().endswith("Why is the terminal module skipped?")
 
 
+def test_module_ids_the_model_copies_into_the_reply_are_taken_out(
+    curriculum, questions
+):
+    llm = FakeLLM(
+        study_all(curriculum),
+        {"reply": f"Next is Terminal [{TERMINAL}].", "modules": [TERMINAL]},
+    )
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    reply = client.post("/me/chat", json={"question": "What next?"}).json()
+
+    assert reply["reply"] == "Next is Terminal."
+    assert [module["id"] for module in reply["modules"]] == [TERMINAL]
+
+
 def test_the_assistant_needs_an_account_a_path_and_a_model(curriculum, questions):
     question = {"question": "What next?"}
     with_model = site_for(

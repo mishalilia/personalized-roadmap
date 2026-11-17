@@ -85,12 +85,20 @@ class PathAssistant:
             prompts.load("chat"), prompt(path, request, page), ModelAnswer, check=check
         )
         return ChatReply(
-            reply=answer.reply,
+            reply=_without_ids(answer.reply, items),
             modules=[
                 ModuleLink(id=module_id, title=items[module_id].module.title)
                 for module_id in dict.fromkeys(answer.modules)
             ],
         )
+
+
+def _without_ids(reply: str, items: dict[str, PathItem]) -> str:
+    """Takes out module ids the model copied from the prompt, "[id]", which mean nothing to a learner;
+    the modules it names are linked below the reply anyway."""
+    for module_id in items:
+        reply = reply.replace(f" [{module_id}]", "").replace(f"[{module_id}]", "")
+    return reply
 
 
 def prompt(path: LearningPath, request: ChatRequest, page: PathItem | None) -> str:
