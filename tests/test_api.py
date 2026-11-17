@@ -64,6 +64,7 @@ class Site:
         problem: CodingProblem | None = None,
         events: EventLog | None = None,
         token: str | None = None,
+        reviewers: set[str] | None = None,
     ) -> None:
         editions = [
             Edition(
@@ -80,6 +81,7 @@ class Site:
             events,
             token,
             accounts=self.accounts,
+            reviewers=reviewers,
         )
 
     def learner(self) -> TestClient:
@@ -664,6 +666,38 @@ def test_only_shared_paths_are_counted_and_the_report_needs_its_token(
         client.get("/report", headers={"Authorization": "Bearer wrong"}).status_code
         == 403
     )
+
+
+def test_reviewers_see_the_report_on_the_site_and_learners_do_not(
+    tmp_path: Path, curriculum, questions
+):
+    site = site_for(
+        Roadmap(curriculum, questions, llm=None),
+        events=EventLog(tmp_path / "events.sqlite"),
+        reviewers={"reviewer@example.com"},
+    )
+    learner = site.signed_in()
+    confirmed_path(learner)
+    learner.post("/me/path/share", json={"share": True})
+    answer(learner, attempt=0, right=1)
+
+    report = site.signed_in("reviewer@example.com").get("/review/report").json()
+
+    assert report["paths"] == 1
+    assert report["modules"][0]["title"]
+    assert report["modules"][0]["failed_once"] == 1
+    assert learner.get("/review/report").status_code == 403
+    assert site.learner().get("/review/report").status_code in (401, 403)
+
+
+def test_without_an_event_log_the_report_says_so(curriculum, questions):
+    site = site_for(
+        Roadmap(curriculum, questions, llm=None), reviewers={"reviewer@example.com"}
+    )
+
+    response = site.signed_in("reviewer@example.com").get("/review/report")
+
+    assert response.status_code == 503
 
 
 def test_invented_example_learners_are_offered_for_demos(curriculum, questions):

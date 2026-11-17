@@ -1057,9 +1057,30 @@ def create_app(
             or not hmac.compare_digest(authorization or "", expected)
         ):
             raise HTTPException(403, "The report needs the report token.")
+        return course_report(version)
+
+    @app.get("/review/report")
+    def reviewer_report(request: Request, version: str | None = None) -> Report:
+        """The same report for the course team: reviewers see it on the site without the token."""
+        reviewer(request)
+        if events is None:
+            raise HTTPException(503, "Progress events are not recorded on this server.")
+        return course_report(version)
+
+    def course_report(version: str | None) -> Report:
+        assert events is not None  # nosec B101: both callers check
         edition = edition_named(version)
-        order = [module.id for module in edition.roadmap.curriculum.modules]
-        return events.report(edition.version, order)
+        modules = edition.roadmap.curriculum.modules
+        report = events.report(edition.version, [module.id for module in modules])
+        titles = {module.id: module.full_title for module in modules}
+        return report.model_copy(
+            update={
+                "modules": [
+                    row.model_copy(update={"title": titles[row.module_id]})
+                    for row in report.modules
+                ]
+            }
+        )
 
     return app
 

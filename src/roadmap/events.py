@@ -31,6 +31,7 @@ class EventKind(StrEnum):
 
 class ModuleReport(BaseModel):
     module_id: str
+    title: str = ""  # filled in by the API from the curriculum
     included: int  # shared paths that study or prove the module
     finished: int
     failed_once: int  # paths with at least one failed checkpoint attempt
