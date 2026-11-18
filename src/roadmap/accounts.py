@@ -91,6 +91,8 @@ class AccountStore:
         self._db = sqlite3.connect(file, check_same_thread=False)
         self._lock = threading.Lock()
         self._path_locks: dict[str, threading.Lock] = {}
+        # Applied to every path read back, such as bringing its modules up to date (see refresh_paths_with).
+        self._refresh: Callable[[LearningPath], LearningPath] = lambda path: path
         with self._lock, self._db:
             self._db.executescript("""
                 CREATE TABLE IF NOT EXISTS accounts (
@@ -266,12 +268,19 @@ class AccountStore:
 
     # Paths
 
+    def refresh_paths_with(
+        self, refresh: Callable[[LearningPath], LearningPath]
+    ) -> None:
+        """A path keeps a copy of its modules from when it was planned; `refresh` replaces them with the
+        modules as the course is read now, so what the site shows of them follows the course."""
+        self._refresh = refresh
+
     def path_of(self, account: Account) -> LearningPath | None:
         with self._lock:
             row = self._db.execute(
                 "SELECT path FROM paths WHERE account_id = ?", (account.id,)
             ).fetchone()
-        return LearningPath.model_validate_json(row[0]) if row else None
+        return self._refresh(LearningPath.model_validate_json(row[0])) if row else None
 
     def save_path(self, account: Account, path: LearningPath | None) -> None:
         with self._lock, self._db:
@@ -332,7 +341,7 @@ class AccountStore:
                 "SELECT path FROM drafts WHERE id = ? AND created_at > ?",
                 (draft_id, cutoff),
             ).fetchone()
-        return LearningPath.model_validate_json(row[0]) if row else None
+        return self._refresh(LearningPath.model_validate_json(row[0])) if row else None
 
     def claim_draft(self, account: Account, draft_id: str) -> LearningPath | None:
         """Makes the draft the account's path, replacing any path it had. None if the draft is gone."""

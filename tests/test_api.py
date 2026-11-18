@@ -777,6 +777,26 @@ def test_reports_need_a_real_question_of_a_module_in_the_path(curriculum, questi
     assert signed_out.status_code == 401
 
 
+def test_a_stored_path_shows_its_modules_as_the_course_is_read_now(
+    curriculum, questions
+):
+    site = site_for(Roadmap(curriculum, questions, llm=None))
+    client = site.signed_in()
+    confirmed_path(client)
+    # A path stored before the course was read differently: its copy of a module is out of date.
+    with site.accounts._db:
+        stored = site.accounts._db.execute("SELECT path FROM paths").fetchone()[0]
+        assert "Shell Basics" in stored
+        site.accounts._db.execute(
+            "UPDATE paths SET path = ?", (stored.replace("Shell Basics", "Old heading"),)
+        )
+
+    path = client.get("/me/path").json()
+
+    titles = [topic["title"] for topic in item(path, TERMINAL)["module"]["topics"]]
+    assert titles == ["1. Shell Basics"]
+
+
 def test_invented_example_learners_are_offered_for_demos(curriculum, questions):
     from helpers import ROOT
 
@@ -851,6 +871,21 @@ def test_after_a_failed_checkpoint_the_assistant_sees_the_topics_of_the_wrong_an
 
     item_line = next(line for line in llm.prompts[-1].splitlines() if TERMINAL in line)
     assert "topics of the wrong answers last time:" in item_line
+
+
+def test_the_assistant_knows_the_part_of_the_page_on_the_learners_screen(
+    curriculum, questions
+):
+    llm = FakeLLM(study_all(curriculum), {"reply": "Here are three questions.", "modules": []})
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    client.post(
+        "/me/chat",
+        json={"question": "Quiz me", "module_id": TERMINAL, "section": "Shell Basics"},
+    )
+
+    assert "The part of the page on their screen: Shell Basics" in llm.prompts[-1]
 
 
 def test_module_ids_the_model_copies_into_the_reply_are_taken_out(

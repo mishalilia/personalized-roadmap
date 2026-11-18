@@ -40,8 +40,9 @@ class ChatTurn(BaseModel):
 class ChatRequest(BaseModel):
     question: Question
     history: list[ChatTurn] = Field(default=[], max_length=MAX_TURNS)
-    # The module whose page the learner is reading, if any.
+    # The module whose page the learner is reading, if any, and the heading of the part on their screen.
     module_id: str | None = None
+    section: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
 
 
 class ModelAnswer(BaseModel):
@@ -111,6 +112,8 @@ def prompt(path: LearningPath, request: ChatRequest, page: PathItem | None) -> s
     ]
     if page is not None:
         parts += ["", "# The module page they are reading now", *_outline(page.module)]
+        if request.section:
+            parts.append(f"The part of the page on their screen: {request.section}")
     if request.history:
         parts += ["", "# The conversation so far"]
         parts += [

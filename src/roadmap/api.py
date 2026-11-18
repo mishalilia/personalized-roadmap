@@ -315,6 +315,23 @@ def create_app(
     newest = editions[0]
     by_version = {edition.version: edition for edition in editions}
     store = accounts or AccountStore(Path(":memory:"))
+
+    def with_current_modules(path: LearningPath) -> LearningPath:
+        """The path's modules as the course is read now, for a version this API serves."""
+        edition = by_version.get(path.curriculum_version)
+        if edition is None:
+            return path
+        modules = {module.id: module for module in edition.roadmap.curriculum.modules}
+        return path.model_copy(
+            update={
+                "items": [
+                    item.model_copy(update={"module": modules.get(item.module.id, item.module)})
+                    for item in path.items
+                ]
+            }
+        )
+
+    store.refresh_paths_with(with_current_modules)
     sign_ins = sign_in_limiter or RateLimiter(10, 600)
     app = FastAPI(
         title="Personalized Roadmap API",
