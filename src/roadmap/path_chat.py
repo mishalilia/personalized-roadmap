@@ -137,14 +137,14 @@ def prompt(
     if problem is not None and request.code is not None:
         parts += [
             "",
-            "# The module's coding problem, and the learner's code that does not pass yet",
+            "# The module's coding problem, and the learner's code as it is now",
             f"Problem: {problem.title}",
             problem.prompt,
             "Tests:",
             problem.tests,
             "Their code:",
             request.code,
-            f"What the tests reported: {request.error or 'nothing'}",
+            f"Their last run of the tests: {request.error or 'not run yet'}",
         ]
     if request.history:
         parts += ["", "# The conversation so far"]
