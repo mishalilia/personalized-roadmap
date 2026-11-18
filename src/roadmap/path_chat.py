@@ -16,7 +16,7 @@ from . import prompts
 from .checkpoints import CodingProblem
 from .curriculum import Module
 from .llm import LLMClient, UnusableAnswer
-from .path import LearningPath, PathItem
+from .path import Choice, LearningPath, PathItem
 
 MAX_QUESTION = 1000
 MAX_TURN = 2000
@@ -185,6 +185,9 @@ def _item(item: PathItem) -> str:
         stated = "; ".join(module.prerequisites)
         line += f"\n  Prerequisites, as the course states them: {stated}"
     line += f"\n  Why: {item.adjustment or item.reason}"
+    if item.skim and item.choice is Choice.STUDY:
+        skims = "; ".join(f"{skim.topic} ({skim.reason})" for skim in item.skim)
+        line += f"\n  Topics they can skim, though the checkpoint still asks about them: {skims}"
     return line
 
 

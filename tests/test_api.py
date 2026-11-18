@@ -563,6 +563,25 @@ def test_a_coding_problem_follows_the_questions_before_the_module_counts_as_pass
     assert item(solved.json(), TERMINAL)["progress"] == "passed"
 
 
+def test_the_passed_questions_open_with_their_answers_only_after_a_pass(
+    curriculum, questions
+):
+    client = site_for(Roadmap(curriculum, questions, llm=None), problem=PROBLEM).signed_in()
+    confirmed_path(client)
+    before = client.get(f"/me/checkpoints/{TERMINAL}/passed")
+    answer(client, attempt=0, right=1)
+    after_a_fail = client.get(f"/me/checkpoints/{TERMINAL}/passed")
+    answer(client, attempt=1, right=5)
+
+    reviewed = client.get(f"/me/checkpoints/{TERMINAL}/passed").json()
+
+    assert before.status_code == 409 and after_a_fail.status_code == 409
+    assert len(reviewed) == 5
+    # the right option, where the learner saw it in that attempt
+    assert all(question["options"][question["answer"]] == "b" for question in reviewed)
+    assert all(question["explanation"] for question in reviewed)
+
+
 def test_a_module_without_a_checkpoint_is_marked_done_and_suggestions_are_answered(
     curriculum, questions
 ):

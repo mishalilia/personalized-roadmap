@@ -57,6 +57,14 @@ class Progress(StrEnum):
     RETURNED = "returned"  # a project the reviewer sent back with a comment; does not lock what follows
 
 
+class SkimTopic(BaseModel):
+    """A topic of a module to study that the learner's answers show they know: they can go through it quickly.
+    The module's checkpoint still asks about it."""
+
+    topic: str  # one of the module's topic titles
+    reason: Reason
+
+
 class PathItem(BaseModel):
     module: Module
     # The planner's suggestion and why.
@@ -71,6 +79,8 @@ class PathItem(BaseModel):
     missed_topics: list[str] = []
     # Why the path changed this module on its own, after a checkpoint.
     adjustment: str | None = None
+    # For a module to study: topics the learner can skim, by the planner.
+    skim: list[SkimTopic] = []
 
     @model_validator(mode="after")
     def _prove_only_with_a_checklist(self) -> "PathItem":
@@ -80,8 +90,16 @@ class PathItem(BaseModel):
         return self
 
     @classmethod
-    def suggestion(cls, module: Module, choice: Choice, reason: str) -> "PathItem":
-        return cls(module=module, suggested=choice, reason=reason, choice=choice)
+    def suggestion(
+        cls,
+        module: Module,
+        choice: Choice,
+        reason: str,
+        skim: list[SkimTopic] | None = None,
+    ) -> "PathItem":
+        return cls(
+            module=module, suggested=choice, reason=reason, choice=choice, skim=skim or []
+        )
 
     @property
     def included(self) -> bool:

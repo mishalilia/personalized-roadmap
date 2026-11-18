@@ -1,6 +1,7 @@
 """Path planning: what a learner does with each module, and why. The course order is kept."""
 
 import logging
+import re
 from typing import Any, Protocol
 
 import yaml
@@ -10,7 +11,7 @@ from . import prompts
 from .curriculum import Curriculum, Level, Module
 from .llm import LLMClient, UnusableAnswer
 from .onboarding import Answers, Question, format_answers
-from .path import Choice, PathItem, Reason
+from .path import Choice, PathItem, Reason, SkimTopic
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,45 @@ class Planner(Protocol):
     ) -> list[PathItem]: ...
 
 
+class SkimSuggestion(BaseModel):
+    topic: str = Field(description="One of the module's topic titles, exactly as given.")
+    reason: Reason = Field(description="One short sentence tied to the learner's answers.")
+
+
 class ModuleDecision(BaseModel):
     module_id: str = Field(description="The module's id exactly as given, such as m3.")
     choice: Choice
     reason: Reason = Field(
         description="One or two sentences to the learner, tied to their answers or goal."
     )
+    skim: list[SkimSuggestion] = Field(
+        default=[],
+        description="For a module to study only: at most two of its topics the learner's answers show "
+        "they already know well. Empty otherwise.",
+    )
+
+
+MAX_SKIM = 2
+
+
+def _skim_for(module: Module, decision: ModuleDecision) -> list[SkimTopic]:
+    """The topics the model says the learner can skim, as the module's own titles; only for a module to
+    study, at most two, and never a topic the module does not have."""
+    if decision.choice is not Choice.STUDY:
+        return []
+
+    def key(title: str) -> str:
+        return re.sub(r"^\d+\.\s*", "", title).strip().casefold()
+
+    titles = {key(topic.title): topic.title for topic in module.topics}
+    found: list[SkimTopic] = []
+    for suggestion in decision.skim:
+        title = titles.get(key(suggestion.topic))
+        if title and all(item.topic != title for item in found):
+            found.append(SkimTopic(topic=title, reason=suggestion.reason))
+    if len(found) >= len(titles):
+        return []  # every topic: then the module is to prove or skip, not to skim through
+    return found[:MAX_SKIM]
 
 
 class PlanDecisions(BaseModel):
@@ -117,7 +151,9 @@ class LLMPlanner:
                 "The model suggested proving %s, which has no checklist", module.id
             )
             return PathItem.suggestion(module, Choice.STUDY, self.NO_CHECKLIST)
-        return PathItem.suggestion(module, decision.choice, decision.reason)
+        return PathItem.suggestion(
+            module, decision.choice, decision.reason, _skim_for(module, decision)
+        )
 
     def _prompt(
         self, answers: Answers, level: Level | None, progress: str | None = None
@@ -150,6 +186,8 @@ def _outline(prompt_id: str, module: Module) -> dict[str, Any]:
             for resource in module.resources
         ],
     }
+    if module.topics:
+        outline["topics"] = [topic.title for topic in module.topics]
     if module.prerequisites:
         outline["prerequisites"] = module.prerequisites
     if module.checklist:

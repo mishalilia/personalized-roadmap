@@ -22,6 +22,11 @@ How to judge:
 - If you are told what the learner has shown since onboarding, such as a checkpoint passed without a mistake,
   count it as evidence alongside their answers, for that module's content and for what builds on it.
 
+For a module to study, you may name in `skim` at most two of its topics, from the titles you are given, that
+the learner's answers show they already know well, each with a short reason: they can go through those
+quickly. Leave `skim` empty when the answers say nothing specific about a topic, and for modules to prove or
+skip.
+
 Write each reason to the learner in one or two sentences and tie it to what they wrote or to their goal. The
 reason for a skip says why skipping is safe; the reason for prove names what the learner already knows.
 

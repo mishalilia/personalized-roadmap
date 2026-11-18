@@ -172,6 +172,17 @@ class CheckpointOut(BaseModel):
     questions: list[AskedQuestion]
 
 
+class ReviewedQuestion(BaseModel):
+    """A question of an attempt the learner passed, as they saw it, with the right option and why."""
+
+    id: str
+    topic: str
+    text: str
+    options: list[str]
+    answer: int  # the position of the right option, as shown
+    explanation: str
+
+
 class ProblemOut(BaseModel):
     """A coding problem without its reference solution."""
 
@@ -1108,6 +1119,33 @@ def create_app(
             )
             for module_id, checkpoint in edition_named(version).checkpoints.items()
         }
+
+    @app.get("/me/checkpoints/{module_id:path}/passed")
+    def passed_questions(module_id: str, request: Request) -> list[ReviewedQuestion]:
+        """The questions of the attempt that passed, with their answers, to look back at while solving the
+        coding problem or after. Only once the learner passed: before, the answers stay hidden."""
+        path = store.path_of(signed_in(request))
+        if path is None:
+            raise HTTPException(404, "You have no path yet.")
+        item = next((i for i in path.items if i.module.id == module_id), None)
+        if item is None or item.progress not in (Progress.PRACTICE, Progress.PASSED) or not item.attempts:
+            raise HTTPException(409, "Pass this checkpoint first.")
+        checkpoint = checkpoint_of(edition_of(path), module_id)
+        attempt = item.attempts - 1
+        reviewed = []
+        for question in checkpoint.questions_for_attempt(attempt):
+            order = checkpoint.order_of(attempt, question.id)
+            reviewed.append(
+                ReviewedQuestion(
+                    id=question.id,
+                    topic=question.topic,
+                    text=question.text,
+                    options=[question.options[i] for i in order],
+                    answer=order.index(question.answer),
+                    explanation=question.explanation,
+                )
+            )
+        return reviewed
 
     @app.get("/checkpoints/{module_id:path}")
     def checkpoint(
