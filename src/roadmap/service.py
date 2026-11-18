@@ -61,12 +61,13 @@ class Roadmap:
         assessment: LevelAssessment | None = None,
     ) -> LearningPath:
         """Plan for `level`, the learner's own choice, which may differ from the suggested `assessment`."""
-        items = self._personal_plan(answers, level)
+        items, title = self._personal_plan(answers, level)
         return LearningPath(
             level=level,
             assessment=assessment,
             items=items if items is not None else self._fallback.plan(answers, level),
             personalization_unavailable=items is None,
+            title=title,
             curriculum_version=self.curriculum.version,
             curriculum_site_version=self.curriculum.site_version,
             attribution=self.curriculum.attribution,
@@ -106,7 +107,8 @@ class Roadmap:
             f" They have already worked on: {'; '.join(started)}." if started else ""
         )
         answers = {**path.answers, "goal": goal}
-        return path.with_new_goal(goal, self._planner.plan(answers, path.level, note))
+        items, title = self._titled_plan(answers, path.level, note)
+        return path.with_new_goal(goal, items, title)
 
     def _lighter_after(
         self, path: LearningPath, module_id: str, topics: list[str]
@@ -136,13 +138,23 @@ class Roadmap:
 
     def _personal_plan(
         self, answers: Answers, level: Level | None
-    ) -> list[PathItem] | None:
+    ) -> tuple[list[PathItem] | None, str | None]:
         if self._planner is None:
-            return None
+            return None, None
         try:
-            return self._planner.plan(answers, level)
+            return self._titled_plan(answers, level)
         except LLMUnavailable as error:
             logger.warning(
                 "Personal planning unavailable, following the course order: %s", error
             )
-            return None
+            return None, None
+
+    def _titled_plan(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> tuple[list[PathItem], str | None]:
+        """The planner's decisions, and a title when the planner gives one."""
+        assert self._planner is not None  # nosec B101: callers check
+        titled = getattr(self._planner, "plan_with_title", None)
+        if titled is not None:
+            return titled(answers, level, progress)
+        return self._planner.plan(answers, level, progress), None

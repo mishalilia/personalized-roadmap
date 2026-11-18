@@ -138,9 +138,11 @@ class LearningPath(BaseModel):
     confirmed_at: datetime | None = None
     # The onboarding answers, so the rest of the path can be planned again after a checkpoint.
     answers: Answers = {}
+    # A short name for the path, after the learner's goal, written by the planner; None without a model.
+    title: str | None = None
     proposals: list[Proposal] = []
-    # The learner chose to share anonymous progress events (see roadmap.events). Off unless they turn it on.
-    share_progress: bool = False
+    # Anonymous progress events (see roadmap.events) count this path; on unless the learner turns it off.
+    share_progress: bool = True
 
     @property
     def included(self) -> list[PathItem]:
@@ -278,7 +280,9 @@ class LearningPath(BaseModel):
             raise PathStateError(f"Pass the questions of '{module_id}' first")
         return self._replace(item.model_copy(update={"progress": Progress.PASSED}))
 
-    def with_new_goal(self, goal: str, items: list[PathItem]) -> "LearningPath":
+    def with_new_goal(
+        self, goal: str, items: list[PathItem], title: str | None = None
+    ) -> "LearningPath":
         """The path for a new goal: `items` are the planner's new decisions. Modules the learner has
         started keep their decision and progress; the rest take the new decision. The learner confirms
         the path again, since the planner changed it."""
@@ -296,6 +300,7 @@ class LearningPath(BaseModel):
             update={
                 "items": kept,
                 "answers": {**self.answers, "goal": goal},
+                "title": title,
                 "proposals": [],
                 "confirmed_at": None,
             }

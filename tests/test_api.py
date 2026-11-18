@@ -618,6 +618,23 @@ def test_a_new_goal_replans_what_is_not_started_and_asks_for_confirmation(
     assert "changed their goal to: Speech recognition" in llm.prompts[-1]
 
 
+def test_the_path_takes_the_planners_title_and_a_new_one_with_a_new_goal(
+    curriculum, questions
+):
+    first = study_all(curriculum) | {"title": "Computer vision research"}
+    second = study_all(curriculum) | {"title": " LLM applications. "}
+    client = site_for(Roadmap(curriculum, questions, FakeLLM(first, second))).signed_in()
+    path = confirmed_path(client)
+    assert path["title"] == "Computer vision research"
+
+    changed = client.post(
+        "/me/path/goal", json={"goal": "nevermind, i want to do llms now"}
+    ).json()
+
+    assert changed["title"] == "LLM applications"
+    assert changed["answers"]["goal"] == "nevermind, i want to do llms now"
+
+
 def test_without_a_model_the_goal_cannot_change_and_the_path_stays(
     curriculum, questions
 ):
@@ -643,9 +660,10 @@ def test_only_shared_paths_are_counted_and_the_report_needs_its_token(
         token="secret",  # nosec B106: a test token
     )
     private, shared = site.signed_in("a@example.com"), site.signed_in("b@example.com")
-    confirmed_path(private)
-    confirmed_path(shared)
-    shared.post("/me/path/share", json={"share": True})
+    plan(private)
+    private.post("/me/path/share", json={"share": False})
+    private.post("/me/path/confirm")
+    confirmed_path(shared)  # counted by default
 
     answer(private, attempt=0, right=1)
     answer(shared, attempt=0, right=1)
@@ -698,6 +716,65 @@ def test_without_an_event_log_the_report_says_so(curriculum, questions):
     response = site.signed_in("reviewer@example.com").get("/review/report")
 
     assert response.status_code == 503
+
+
+def test_a_learner_reports_a_question_and_reviewers_see_it_with_the_answer_key(
+    curriculum, questions
+):
+    site = site_for(
+        Roadmap(curriculum, questions, llm=None), reviewers={"reviewer@example.com"}
+    )
+    learner = site.signed_in()
+    confirmed_path(learner)
+    asked = learner.get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()
+    question_id = asked["questions"][0]["id"]
+
+    response = learner.post(
+        f"/me/checkpoints/{TERMINAL}/reports",
+        json={"question_id": question_id, "reason": "wrong_answer", "comment": "B is right too"},
+    )
+    assert response.status_code == 200, response.text
+    again = learner.post(
+        f"/me/checkpoints/{TERMINAL}/reports",
+        json={"question_id": question_id, "reason": "unclear"},
+    )
+    assert again.status_code == 200
+
+    reviewer = site.signed_in("reviewer@example.com")
+    listed = reviewer.get("/review/question-reports").json()
+    assert len(listed) == 1  # the second report replaced the first
+    assert listed[0]["reason"] == "unclear"
+    assert listed[0]["question"]["id"] == question_id
+    assert "answer" in listed[0]["question"]
+    assert learner.get("/review/question-reports").status_code == 403
+
+    resolved = reviewer.post(
+        f"/review/question-reports/{listed[0]['id']}", json={"resolved": True}
+    )
+    assert resolved.status_code == 200
+    assert reviewer.get("/review/question-reports").json()[0]["resolved"] is True
+
+
+def test_reports_need_a_real_question_of_a_module_in_the_path(curriculum, questions):
+    learner = site_for(Roadmap(curriculum, questions, llm=None)).signed_in()
+    confirmed_path(learner)
+
+    unknown = learner.post(
+        f"/me/checkpoints/{TERMINAL}/reports",
+        json={"question_id": "nope", "reason": "other"},
+    )
+    no_checkpoint = learner.post(
+        "/me/checkpoints/tracks/vision/resources/reports",
+        json={"question_id": "q1", "reason": "other"},
+    )
+    signed_out = site_for(Roadmap(curriculum, questions, llm=None)).learner().post(
+        f"/me/checkpoints/{TERMINAL}/reports",
+        json={"question_id": "q1", "reason": "other"},
+    )
+
+    assert unknown.status_code == 404
+    assert no_checkpoint.status_code == 404
+    assert signed_out.status_code == 401
 
 
 def test_invented_example_learners_are_offered_for_demos(curriculum, questions):

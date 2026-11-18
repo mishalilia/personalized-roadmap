@@ -33,6 +33,24 @@ class PlanDecisions(BaseModel):
     decisions: list[ModuleDecision] = Field(
         description="Exactly one decision for every module."
     )
+    title: str | None = Field(
+        default=None,
+        description="The learner's goal as a title for their path, in two to six plain words, "
+        "such as 'Computer vision research'.",
+    )
+
+
+MAX_TITLE = 60
+
+
+def clean_title(title: str | None) -> str | None:
+    """The model's title, on one line and short; None when it gave none."""
+    if not title:
+        return None
+    title = " ".join(title.split()).strip(" .\"'")
+    if len(title) > MAX_TITLE:
+        title = title[:MAX_TITLE].rsplit(" ", 1)[0]
+    return title or None
 
 
 def prompt_ids(modules: list[Module]) -> dict[str, Module]:
@@ -63,6 +81,12 @@ class LLMPlanner:
         self, answers: Answers, level: Level | None, progress: str | None = None
     ) -> list[PathItem]:
         """`progress` says what the learner has shown since onboarding, such as a checkpoint passed."""
+        return self.plan_with_title(answers, level, progress)[0]
+
+    def plan_with_title(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> tuple[list[PathItem], str | None]:
+        """The plan and a short title for the path, named after the learner's goal."""
         response = self._llm.ask(
             prompts.load("path"),
             self._prompt(answers, level, progress),
@@ -74,10 +98,11 @@ class LLMPlanner:
             logger.warning(
                 "Ignored decisions for unknown modules: %s", ", ".join(unknown)
             )
-        return [
+        items = [
             self._item(module, decisions[prompt_id])
             for prompt_id, module in self._modules.items()
         ]
+        return items, clean_title(response.title)
 
     def _check_every_module_decided(self, response: PlanDecisions) -> None:
         """A plan that leaves modules out is rejected, so the next model is asked instead."""

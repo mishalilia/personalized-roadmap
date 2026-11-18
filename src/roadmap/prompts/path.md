@@ -25,4 +25,6 @@ How to judge:
 Write each reason to the learner in one or two sentences and tie it to what they wrote or to their goal. The
 reason for a skip says why skipping is safe; the reason for prove names what the learner already knows.
 
-Return exactly one decision for every module, with the module id exactly as given.
+Return exactly one decision for every module, with the module id exactly as given. Also give the path a
+title: the learner's goal in two to six plain words, such as "Computer vision research" or "LLM applications",
+without filler such as "I want to" or "nevermind".

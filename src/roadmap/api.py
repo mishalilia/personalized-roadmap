@@ -51,6 +51,7 @@ from .accounts import (
 )
 from .checkpoints import (
     PASS_MARK,
+    CheckpointQuestion,
     QUESTIONS_PER_ATTEMPT,
     AskedQuestion,
     Checkpoint,
@@ -75,6 +76,7 @@ from .project_files import (
     read_github,
 )
 from .project_review import ProjectReview, ProjectReviewer
+from .question_reports import QuestionReport, QuestionReportIn, QuestionReportStore
 from .service import Roadmap
 from .submissions import (
     MAX_ARCHIVE_BYTES,
@@ -178,6 +180,17 @@ class ProblemOut(BaseModel):
     starter_code: str
     tests: str
     packages: list[str]
+
+
+class ReportedQuestion(QuestionReport):
+    """A report as reviewers see it: with the question in full, its answer key and explanation."""
+
+    module_title: str
+    question: CheckpointQuestion | None  # None when the checkpoint no longer has this question
+
+
+class ResolveRequest(BaseModel):
+    resolved: bool
 
 
 class AttemptRequest(BaseModel):
@@ -294,6 +307,7 @@ def create_app(
     github: httpx.Client | None = None,
     github_token: str | None = None,
     review_runs: int = 3,
+    question_reports: QuestionReportStore | None = None,
 ) -> FastAPI:
     """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
     start from. `accounts` keeps learners' accounts and paths; in memory unless given.
@@ -806,6 +820,58 @@ def create_app(
             raise HTTPException(403, "Only reviewers can do this.")
         return account
 
+    # Reports of checkpoint questions
+
+    reports = question_reports or QuestionReportStore(Path(":memory:"))
+    report_limit = RateLimiter(30, 24 * 3600)
+
+    @app.post("/me/checkpoints/{module_id:path}/reports")
+    def report_question(
+        module_id: str, body: QuestionReportIn, request: Request
+    ) -> QuestionReport:
+        """A learner says a question of a checkpoint in their path looks wrong; reviewers check it."""
+        account = signed_in(request)
+        if not report_limit.allow(account.id):
+            raise HTTPException(429, "Too many reports today. Try again tomorrow.")
+        path = store.path_of(account)
+        if path is None or all(item.module.id != module_id for item in path.items):
+            raise HTTPException(404, f"'{module_id}' is not in your path")
+        checkpoint = checkpoint_of(edition_of(path), module_id)
+        if all(question.id != body.question_id for question in checkpoint.questions):
+            raise HTTPException(404, "No such question in this checkpoint.")
+        return reports.add(account.id, module_id, path.curriculum_version, body)
+
+    @app.get("/review/question-reports")
+    def question_reports_list(request: Request) -> list[ReportedQuestion]:
+        """Open reports first, each with the question as the checkpoint has it now."""
+        reviewer(request)
+        found = []
+        for report in reports.listed():
+            edition = by_version.get(report.curriculum_version)
+            checkpoint = edition.checkpoints.get(report.module_id) if edition else None
+            question = next(
+                (q for q in checkpoint.questions if q.id == report.question_id), None
+            ) if checkpoint else None
+            module = (
+                next((m for m in edition.roadmap.curriculum.modules if m.id == report.module_id), None)
+                if edition
+                else None
+            )
+            found.append(
+                ReportedQuestion(
+                    **report.model_dump(),
+                    module_title=module.full_title if module else report.module_id,
+                    question=question,
+                )
+            )
+        return found
+
+    @app.post("/review/question-reports/{report_id}")
+    def resolve_report(report_id: str, body: ResolveRequest, request: Request) -> None:
+        reviewer(request)
+        if not reports.set_resolved(report_id, body.resolved):
+            raise HTTPException(404, "No such report.")
+
     @app.post("/me/submissions/{module_id:path}")
     def submit(
         module_id: str,
@@ -1167,6 +1233,7 @@ def _app() -> FastAPI:
         google=settings.google,
         submissions=SubmissionStore(settings.accounts_file, settings.uploads_dir),
         reviewers=settings.reviewers,
+        question_reports=QuestionReportStore(settings.accounts_file),
         github_token=(
             settings.github_token.get_secret_value() if settings.github_token else None
         ),
