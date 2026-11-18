@@ -40,6 +40,7 @@ _CHECKBOX = re.compile(r"^\s*[-*]\s+\[ \]\s+(.+)$", re.MULTILINE)
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _TAG = re.compile(r"<[^>]*>")
 _HEADING_ID = re.compile(r"\s*\{#[^}]*\}\s*$")
+_EXPLICIT_ID = re.compile(r"\{#([^}\s]+)\}\s*$")
 _TIME_ESTIMATE = re.compile(
     r"<TimeEstimate\b[^>]*?minHours=\{([\d.]+)\}[^>]*?maxHours=\{([\d.]+)\}", re.DOTALL
 )
@@ -287,7 +288,14 @@ def _topics(body: str) -> list[Topic]:
             for item in _BULLET.findall(section)
             if not item.lstrip().startswith("[")
         ]
-        topics.append(Topic(title=title, outcomes=outcomes))
+        explicit = _EXPLICIT_ID.search(match.group(2))
+        topics.append(
+            Topic(
+                title=title,
+                outcomes=outcomes,
+                anchor=explicit.group(1) if explicit else None,
+            )
+        )
     return topics
 
 

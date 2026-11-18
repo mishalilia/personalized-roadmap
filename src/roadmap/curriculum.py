@@ -38,6 +38,8 @@ class Topic(BaseModel):
 
     title: str
     outcomes: list[str] = []
+    # The heading's id on the page, as its authors set it ("{#terminal}"), so a link can open the topic.
+    anchor: str | None = None
 
 
 class Module(BaseModel):
