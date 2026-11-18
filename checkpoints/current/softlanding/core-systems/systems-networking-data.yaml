@@ -187,30 +187,71 @@ questions:
   explanation: The insert is part of a transaction, and committing it makes the change persist in the database.
     Closing a connection with an uncommitted transaction can discard the change.
 problem:
+  title: Persist Records with SQLite
+  prompt: 'Write `save_records(conn, records)` using Python’s standard-library `sqlite3` module. `conn` is an open
+    SQLite connection, and `records` is an iterable of `(name, status)` pairs.
+
+
+    Create a `records` table if needed, with an automatically assigned ID, a unique non-null `name`, and a non-null
+    `status`. Insert records using parameterized SQL inside a transaction. Return **all** stored `(name, status)`
+    pairs in insertion order. If a record duplicates a name, let SQLite’s `sqlite3.IntegrityError` propagate and
+    make sure the transaction leaves no partial inserts.
+
+
+    Example:
+
+
+    ```python
+
+    import sqlite3
+
+
+    conn = sqlite3.connect(":memory:")
+
+    print(save_records(conn, [("api", 200), ("worker", 503)]))
+
+    # [(''api'', 200), (''worker'', 503)]
+
+
+    print(save_records(conn, [("cache", 200)]))
+
+    # [(''api'', 200), (''worker'', 503), (''cache'', 200)]
+
+    ```'
+  starter_code: "def save_records(conn, records):\n    \"\"\"Store records transactionally and return all stored\
+    \ (name, status) pairs.\"\"\"\n    ..."
+  tests: "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nassert save_records(conn, [(\"api\", 200), (\"\
+    worker\", 503)]) == [(\"api\", 200), (\"worker\", 503)], \"should create the table and return inserted records\
+    \ in order\"\n\nconn = sqlite3.connect(\":memory:\")\nassert save_records(conn, [(\"O'Reilly\", 200)]) == [(\"\
+    O'Reilly\", 200)], \"names containing quotes should be stored safely using parameters\"\n\nconn = sqlite3.connect(\"\
+    :memory:\")\nassert save_records(conn, []) == [], \"an empty batch should create an empty table and return no\
+    \ records\"\n\nconn = sqlite3.connect(\":memory:\")\nassert save_records(conn, [(\"first\", 201)]) == [(\"first\"\
+    , 201)], \"the first call should persist its record\"\nassert save_records(conn, [(\"second\", 202)]) == [(\"\
+    first\", 201), (\"second\", 202)], \"later calls should return all records in insertion order\"\n\nconn = sqlite3.connect(\"\
+    :memory:\")\nsave_records(conn, [(\"existing\", 200)])\ntry:\n    save_records(conn, [(\"new\", 201), (\"existing\"\
+    , 409)])\nexcept sqlite3.IntegrityError:\n    pass\nelse:\n    assert False, \"a duplicate name should raise\
+    \ sqlite3.IntegrityError\"\nassert save_records(conn, []) == [(\"existing\", 200)], \"a failed batch must not\
+    \ leave partial inserts\""
+  solution: "def save_records(conn, records):\n    \"\"\"Store records transactionally and return all stored (name,\
+    \ status) pairs.\"\"\"\n    with conn:\n        conn.execute(\n            \"\"\"\n            CREATE TABLE\
+    \ IF NOT EXISTS records (\n                id INTEGER PRIMARY KEY,\n                name TEXT NOT NULL UNIQUE,\n\
+    \                status INTEGER NOT NULL\n            )\n            \"\"\"\n        )\n        conn.executemany(\n\
+    \            \"INSERT INTO records (name, status) VALUES (?, ?)\",\n            records,\n        )\n\n    return\
+    \ conn.execute(\n        \"SELECT name, status FROM records ORDER BY id\"\n    ).fetchall()"
+  packages: []
   topic: Systems, Networking, and Data Foundations
-  title: Persist and retrieve SQLite events
-  prompt: 'Write `persist_events(db_path, messages)`. It should create an `events` table if needed, append each
-    message to the database, commit the inserts, close the connection, and return all messages in insertion order.
-    Calling it again with the same database path should preserve earlier messages.
-
-
-    Example call: `persist_events("events.db", ["started", "ready"])` should return `["started", "ready"]`.'
-  starter_code: "def persist_events(db_path, messages):\n    \"\"\"Append messages to a SQLite database and return\
-    \ all messages in order.\"\"\"\n    ..."
-  tests: "import os\nimport tempfile\n\n# Windows cannot delete a database file that is still open, so a connection\
-    \ left open must not fail the tests.\nwith tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:\n\
-    \    path = os.path.join(directory, \"events.db\")\n    assert persist_events(path, [\"started\", \"ready\"\
-    ]) == [\"started\", \"ready\"], \"should save and return new messages\"\n    assert persist_events(path, [\"\
-    stopped\"]) == [\"started\", \"ready\", \"stopped\"], \"should preserve messages across calls\"\n    assert\
-    \ persist_events(path, []) == [\"started\", \"ready\", \"stopped\"], \"no new messages should still return the\
-    \ saved ones\""
-  solution: "import sqlite3\nfrom contextlib import closing\n\n\ndef persist_events(db_path, messages):\n    \"\"\
-    \"Append messages to a SQLite database and return all messages in order.\"\"\"\n    # `with connection` only\
-    \ commits; `closing` is what closes the connection.\n    with closing(sqlite3.connect(db_path)) as connection:\n\
-    \        with connection:\n            connection.execute(\n                \"CREATE TABLE IF NOT EXISTS events\
-    \ (id INTEGER PRIMARY KEY, message TEXT NOT NULL)\"\n            )\n            connection.executemany(\n  \
-    \              \"INSERT INTO events (message) VALUES (?)\",\n                [(message,) for message in messages],\n\
-    \            )\n        rows = connection.execute(\"SELECT message FROM events ORDER BY id\").fetchall()\n \
-    \   return [row[0] for row in rows]"
-  packages:
-  - sqlite3
+  wrong_solutions:
+  - "def save_records(conn, records):\n    \"\"\"Store records and return all stored pairs.\"\"\"\n    with conn:\n\
+    \        conn.execute(\"CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,\
+    \ status INTEGER NOT NULL)\")\n        for name, status in records:\n            conn.execute(f\"INSERT INTO\
+    \ records (name, status) VALUES ('{name}', {status})\")\n    return conn.execute(\"SELECT name, status FROM\
+    \ records ORDER BY id\").fetchall()"
+  - "def save_records(conn, records):\n    \"\"\"Store records and return all stored pairs.\"\"\"\n    conn.execute(\"\
+    CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, status INTEGER NOT NULL)\"\
+    )\n    for name, status in records:\n        conn.execute(\"INSERT INTO records (name, status) VALUES (?, ?)\"\
+    , (name, status))\n        conn.commit()\n    return conn.execute(\"SELECT name, status FROM records ORDER BY\
+    \ id\").fetchall()"
+  - "def save_records(conn, records):\n    \"\"\"Store records and return all stored pairs.\"\"\"\n    with conn:\n\
+    \        conn.execute(\"CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,\
+    \ status INTEGER NOT NULL)\")\n        conn.executemany(\"INSERT INTO records (name, status) VALUES (?, ?)\"\
+    , records)\n    return list(records)"

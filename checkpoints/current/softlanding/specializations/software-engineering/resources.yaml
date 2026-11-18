@@ -185,32 +185,46 @@ questions:
   explanation: The API should handle access to persistent data and expose it through a defined interface; the frontend
     then requests and displays that data.
 problem:
-  topic: '3. API Design & Implementation'
-  title: Build a Pagination Helper
-  prompt: 'Implement `paginate(items, page, page_size)` for a REST API. Pages are **1-indexed**. Return a dictionary
-    with `items` (the selected page as a list), `total` (the number of input items), `page`, `page_size`, and `pages`
-    (the total number of pages). If there are no items, `pages` should be `0`. You may assume `page` and `page_size`
-    are positive integers.
+  title: Trace an HTTP Request
+  prompt: "Write `http_request_trace(host, secure)`, a function that returns a conceptual network-event trace for\
+    \ one HTTP request. Do not perform any real networking.\n\nThe trace must list events in this order:\n1. DNS\
+    \ lookup for `host` (`\"DNS lookup: <host>\"`).\n2. The TCP three-way handshake: `\"TCP SYN\"`, `\"TCP SYN-ACK\"\
+    `, `\"TCP ACK\"`.\n3. If `secure` is `True`, a `\"TLS handshake\"`.\n4. `\"HTTP request\"` followed by `\"HTTP\
+    \ response\"`.\n\nFor example:\n\n```python\nhttp_request_trace(\"api.example.com\", True)\n```\n\nreturns:\n\
+    \n```python\n[\n    \"DNS lookup: api.example.com\",\n    \"TCP SYN\",\n    \"TCP SYN-ACK\",\n    \"TCP ACK\"\
+    ,\n    \"TLS handshake\",\n    \"HTTP request\",\n    \"HTTP response\",\n]\n```"
+  starter_code: "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS,\
+    \ connection, and HTTP events for a request.\"\"\"\n    ..."
+  tests: 'assert http_request_trace("api.example.com", False) == ["DNS lookup: api.example.com", "TCP SYN", "TCP
+    SYN-ACK", "TCP ACK", "HTTP request", "HTTP response"], "Plain HTTP should not include a TLS handshake"
 
+    assert http_request_trace("api.example.com", True) == ["DNS lookup: api.example.com", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "TLS handshake", "HTTP request", "HTTP response"], "HTTPS should include TLS after TCP connects"
 
-    Example: `paginate(["a", "b", "c"], 2, 2)` returns `{"items": ["c"], "total": 3, "page": 2, "page_size": 2,
-    "pages": 2}`.'
-  starter_code: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items\
-    \ and pagination metadata.\"\"\"\n    ..."
-  tests: 'assert paginate(["a", "b", "c"], 2, 2) == {"items": ["c"], "total": 3, "page": 2, "page_size": 2, "pages":
-    2}, "second page should contain the remaining item"
+    assert http_request_trace("service.internal", False) == ["DNS lookup: service.internal", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "HTTP request", "HTTP response"], "The DNS event should use the supplied host"
 
-    assert paginate([1, 2, 3, 4], 1, 2) == {"items": [1, 2], "total": 4, "page": 1, "page_size": 2, "pages": 2},
-    "first page should contain the first items"
+    assert http_request_trace("service.internal", True) == ["DNS lookup: service.internal", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "TLS handshake", "HTTP request", "HTTP response"], "Secure traces should retain the supplied host
+    and event order"
 
-    assert paginate([1, 2, 3, 4], 3, 2) == {"items": [], "total": 4, "page": 3, "page_size": 2, "pages": 2}, "a
-    page beyond the end should be empty"
-
-    assert paginate([], 1, 5) == {"items": [], "total": 0, "page": 1, "page_size": 5, "pages": 0}, "empty input
-    should have zero pages"'
-  solution: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items and\
-    \ pagination metadata.\"\"\"\n    total = len(items)\n    pages = (total + page_size - 1) // page_size\n   \
-    \ start = (page - 1) * page_size\n    end = start + page_size\n    return {\n        \"items\": list(items[start:end]),\n\
-    \        \"total\": total,\n        \"page\": page,\n        \"page_size\": page_size,\n        \"pages\": pages,\n\
-    \    }"
+    assert http_request_trace("localhost", True) == ["DNS lookup: localhost", "TCP SYN", "TCP SYN-ACK", "TCP ACK",
+    "TLS handshake", "HTTP request", "HTTP response"], "The trace should work with a different host name"'
+  solution: "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [\n        f\"DNS lookup: {host}\",\n        \"TCP SYN\"\
+    ,\n        \"TCP SYN-ACK\",\n        \"TCP ACK\",\n    ]\n    if secure:\n        events.append(\"TLS handshake\"\
+    )\n    events.extend([\"HTTP request\", \"HTTP response\"])\n    return events"
   packages: []
+  topic: 1. Networking Fundamentals
+  wrong_solutions:
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [f\"DNS lookup: {host}\", \"TCP SYN\", \"TCP SYN-ACK\"\
+    , \"TCP ACK\", \"HTTP request\", \"HTTP response\"]\n    return events"
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [f\"DNS lookup: {host}\", \"TCP SYN\", \"TCP SYN-ACK\"\
+    , \"HTTP request\", \"HTTP response\"]\n    if secure:\n        events.insert(3, \"TLS handshake\")\n    return\
+    \ events"
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [\"TCP SYN\", \"TCP SYN-ACK\", \"TCP ACK\"]\n    if secure:\n\
+    \        events.append(\"TLS handshake\")\n    events.extend([\"HTTP request\", \"HTTP response\"])\n    return\
+    \ events"

@@ -188,48 +188,92 @@ questions:
   explanation: A tool call lets the assistant obtain the current status from the authoritative API and use that
     result in its response. Guessing or consulting old conversations cannot reliably provide current order data.
 problem:
-  topic: Curriculum
-  title: Build TF-IDF features
-  prompt: Write `tfidf_features(documents)` for a list of strings, where each document contains whitespace-separated
-    words. Treat words case-insensitively, split on whitespace, and return `(vocabulary, vectors)`. `vocabulary`
-    should be a sorted list of all unique terms. `vectors` should be a list of dictionaries, one per document, containing
-    each present term’s TF-IDF value. Use term frequency `count / number_of_terms_in_document` and smoothed inverse
-    document frequency `log((N + 1) / (df + 1)) + 1`, where `N` is the number of documents and `df` is the number
-    of documents containing the term. Omit terms with zero count; an empty document has an empty vector. For example,
-    `tfidf_features(["Red fox", "red bird"])` should return a vocabulary of `["bird", "fox", "red"]` and two vectors
-    containing their nonzero weights.
-  starter_code: "def tfidf_features(documents):\n    \"\"\"Return a sorted vocabulary and one TF-IDF dictionary\
-    \ per document.\"\"\"\n    ..."
+  title: Scaled Dot-Product Attention
+  prompt: 'Write `self_attention(queries, keys, values)` to compute a basic self-attention layer from already-projected
+    Query, Key, and Value vectors. The inputs are lists of vectors with the same sequence length; each vector in
+    a list has the same width.
+
+
+    For each query, compute its dot product with every key, divide each score by the square root of the key width,
+    and apply softmax across that query''s scores. Use those attention weights to compute a weighted sum of the
+    value vectors. Return `(weights, outputs)`, where each is a list of rows: `weights` contains one attention distribution
+    per query, and `outputs` contains the corresponding weighted value vectors. Use only the standard library.
+
+
+    Example:
+
+    ```python
+
+    weights, outputs = self_attention([[1.0], [0.0]], [[1.0], [0.0]], [[10.0], [20.0]])
+
+    # weights: [[0.731058..., 0.268941...], [0.5, 0.5]]
+
+    # outputs: [[12.689414..., 15.0]]
+
+    ```'
+  starter_code: "def self_attention(queries, keys, values):\n    \"\"\"Return (attention_weights, weighted_value_outputs)\
+    \ for self-attention.\"\"\"\n    ..."
   tests: 'import math
 
 
-    vocab, vectors = tfidf_features(["Red fox", "red bird"])
+    # Scores use the key width for scaling, then softmax across each query''s keys.
 
-    assert vocab == ["bird", "fox", "red"], "vocabulary should be sorted and case-insensitive"
+    q = [[1.0, 0.0], [0.0, 1.0]]
 
-    assert len(vectors) == 2, "return one vector per document"
+    k = [[1.0, 0.0], [0.0, 1.0]]
 
-    assert math.isclose(vectors[0]["red"], 0.5), "term frequency should divide by document length"
+    v = [[2.0, 0.0], [0.0, 4.0]]
 
-    assert math.isclose(vectors[0]["fox"], 0.5 * (math.log(3 / 2) + 1)), "use smoothed IDF"
+    weights, outputs = self_attention(q, k, v)
 
-    assert "bird" not in vectors[0], "omit terms absent from a document"
+    p = 1.0 / (1.0 + math.exp(-1.0 / math.sqrt(2.0)))
+
+    assert abs(weights[0][0] - p) < 1e-9 and abs(weights[0][1] - (1.0 - p)) < 1e-9, "scaled softmax weights"
+
+    assert abs(sum(weights[0]) - 1.0) < 1e-9 and abs(sum(weights[1]) - 1.0) < 1e-9, "each query''s weights sum to
+    one"
+
+    assert abs(outputs[0][0] - 2.0 * p) < 1e-9 and abs(outputs[0][1] - 4.0 * (1.0 - p)) < 1e-9, "outputs are weighted
+    value sums"
 
 
-    vocab, vectors = tfidf_features(["", "Maple maple"])
+    # A one-token sequence attends entirely to itself.
 
-    assert vocab == ["maple"], "ignore empty tokens and lowercase terms"
+    w, out = self_attention([[2.0, -1.0]], [[0.5, 3.0]], [[7.0, -2.0]])
 
-    assert vectors[0] == {}, "an empty document should have an empty vector"
+    assert w == [[1.0]] and out == [[7.0, -2.0]], "single-token edge case"
 
-    assert math.isclose(vectors[1]["maple"], math.log(3 / 2) + 1), "repeated terms should use normalized term frequency"'
-  solution: "from collections import Counter\nfrom math import log\n\n\ndef tfidf_features(documents):\n    \"\"\
-    \"Return a sorted vocabulary and one TF-IDF dictionary per document.\"\"\"\n    token_lists = [document.lower().split()\
-    \ for document in documents]\n    vocabulary = sorted({token for tokens in token_lists for token in tokens})\n\
-    \    document_count = len(token_lists)\n    document_frequency = Counter(\n        token for tokens in token_lists\
-    \ for token in set(tokens)\n    )\n\n    vectors = []\n    for tokens in token_lists:\n        counts = Counter(tokens)\n\
-    \        length = len(tokens)\n        vector = {}\n        if length:\n            for token, count in counts.items():\n\
-    \                tf = count / length\n                idf = log((document_count + 1) / (document_frequency[token]\
-    \ + 1)) + 1\n                vector[token] = tf * idf\n        vectors.append(vector)\n\n    return vocabulary,\
-    \ vectors"
+
+    # Equal scores produce uniform attention, not an unnormalized score weighting.
+
+    w, out = self_attention([[0.0], [0.0]], [[2.0], [3.0]], [[2.0, 4.0], [6.0, 8.0]])
+
+    assert w == [[0.5, 0.5], [0.5, 0.5]], "equal scores give uniform weights"
+
+    assert out == [[4.0, 6.0], [4.0, 6.0]], "uniform weights average the values"'
+  solution: "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Return (attention_weights, weighted_value_outputs)\
+    \ for self-attention.\"\"\"\n    key_width = len(keys[0])\n    scale = math.sqrt(key_width)\n    weights = []\n\
+    \    outputs = []\n\n    for query in queries:\n        scores = [\n            sum(q * k for q, k in zip(query,\
+    \ key)) / scale\n            for key in keys\n        ]\n        peak = max(scores)\n        exp_scores = [math.exp(score\
+    \ - peak) for score in scores]\n        total = sum(exp_scores)\n        row_weights = [score / total for score\
+    \ in exp_scores]\n        weights.append(row_weights)\n\n        output = [\n            sum(weight * value[dimension]\
+    \ for weight, value in zip(row_weights, values))\n            for dimension in range(len(values[0]))\n     \
+    \   ]\n        outputs.append(output)\n\n    return weights, outputs"
   packages: []
+  topic: Curriculum
+  wrong_solutions:
+  - "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Compute attention but omit the required\
+    \ key-width scaling.\"\"\"\n    weights = []\n    outputs = []\n    for query in queries:\n        scores =\
+    \ [sum(q * k for q, k in zip(query, key)) for key in keys]\n        peak = max(scores)\n        exps = [math.exp(score\
+    \ - peak) for score in scores]\n        total = sum(exps)\n        row = [x / total for x in exps]\n       \
+    \ weights.append(row)\n        outputs.append([\n            sum(w * value[d] for w, value in zip(row, values))\n\
+    \            for d in range(len(values[0]))\n        ])\n    return weights, outputs"
+  - "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Scale scores, but use them directly\
+    \ rather than applying softmax.\"\"\"\n    scale = math.sqrt(len(keys[0]))\n    weights = []\n    outputs =\
+    \ []\n    for query in queries:\n        row = [sum(q * k for q, k in zip(query, key)) / scale for key in keys]\n\
+    \        weights.append(row)\n        outputs.append([\n            sum(w * value[d] for w, value in zip(row,\
+    \ values))\n            for d in range(len(values[0]))\n        ])\n    return weights, outputs"
+  - "def self_attention(queries, keys, values):\n    \"\"\"Return uniform attention regardless of query-key scores.\"\
+    \"\"\n    row = [1.0 / len(keys)] * len(keys)\n    weights = [row[:] for _ in queries]\n    outputs = [\n  \
+    \      [sum(w * value[d] for w, value in zip(row, values)) for d in range(len(values[0]))]\n        for _ in\
+    \ queries\n    ]\n    return weights, outputs"

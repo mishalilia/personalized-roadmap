@@ -187,28 +187,71 @@ questions:
   explanation: A state dict contains learned parameter values, so the inference script must create a compatible
     model and load those values into it. Evaluation mode sets inference behavior for modules such as dropout.
 problem:
-  topic: Applied ML and evaluation
-  title: Compute binary classification metrics
-  prompt: 'Write `classification_metrics(y_true, y_pred)` for binary labels, where `1` is the positive class. Return
-    a dictionary with `accuracy`, `precision`, `recall`, and `f1`. If precision or recall has a zero denominator,
-    use `0.0` for that metric; if precision and recall are both zero, use `0.0` for F1. For example, `classification_metrics([1,
-    0], [1, 1])` should return `{"accuracy": 0.5, "precision": 0.5, "recall": 1.0, "f1": 0.6666666666666666}`.'
-  starter_code: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and\
-    \ F1 for binary labels.\"\"\"\n    ..."
-  tests: "assert classification_metrics([1, 0, 1, 0], [1, 0, 0, 0]) == {\n    \"accuracy\": 0.75, \"precision\"\
-    : 1.0, \"recall\": 0.5, \"f1\": 2 / 3\n}, \"Metrics should use positive label 1.\"\nassert classification_metrics([1,\
-    \ 1], [0, 0]) == {\n    \"accuracy\": 0.0, \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"Zero denominators\
-    \ should produce zero metrics.\"\nassert classification_metrics([0, 0], [0, 0]) == {\n    \"accuracy\": 1.0,\
-    \ \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"All-negative predictions should handle missing positives.\"\
-    \nassert classification_metrics([1, 0], [1, 1]) == {\n    \"accuracy\": 0.5, \"precision\": 0.5, \"recall\"\
-    : 1.0, \"f1\": 2 / 3\n}, \"Precision and recall should use their respective denominators.\""
-  solution: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and F1 for\
-    \ binary labels.\"\"\"\n    if len(y_true) != len(y_pred):\n        raise ValueError(\"y_true and y_pred must\
-    \ have the same length\")\n    if not y_true:\n        raise ValueError(\"inputs must not be empty\")\n\n  \
-    \  tp = sum(true == 1 and pred == 1 for true, pred in zip(y_true, y_pred))\n    fp = sum(true == 0 and pred\
-    \ == 1 for true, pred in zip(y_true, y_pred))\n    fn = sum(true == 1 and pred == 0 for true, pred in zip(y_true,\
-    \ y_pred))\n    correct = sum(true == pred for true, pred in zip(y_true, y_pred))\n\n    precision = tp / (tp\
-    \ + fp) if tp + fp else 0.0\n    recall = tp / (tp + fn) if tp + fn else 0.0\n    f1 = 2 * precision * recall\
-    \ / (precision + recall) if precision + recall else 0.0\n    return {\n        \"accuracy\": correct / len(y_true),\n\
-    \        \"precision\": precision,\n        \"recall\": recall,\n        \"f1\": f1,\n    }"
+  title: Binary Classification Metrics
+  prompt: "Write `binary_metrics(y_true, y_pred)` to calculate binary classification metrics, treating `1` as the\
+    \ positive class. Return a dictionary with `tp`, `fp`, `fn`, and `tn` counts, plus `accuracy`, `precision`,\
+    \ `recall`, and `f1` as numbers. If a metric's denominator is zero, return `0` for that metric. Assume both\
+    \ inputs are non-empty lists of equal length containing only `0` and `1`.\n\nExample:\n```python\nbinary_metrics([1,\
+    \ 0, 1, 0], [1, 1, 0, 0])\n```\nResult:\n```python\n{\n    'tp': 1, 'fp': 1, 'fn': 1, 'tn': 1,\n    'accuracy':\
+    \ 0.5, 'precision': 0.5, 'recall': 0.5, 'f1': 0.5\n}\n```"
+  starter_code: "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary confusion counts and accuracy, precision,\
+    \ recall, and F1.\"\"\"\n    ..."
+  tests: 'result = binary_metrics([1, 0, 1, 0], [1, 1, 0, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 1, ''tn'': 1, ''accuracy'': 0.5, ''precision'': 0.5, ''recall'':
+    0.5, ''f1'': 0.5}, "Should count each outcome and compute metrics."
+
+
+    result = binary_metrics([1, 1, 1, 0, 0], [1, 0, 0, 1, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 2, ''tn'': 1, ''accuracy'': 0.4, ''precision'': 0.5, ''recall'':
+    1 / 3, ''f1'': 0.4}, "F1 must be the harmonic mean of precision and recall."
+
+
+    result = binary_metrics([0, 0], [0, 0])
+
+    assert result == {''tp'': 0, ''fp'': 0, ''fn'': 0, ''tn'': 2, ''accuracy'': 1.0, ''precision'': 0, ''recall'':
+    0, ''f1'': 0}, "Zero denominators should produce zero for those metrics."
+
+
+    result = binary_metrics([1, 0], [0, 0])
+
+    assert result == {''tp'': 0, ''fp'': 0, ''fn'': 1, ''tn'': 1, ''accuracy'': 0.5, ''precision'': 0, ''recall'':
+    0, ''f1'': 0}, "No positive predictions should have zero precision."
+
+
+    result = binary_metrics([1, 1], [1, 1])
+
+    assert result == {''tp'': 2, ''fp'': 0, ''fn'': 0, ''tn'': 0, ''accuracy'': 1.0, ''precision'': 1.0, ''recall'':
+    1.0, ''f1'': 1.0}, "Perfect positive predictions should score one on every defined metric."
+
+
+    result = binary_metrics([0, 1, 0], [1, 1, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 0, ''tn'': 1, ''accuracy'': 2 / 3, ''precision'': 0.5, ''recall'':
+    1.0, ''f1'': 2 / 3}, "Precision and recall must use the correct false-positive and false-negative counts."'
+  solution: "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary confusion counts and accuracy, precision,\
+    \ recall, and F1.\"\"\"\n    tp = fp = fn = tn = 0\n    for actual, predicted in zip(y_true, y_pred):\n    \
+    \    if actual == 1 and predicted == 1:\n            tp += 1\n        elif actual == 0 and predicted == 1:\n\
+    \            fp += 1\n        elif actual == 1 and predicted == 0:\n            fn += 1\n        else:\n   \
+    \         tn += 1\n\n    total = len(y_true)\n    accuracy = (tp + tn) / total\n    precision = tp / (tp + fp)\
+    \ if tp + fp else 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = 2 * precision * recall / (precision\
+    \ + recall) if precision + recall else 0\n\n    return {\n        'tp': tp,\n        'fp': fp,\n        'fn':\
+    \ fn,\n        'tn': tn,\n        'accuracy': accuracy,\n        'precision': precision,\n        'recall':\
+    \ recall,\n        'f1': f1,\n    }"
   packages: []
+  topic: Applied ML and evaluation
+  wrong_solutions:
+  - "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary classification metrics.\"\"\"\n    tp = sum(a\
+    \ == 1 and p == 1 for a, p in zip(y_true, y_pred))\n    fp = sum(a == 0 and p == 1 for a, p in zip(y_true, y_pred))\n\
+    \    fn = sum(a == 1 and p == 0 for a, p in zip(y_true, y_pred))\n    tn = sum(a == 0 and p == 0 for a, p in\
+    \ zip(y_true, y_pred))\n    accuracy = (tp + tn) / len(y_true)\n    precision = tp / (tp + fp) if tp + fp else\
+    \ 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = (precision + recall) / 2\n    return {'tp': tp,\
+    \ 'fp': fp, 'fn': fn, 'tn': tn, 'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1': f1}"
+  - "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary classification metrics.\"\"\"\n    tp = sum(a\
+    \ == 1 and p == 1 for a, p in zip(y_true, y_pred))\n    fp = sum(a == 1 and p == 0 for a, p in zip(y_true, y_pred))\n\
+    \    fn = sum(a == 0 and p == 1 for a, p in zip(y_true, y_pred))\n    tn = sum(a == 0 and p == 0 for a, p in\
+    \ zip(y_true, y_pred))\n    accuracy = (tp + tn) / len(y_true)\n    precision = tp / (tp + fp) if tp + fp else\
+    \ 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = 2 * precision * recall / (precision + recall) if\
+    \ precision + recall else 0\n    return {'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn, 'accuracy': accuracy, 'precision':\
+    \ precision, 'recall': recall, 'f1': f1}"

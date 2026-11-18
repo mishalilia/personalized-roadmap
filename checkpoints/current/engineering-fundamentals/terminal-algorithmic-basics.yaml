@@ -192,34 +192,54 @@ questions:
   explanation: 'A set of previously seen values lets you check each item as you scan: an item already in the set
     is a repeat. You can stop immediately when one is found.'
 problem:
-  topic: Algorithms and Problem Solving
-  title: Longest Increasing Run
-  prompt: 'Write `longest_increasing_run(nums)` to return the length of the longest contiguous run in which each
-    number is strictly greater than the number before it. An empty list has a run length of `0`, and a list with
-    one item has a run length of `1`.
+  title: Debug a Reading Summary
+  prompt: "Debug the reading-summary routine below. Trace it with an empty list, a list whose average is fractional,\
+    \ and lists containing only positive or only negative values. Then implement `summarize_readings` so it returns\
+    \ a dictionary with `count`, `min`, `max`, and `mean`. For an empty list, return `count: 0` and `None` for the\
+    \ other values. Add brief comments explaining the fixes for the runtime error, logic error, and edge-case failure.\n\
+    \n```python\ndef summarize_readings(readings):\n    count = len(readings)\n    total = 0\n    lowest = 0\n \
+    \   highest = 0\n    for value in readings:\n        total += value\n        lowest = min(lowest, value)\n \
+    \       highest = max(highest, value)\n    return {\n        \"count\": count,\n        \"min\": lowest,\n \
+    \       \"max\": highest,\n        \"mean\": total // count,\n    }\n```\n\nExample call and result:\n\n```python\n\
+    summarize_readings([4, 7, 1])\n# {'count': 3, 'min': 1, 'max': 7, 'mean': 4.0}\n```"
+  starter_code: "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list\
+    \ of readings.\"\"\"\n    ..."
+  tests: 'assert summarize_readings([4, 7, 1]) == {"count": 3, "min": 1, "max": 7, "mean": 4.0}, "summarize a mixed
+    list"
 
+    assert summarize_readings([1, 2]) == {"count": 2, "min": 1, "max": 2, "mean": 1.5}, "preserve a fractional mean"
 
-    Example: `longest_increasing_run([1, 3, 2, 4, 5])` returns `3`, because `[2, 4, 5]` is the longest strictly
-    increasing contiguous run.'
-  starter_code: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly\
-    \ increasing run.\"\"\"\n    ..."
-  tests: 'assert longest_increasing_run([]) == 0, "empty list should have run length 0"
-  
-    assert longest_increasing_run([7]) == 1, "one item should have run length 1"
-  
-    assert longest_increasing_run([1, 2, 3, 4]) == 4, "fully increasing list should use the whole list"
-  
-    assert longest_increasing_run([4, 3, 2]) == 1, "decreasing list should have run length 1"
-  
-    assert longest_increasing_run([1, 3, 2, 4, 5]) == 3, "should find the longest contiguous run"
-  
-    assert longest_increasing_run([1, 2, 2, 3]) == 2, "equal neighboring values should break a run"
-  
-    assert longest_increasing_run([1, 2, 3, 1, 2]) == 3, "a longer run earlier should win over a shorter one at the end"
-  
-    '
-  solution: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly increasing\
-    \ run.\"\"\"\n    if not nums:\n        return 0\n\n    longest = 1\n    current = 1\n    for i in range(1,\
-    \ len(nums)):\n        if nums[i] > nums[i - 1]:\n            current += 1\n        else:\n            current\
-    \ = 1\n        longest = max(longest, current)\n    return longest"
+    assert summarize_readings([3, 8]) == {"count": 2, "min": 3, "max": 8, "mean": 5.5}, "handle readings that are
+    all positive"
+
+    assert summarize_readings([-4, -2]) == {"count": 2, "min": -4, "max": -2, "mean": -3.0}, "handle readings that
+    are all negative"
+
+    assert summarize_readings([0, 0]) == {"count": 2, "min": 0, "max": 0, "mean": 0.0}, "handle zero readings"
+
+    assert summarize_readings([6]) == {"count": 1, "min": 6, "max": 6, "mean": 6.0}, "handle a single reading"
+
+    assert summarize_readings([]) == {"count": 0, "min": None, "max": None, "mean": None}, "handle an empty list
+    without a runtime error"'
+  solution: "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of\
+    \ readings.\"\"\"\n    count = len(readings)\n    if count == 0:\n        # Avoid dividing by zero; there are\
+    \ no extrema or mean for an empty list.\n        return {\"count\": 0, \"min\": None, \"max\": None, \"mean\"\
+    : None}\n\n    # Derive extrema from the readings rather than assuming zero is a valid bound.\n    lowest =\
+    \ min(readings)\n    highest = max(readings)\n    total = sum(readings)\n    # Use true division so fractional\
+    \ means are retained.\n    mean = total / count\n    return {\"count\": count, \"min\": lowest, \"max\": highest,\
+    \ \"mean\": mean}"
   packages: []
+  topic: Debugging Fundamentals
+  wrong_solutions:
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"min\": None, \"max\": None,\
+    \ \"mean\": None}\n    return {\"count\": count, \"min\": min(readings), \"max\": max(readings), \"mean\": sum(readings)\
+    \ // count}"
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    total = sum(readings)\n    return {\"count\": count, \"min\": min(readings),\
+    \ \"max\": max(readings), \"mean\": total / count}"
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"min\": None, \"max\": None,\
+    \ \"mean\": None}\n    lowest = 0\n    highest = 0\n    for value in readings:\n        lowest = min(lowest,\
+    \ value)\n        highest = max(highest, value)\n    return {\"count\": count, \"min\": lowest, \"max\": highest,\
+    \ \"mean\": sum(readings) / count}"

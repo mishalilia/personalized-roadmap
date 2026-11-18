@@ -183,32 +183,75 @@ questions:
   explanation: The command uses POST, includes the JSON request body, and identifies that body as JSON with `Content-Type`.
     `Accept` describes the response format the client can receive, not the request body format.
 problem:
-  topic: APIs, Containers, and Deployment
-  title: Format a Prediction Result
-  prompt: 'Write `format_prediction(probabilities, labels)` for a small inference layer that is kept separate from
-    HTTP handling. The two lists must be non-empty and have the same length. Every probability must be a finite
-    number from 0 to 1, and every label must be a non-empty string. Return a dictionary with the label paired with
-    the highest probability and that probability as `confidence`. If probabilities tie, use the first matching label.
-    Raise `ValueError` for invalid input.
+  title: Build an Inference Handler
+  prompt: 'Write `handle_prediction(payload, infer)`, the framework-independent core of a prediction endpoint. `payload`
+    represents a decoded JSON request body, and `infer` is a callable that accepts text and returns a result.
 
 
-    Example: `format_prediction([0.2, 0.8], ["cat", "dog"])` returns `{"label": "dog", "confidence": 0.8}`.'
-  starter_code: "def format_prediction(probabilities, labels):\n    \"\"\"Validate prediction data and return the\
-    \ winning label and confidence.\"\"\"\n    ..."
-  tests: "assert format_prediction([0.2, 0.8], [\"cat\", \"dog\"]) == {\"label\": \"dog\", \"confidence\": 0.8},\
-    \ \"selects the highest probability\"\nassert format_prediction([0.7, 0.7], [\"first\", \"second\"]) == {\"\
-    label\": \"first\", \"confidence\": 0.7}, \"keeps the first label on a tie\"\nassert format_prediction([1.0],\
-    \ [\"ready\"]) == {\"label\": \"ready\", \"confidence\": 1.0}, \"accepts a single result\"\nfor probabilities,\
-    \ labels in [([], []), ([0.4], [\"a\", \"b\"]), ([1.2], [\"a\"]), ([float(\"nan\")], [\"a\"]), ([0.5], [\"\"\
-    ])]:\n    try:\n        format_prediction(probabilities, labels)\n    except ValueError:\n        pass\n   \
-    \ else:\n        raise AssertionError(\"invalid prediction data should raise ValueError\")"
-  solution: "import math\n\n\ndef format_prediction(probabilities, labels):\n    \"\"\"Validate prediction data\
-    \ and return the winning label and confidence.\"\"\"\n    if not probabilities or len(probabilities) != len(labels):\n\
-    \        raise ValueError(\"probabilities and labels must have the same non-zero length\")\n    if any(not isinstance(label,\
-    \ str) or not label.strip() for label in labels):\n        raise ValueError(\"labels must be non-empty strings\"\
-    )\n    for probability in probabilities:\n        if isinstance(probability, bool) or not isinstance(probability,\
-    \ (int, float)):\n            raise ValueError(\"probabilities must be numbers\")\n        if not math.isfinite(probability)\
-    \ or not 0 <= probability <= 1:\n            raise ValueError(\"probabilities must be finite values from 0 to\
-    \ 1\")\n    best_index = max(range(len(probabilities)), key=probabilities.__getitem__)\n    return {\"label\"\
-    : labels[best_index], \"confidence\": probabilities[best_index]}"
+    Requirements:
+
+    - Accept only a dictionary whose `text` value is a string containing non-whitespace characters. Otherwise, return
+    `{"status_code": 422, "body": {"detail": "text must be a non-empty string"}}` without calling `infer`.
+
+    - Strip leading and trailing whitespace from valid text before passing it to `infer`.
+
+    - On success, return `{"status_code": 200, "body": {"result": RESULT}}`, where `RESULT` is the value returned
+    by `infer`.
+
+    - If `infer` raises an exception, return `{"status_code": 500, "body": {"detail": "inference failed"}}` without
+    exposing the exception message.
+
+
+    Example:
+
+    ```python
+
+    handle_prediction({"text": "  hello  "}, str.upper)
+
+    # {''status_code'': 200, ''body'': {''result'': ''HELLO''}}
+
+    ```
+
+
+    This is the endpoint''s core logic, separate from HTTP routing; do not use a web framework.'
+  starter_code: "def handle_prediction(payload, infer):\n    \"\"\"Return a status and response body for a prediction\
+    \ request.\"\"\"\n    ..."
+  tests: "seen = []\ndef record(text):\n    seen.append(text)\n    return text.upper()\nassert handle_prediction({\"\
+    text\": \"  hello  \"}, record) == {\"status_code\": 200, \"body\": {\"result\": \"HELLO\"}}, \"valid request\
+    \ returns inference result\"\nassert seen == [\"hello\"], \"inference receives stripped text\"\nassert handle_prediction({},\
+    \ lambda text: text) == {\"status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty string\"}},\
+    \ \"missing text is rejected\"\nassert handle_prediction({\"text\": 42}, lambda text: text) == {\"status_code\"\
+    : 422, \"body\": {\"detail\": \"text must be a non-empty string\"}}, \"non-string text is rejected\"\nassert\
+    \ handle_prediction({\"text\": \" \\t\\n \"}, lambda text: text) == {\"status_code\": 422, \"body\": {\"detail\"\
+    : \"text must be a non-empty string\"}}, \"whitespace-only text is rejected\"\nassert handle_prediction(None,\
+    \ lambda text: text) == {\"status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty string\"}},\
+    \ \"non-dictionary payload is rejected\"\ndef fail(text):\n    raise RuntimeError(\"private model details\"\
+    )\nassert handle_prediction({\"text\": \"hello\"}, fail) == {\"status_code\": 500, \"body\": {\"detail\": \"\
+    inference failed\"}}, \"inference errors return a generic response\""
+  solution: "def handle_prediction(payload, infer):\n    \"\"\"Return a status and response body for a prediction\
+    \ request.\"\"\"\n    if not isinstance(payload, dict):\n        return {\"status_code\": 422, \"body\": {\"\
+    detail\": \"text must be a non-empty string\"}}\n\n    text = payload.get(\"text\")\n    if not isinstance(text,\
+    \ str) or not text.strip():\n        return {\"status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty\
+    \ string\"}}\n\n    try:\n        result = infer(text.strip())\n    except Exception:\n        return {\"status_code\"\
+    : 500, \"body\": {\"detail\": \"inference failed\"}}\n\n    return {\"status_code\": 200, \"body\": {\"result\"\
+    : result}}"
   packages: []
+  topic: APIs, Containers, and Deployment
+  wrong_solutions:
+  - "def handle_prediction(payload, infer):\n    \"\"\"Return a status and response body for a prediction request.\"\
+    \"\"\n    if not isinstance(payload, dict) or not isinstance(payload.get(\"text\"), str) or not payload[\"text\"\
+    ].strip():\n        return {\"status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty string\"\
+    }}\n    try:\n        result = infer(payload[\"text\"])\n    except Exception:\n        return {\"status_code\"\
+    : 500, \"body\": {\"detail\": \"inference failed\"}}\n    return {\"status_code\": 200, \"body\": {\"result\"\
+    : result}}"
+  - "def handle_prediction(payload, infer):\n    \"\"\"Return a status and response body for a prediction request.\"\
+    \"\"\n    if not isinstance(payload, dict) or not isinstance(payload.get(\"text\"), str):\n        return {\"\
+    status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty string\"}}\n    try:\n        result =\
+    \ infer(payload[\"text\"].strip())\n    except Exception:\n        return {\"status_code\": 500, \"body\": {\"\
+    detail\": \"inference failed\"}}\n    return {\"status_code\": 200, \"body\": {\"result\": result}}"
+  - "def handle_prediction(payload, infer):\n    \"\"\"Return a status and response body for a prediction request.\"\
+    \"\"\n    if not isinstance(payload, dict) or not isinstance(payload.get(\"text\"), str) or not payload[\"text\"\
+    ].strip():\n        return {\"status_code\": 422, \"body\": {\"detail\": \"text must be a non-empty string\"\
+    }}\n    try:\n        result = infer(payload[\"text\"].strip())\n    except Exception:\n        return {\"status_code\"\
+    : 400, \"body\": {\"detail\": \"inference failed\"}}\n    return {\"status_code\": 200, \"body\": {\"result\"\
+    : result}}"

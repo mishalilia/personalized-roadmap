@@ -262,3 +262,54 @@ def test_verify_names_a_missing_package_instead_of_running(monkeypatch):
     assert verify_problem(problem) == (
         "needs surely_not_installed_pkg: pip install surely_not_installed_pkg"
     )
+
+
+LONGEST = {
+    "title": "Longest run",
+    "prompt": "Write `longest(nums)`: the length of the longest strictly increasing run.",
+    "starter_code": "def longest(nums):\n    ...",
+    "tests": "assert longest([]) == 0\nassert longest([1, 2, 3]) == 3\nassert longest([1, 2, 3, 1, 2]) == 3",
+    "solution": (
+        "def longest(nums):\n"
+        "    best = current = 0\n"
+        "    for i, n in enumerate(nums):\n"
+        "        current = current + 1 if i and n > nums[i - 1] else 1\n"
+        "        best = max(best, current)\n"
+        "    return best"
+    ),
+}
+# Keeps no maximum: it returns the last run, which the third test catches.
+NO_MAXIMUM = (
+    "def longest(nums):\n"
+    "    current = 0\n"
+    "    for i, n in enumerate(nums):\n"
+    "        current = current + 1 if i and n > nums[i - 1] else 1\n"
+    "    return current"
+)
+
+
+def test_the_tests_must_reject_every_wrong_solution():
+    caught = CodingProblem.model_validate(LONGEST | {"wrong_solutions": [NO_MAXIMUM]})
+    weak = CodingProblem.model_validate(
+        LONGEST
+        | {"tests": "assert longest([]) == 0\nassert longest([1, 2, 3]) == 3", "wrong_solutions": [NO_MAXIMUM]}
+    )
+
+    assert verify_problem(caught) is None
+    assert "wrong solution 1 passes the tests" in (verify_problem(weak) or "")
+
+
+def test_a_new_problem_keeps_the_questions_and_is_asked_again_while_its_tests_are_weak(
+    curriculum,
+):
+    terminal = curriculum.modules[0]
+    existing = checkpoint(terminal.id, count=10)
+    weak = {"problem": LONGEST | {"tests": "assert longest([]) == 0", "wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return 0"]}}
+    strong = {"problem": LONGEST | {"wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return len(nums)"]}}
+    llm = FakeLLM(weak, strong)
+
+    found = CheckpointGenerator(llm, "some-model").generate_problem(terminal, existing)
+
+    assert found.questions == existing.questions
+    assert found.problem is not None and "[1, 2, 3, 1, 2]" in found.problem.tests
+    assert len(llm.prompts) == 2  # the weak one was refused

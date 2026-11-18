@@ -186,24 +186,115 @@ questions:
   explanation: Testing a meaningful failure case checks behavior that a success-only test cannot establish. Comparing
     it with the acceptance criteria helps determine whether the implementation is suitable.
 problem:
-  topic: 'Agent-assisted engineering'
-  title: Report Failed Verification Checks
-  prompt: 'Write `failed_checks`, which takes a list of check records. Each record is a dictionary with a string
-    `name` and a boolean `passed`. Return the names of the checks that did not pass, in their original order.
+  title: Check a Structured Answer
+  prompt: 'Write `check_response(response_json, expected)` to check an LLM''s JSON answer against reference information
+    supplied from a source.
 
 
-    Example: `failed_checks([{"name": "unit tests", "passed": True}, {"name": "lint", "passed": False}])` returns
-    `["lint"]`.'
-  starter_code: "def failed_checks(checks):\n    \"\"\"Return the names of checks that did not pass, preserving\
-    \ their order.\"\"\"\n    ..."
-  tests: 'assert failed_checks([]) == [], "empty reports should have no failures"
+    `expected` maps question names to the source-supported answer, or to `None` when the source does not provide
+    an answer. The response must be a JSON object with exactly one key, `answers`; its value must be an object with
+    exactly the same question names as `expected`, and every answer must be a string. This is the structure check.
 
-    assert failed_checks([{"name": "tests", "passed": True}]) == [], "passing checks should be omitted"
 
-    assert failed_checks([{"name": "tests", "passed": False}]) == ["tests"], "a failed check should be reported"
+    For the content check, compare each answer to its expected answer, ignoring capitalization and differences in
+    whitespace. For an expected value of `None`, accept only the answer `not stated` under that same comparison.
+    Return a dictionary with boolean values for `structure_ok` and `content_ok`. If the JSON cannot be parsed or
+    its structure is invalid, both values must be `False`. A structurally valid answer can still have incorrect
+    content.
 
-    assert failed_checks([{"name": "lint", "passed": False}, {"name": "tests", "passed": True}, {"name": "build",
-    "passed": False}]) == ["lint", "build"], "failures should retain their original order"'
-  solution: "def failed_checks(checks):\n    \"\"\"Return the names of checks that did not pass, preserving their\
-    \ order.\"\"\"\n    return [check[\"name\"] for check in checks if not check[\"passed\"]]"
+
+    Example:
+
+
+    ```python
+
+    expected = {"capital": "Lima", "release_date": None}
+
+    response = ''{"answers": {"capital": "Lima", "release_date": "not stated"}}''
+
+    check_response(response, expected)
+
+    # {''structure_ok'': True, ''content_ok'': True}
+
+    ```'
+  starter_code: "def check_response(response_json, expected):\n    \"\"\"Check the structure and source-supported\
+    \ content of a JSON answer.\"\"\"\n    ..."
+  tests: 'expected = {"capital": "Lima", "release_date": None}
+
+    valid = ''{"answers": {"capital": "Lima", "release_date": "not stated"}}''
+
+    assert check_response(valid, expected) == {"structure_ok": True, "content_ok": True}, "accepts a correctly structured,
+    supported answer"
+
+
+    normalized = ''{"answers": {"capital": "  LIMA  ", "release_date": " NOT   STATED "}}''
+
+    assert check_response(normalized, expected) == {"structure_ok": True, "content_ok": True}, "ignores capitalization
+    and whitespace"
+
+
+    wrong_fact = ''{"answers": {"capital": "Paris", "release_date": "not stated"}}''
+
+    assert check_response(wrong_fact, expected) == {"structure_ok": True, "content_ok": False}, "separates valid
+    structure from incorrect content"
+
+
+    invented = ''{"answers": {"capital": "Lima", "release_date": "2024"}}''
+
+    assert check_response(invented, expected) == {"structure_ok": True, "content_ok": False}, "rejects an answer
+    where the source has no information"
+
+
+    extra_key = ''{"answers": {"capital": "Lima", "release_date": "not stated", "population": "large"}}''
+
+    assert check_response(extra_key, expected) == {"structure_ok": False, "content_ok": False}, "rejects unrequested
+    answer keys"
+
+
+    missing_key = ''{"answers": {"capital": "Lima"}}''
+
+    assert check_response(missing_key, expected) == {"structure_ok": False, "content_ok": False}, "rejects missing
+    answer keys"
+
+
+    bad_json = ''{"answers": ''
+
+    assert check_response(bad_json, expected) == {"structure_ok": False, "content_ok": False}, "rejects malformed
+    JSON"
+
+
+    wrong_value_type = ''{"answers": {"capital": 42, "release_date": "not stated"}}''
+
+    assert check_response(wrong_value_type, expected) == {"structure_ok": False, "content_ok": False}, "requires
+    answer values to be strings"'
+  solution: "import json\n\n\ndef check_response(response_json, expected):\n    \"\"\"Check the structure and source-supported\
+    \ content of a JSON answer.\"\"\"\n    try:\n        parsed = json.loads(response_json)\n    except (TypeError,\
+    \ json.JSONDecodeError):\n        return {\"structure_ok\": False, \"content_ok\": False}\n\n    if not isinstance(parsed,\
+    \ dict) or set(parsed) != {\"answers\"}:\n        return {\"structure_ok\": False, \"content_ok\": False}\n\n\
+    \    answers = parsed[\"answers\"]\n    if (\n        not isinstance(answers, dict)\n        or set(answers)\
+    \ != set(expected)\n        or any(not isinstance(value, str) for value in answers.values())\n    ):\n     \
+    \   return {\"structure_ok\": False, \"content_ok\": False}\n\n    def normalize(value):\n        return \"\
+    \ \".join(value.split()).casefold()\n\n    content_ok = all(\n        normalize(answers[key]) == normalize(\"\
+    not stated\" if value is None else value)\n        for key, value in expected.items()\n    )\n    return {\"\
+    structure_ok\": True, \"content_ok\": content_ok}"
   packages: []
+  topic: LLM fundamentals
+  wrong_solutions:
+  - "import json\n\n\ndef check_response(response_json, expected):\n    try:\n        parsed = json.loads(response_json)\n\
+    \    except (TypeError, json.JSONDecodeError):\n        return {\"structure_ok\": False, \"content_ok\": False}\n\
+    \    answers = parsed.get(\"answers\") if isinstance(parsed, dict) else None\n    structure_ok = isinstance(answers,\
+    \ dict) and all(isinstance(v, str) for v in answers.values())\n    return {\"structure_ok\": structure_ok, \"\
+    content_ok\": structure_ok}"
+  - "import json\n\n\ndef check_response(response_json, expected):\n    try:\n        parsed = json.loads(response_json)\n\
+    \    except (TypeError, json.JSONDecodeError):\n        return {\"structure_ok\": False, \"content_ok\": False}\n\
+    \    answers = parsed.get(\"answers\") if isinstance(parsed, dict) else None\n    if not isinstance(answers,\
+    \ dict) or any(not isinstance(v, str) for v in answers.values()):\n        return {\"structure_ok\": False,\
+    \ \"content_ok\": False}\n    content_ok = all(answers.get(k) == (\"not stated\" if v is None else v) for k,\
+    \ v in expected.items())\n    return {\"structure_ok\": True, \"content_ok\": content_ok}"
+  - "import json\n\n\ndef check_response(response_json, expected):\n    try:\n        parsed = json.loads(response_json)\n\
+    \    except (TypeError, json.JSONDecodeError):\n        return {\"structure_ok\": False, \"content_ok\": False}\n\
+    \    answers = parsed.get(\"answers\") if isinstance(parsed, dict) and set(parsed) == {\"answers\"} else None\n\
+    \    if not isinstance(answers, dict) or set(answers) != set(expected) or any(not isinstance(v, str) for v in\
+    \ answers.values()):\n        return {\"structure_ok\": False, \"content_ok\": False}\n    content_ok = all(answers[k]\
+    \ == (\"not stated\" if v is None else v) for k, v in expected.items())\n    return {\"structure_ok\": True,\
+    \ \"content_ok\": content_ok}"

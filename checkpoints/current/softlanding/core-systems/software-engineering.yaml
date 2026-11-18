@@ -184,30 +184,55 @@ questions:
   explanation: A useful handover records the Python version, dependencies, configuration, and run and test commands,
     while keeping credentials outside committed code.
 problem:
-  topic: '1. Readable Python'
-  title: Summarize numeric readings
-  prompt: 'Implement `summarize_readings(values)` to return a dictionary with the number of readings (`count`),
-    the smallest reading (`min`), the largest reading (`max`), and their arithmetic mean (`mean`). The input must
-    be a non-empty list of finite numbers; raise `ValueError` for an empty list or a non-finite value, and `TypeError`
-    for a value that is not a number (booleans do not count as numbers here).
+  title: Format a Fuel Gauge
+  prompt: 'Write a pure function `format_fuel_level(fraction)` that converts a fraction string into a fuel-gauge
+    display.
 
 
-    For example, `summarize_readings([2, 4])` should return `{"count": 2, "min": 2, "max": 4, "mean": 3.0}`.'
-  starter_code: "def summarize_readings(values):\n    \"\"\"Return count, minimum, maximum, and mean for finite\
-    \ numeric readings.\"\"\"\n    ..."
-  tests: "assert summarize_readings([2, 4]) == {\"count\": 2, \"min\": 2, \"max\": 4, \"mean\": 3.0}, \"summarize\
-    \ two readings\"\nassert summarize_readings([-3]) == {\"count\": 1, \"min\": -3, \"max\": -3, \"mean\": -3.0},\
-    \ \"summarize one reading\"\nassert summarize_readings([1.5, 2.5, 6.0])[\"mean\"] == 10 / 3, \"compute the arithmetic\
-    \ mean\"\ntry:\n    summarize_readings([])\nexcept ValueError:\n    pass\nelse:\n    assert False, \"empty input\
-    \ should raise ValueError\"\ntry:\n    summarize_readings([1, float(\"inf\")])\nexcept ValueError:\n    pass\n\
-    else:\n    assert False, \"non-finite readings should raise ValueError\"\ntry:\n    summarize_readings([1, \"\
-    2\"])\nexcept TypeError:\n    pass\nelse:\n    assert False, \"non-numeric readings should raise TypeError\"\
-    \ntry:\n    summarize_readings([True])\nexcept TypeError:\n    pass\nelse:\n    assert False, \"booleans should\
-    \ raise TypeError\""
-  solution: "import math\n\n\ndef summarize_readings(values):\n    \"\"\"Return count, minimum, maximum, and mean\
-    \ for finite numeric readings.\"\"\"\n    if not values:\n        raise ValueError(\"values must not be empty\"\
-    )\n\n    for value in values:\n        if isinstance(value, bool) or not isinstance(value, (int, float)):\n\
-    \            raise TypeError(\"readings must be numbers\")\n        if not math.isfinite(value):\n         \
-    \   raise ValueError(\"readings must be finite\")\n\n    return {\n        \"count\": len(values),\n       \
-    \ \"min\": min(values),\n        \"max\": max(values),\n        \"mean\": sum(values) / len(values),\n    }"
+    Requirements:
+
+    - Accept a string containing exactly two nonnegative base-10 integers separated by one `/` (for example, `"3/4"`).
+
+    - Raise `ValueError` if the input has the wrong format, the denominator is zero, or the numerator is greater
+    than the denominator.
+
+    - Convert the fraction to a whole-number percentage, rounding to the nearest integer with ties rounded up.
+
+    - Return `"E"` if the rounded percentage is 1 or less, `"F"` if it is 99 or more, and otherwise return the percentage
+    followed by `%`.
+
+
+    For example, `format_fuel_level("3/4")` returns `"75%"`.'
+  starter_code: "def format_fuel_level(fraction: str) -> str:\n    \"\"\"Convert a valid fuel fraction string to\
+    \ a gauge display.\n\n    Raise ValueError for malformed fractions or fractions outside 0 to 1.\n    \"\"\"\n\
+    \    ..."
+  tests: "assert format_fuel_level(\"3/4\") == \"75%\", \"ordinary percentage\"\nassert format_fuel_level(\"1/6\"\
+    ) == \"17%\", \"round to nearest integer\"\nassert format_fuel_level(\"0/8\") == \"E\", \"zero fuel\"\nassert\
+    \ format_fuel_level(\"1/100\") == \"E\", \"low rounded percentage\"\nassert format_fuel_level(\"99/100\") ==\
+    \ \"F\", \"high rounded percentage\"\nassert format_fuel_level(\"197/200\") == \"F\", \"ties round up before\
+    \ applying the full threshold\"\n\nfor invalid_fraction in (\"5/4\", \"1/0\", \"abc\"):\n    try:\n        format_fuel_level(invalid_fraction)\n\
+    \    except ValueError:\n        pass\n    else:\n        assert False, f\"invalid fraction should raise ValueError:\
+    \ {invalid_fraction!r}\""
+  solution: "def format_fuel_level(fraction: str) -> str:\n    \"\"\"Convert a valid fuel fraction string to a gauge\
+    \ display.\n\n    Raise ValueError for malformed fractions or fractions outside 0 to 1.\n    \"\"\"\n    if\
+    \ not isinstance(fraction, str):\n        raise ValueError(\"fraction must be a string\")\n\n    parts = fraction.split(\"\
+    /\")\n    if len(parts) != 2 or any(\n        not part or any(character < \"0\" or character > \"9\" for character\
+    \ in part)\n        for part in parts\n    ):\n        raise ValueError(\"fraction must contain two nonnegative\
+    \ integers separated by '/'\")\n\n    numerator, denominator = (int(part) for part in parts)\n    if denominator\
+    \ == 0:\n        raise ValueError(\"denominator must not be zero\")\n    if numerator > denominator:\n     \
+    \   raise ValueError(\"numerator must not exceed denominator\")\n\n    percentage = (200 * numerator + denominator)\
+    \ // (2 * denominator)\n    if percentage <= 1:\n        return \"E\"\n    if percentage >= 99:\n        return\
+    \ \"F\"\n    return f\"{percentage}%\""
   packages: []
+  topic: 2. Testing and debugging
+  wrong_solutions:
+  - "def format_fuel_level(fraction: str) -> str:\n    numerator, denominator = (int(part) for part in fraction.split(\"\
+    /\"))\n    percentage = 100 * numerator // denominator\n    if percentage <= 1:\n        return \"E\"\n    if\
+    \ percentage >= 99:\n        return \"F\"\n    return f\"{percentage}%\""
+  - "def format_fuel_level(fraction: str) -> str:\n    numerator, denominator = (int(part) for part in fraction.split(\"\
+    /\"))\n    percentage = (200 * numerator + denominator) // (2 * denominator)\n    return f\"{percentage}%\""
+  - "def format_fuel_level(fraction: str) -> str:\n    parts = fraction.split(\"/\")\n    if len(parts) != 2:\n\
+    \        raise ValueError(\"invalid fraction\")\n    numerator, denominator = (int(part) for part in parts)\n\
+    \    if denominator == 0:\n        raise ValueError(\"denominator must not be zero\")\n    percentage = (200\
+    \ * numerator + denominator) // (2 * denominator)\n    if percentage <= 1:\n        return \"E\"\n    if percentage\
+    \ >= 99:\n        return \"F\"\n    return f\"{percentage}%\""

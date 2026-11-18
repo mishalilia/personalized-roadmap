@@ -185,34 +185,98 @@ questions:
   explanation: CTC supports training speech recognition systems when the transcript is known but the precise alignment
     between audio frames and text tokens is not.
 problem:
-  topic: Curriculum
-  title: Calculate Word Error Rate
-  prompt: 'Implement `word_error_rate(reference, hypothesis)` to calculate word error rate (WER) from two transcripts.
-    Split each string on whitespace and treat tokens as case-sensitive. WER is the minimum number of token insertions,
-    deletions, and substitutions needed to change the reference into the hypothesis, divided by the number of reference
-    tokens. If both transcripts are empty, return `0.0`; if the reference is empty and the hypothesis is not, return
-    the number of hypothesis tokens as a float.
+  title: Build TF-IDF Vectors
+  prompt: 'Write `tfidf_vectors(documents)`, which converts a list of documents into sparse TF-IDF vectors. Return
+    one dictionary per document, mapping each token to its TF-IDF value; omit tokens that do not occur in that document.
 
 
-    Example: `word_error_rate("turn left now", "turn right now")` returns `1 / 3`.'
-  starter_code: "def word_error_rate(reference, hypothesis):\n    \"\"\"Return the word error rate between two whitespace-separated\
-    \ transcripts.\"\"\"\n    ..."
-  tests: 'assert word_error_rate("turn left at the next street", "turn right at the next street") == 1 / 6, "one
-    substitution"
+    Normalize text by lowercasing it and extracting tokens with the pattern `[a-z0-9]+` (ASCII letters and digits).
+    For each document, calculate term frequency as `count(token) / number_of_tokens_in_document`. Calculate inverse
+    document frequency as `log((1 + N) / (1 + df)) + 1`, where `N` is the total number of documents and `df` is
+    the number of documents containing the token. Multiply TF by IDF. Do not round or L2-normalize the results.
+    An empty or tokenless document has an empty dictionary; it still counts toward `N`. An empty input list returns
+    an empty list.
 
-    assert word_error_rate("turn left at the next street", "turn left at next street") == 1 / 6, "one deletion"
 
-    assert word_error_rate("turn left now", "please turn left now") == 1 / 3, "one insertion"
+    Example:
 
-    assert word_error_rate("", "") == 0.0, "both transcripts are empty"
+    ```python
 
-    assert word_error_rate("", "hello there") == 2.0, "empty reference"
+    vectors = tfidf_vectors(["red red blue", "blue green"])
 
-    assert word_error_rate("same words", "same words") == 0.0, "identical transcripts"'
-  solution: "def word_error_rate(reference, hypothesis):\n    \"\"\"Return the word error rate between two whitespace-separated\
-    \ transcripts.\"\"\"\n    ref = reference.split()\n    hyp = hypothesis.split()\n    if not ref:\n        return\
-    \ float(len(hyp))\n    previous = list(range(len(hyp) + 1))\n    for i, ref_word in enumerate(ref, start=1):\n\
-    \        current = [i]\n        for j, hyp_word in enumerate(hyp, start=1):\n            cost = 0 if ref_word\
-    \ == hyp_word else 1\n            current.append(min(current[-1] + 1, previous[j] + 1, previous[j - 1] + cost))\n\
-    \        previous = current\n    return previous[-1] / len(ref)"
+    [{k: round(v, 3) for k, v in d.items()} for d in vectors]
+
+    # [{''red'': 0.937, ''blue'': 0.333}, {''blue'': 0.5, ''green'': 0.703}]
+
+    ```'
+  starter_code: "def tfidf_vectors(documents):\n    \"\"\"Return one sparse TF-IDF dictionary for each input document.\"\
+    \"\"\n    ..."
+  tests: 'import math
+
+
+    vectors = tfidf_vectors(["red red blue", "blue green"])
+
+    rare_idf = math.log(3 / 2) + 1
+
+    assert abs(vectors[0]["red"] - (2 / 3) * rare_idf) < 1e-12, "term frequency should use the document token count"
+
+    assert abs(vectors[0]["blue"] - 1 / 3) < 1e-12, "terms in every document should use the smoothed IDF"
+
+    assert abs(vectors[1]["green"] - 0.5 * rare_idf) < 1e-12, "rare terms should receive their corpus IDF"
+
+
+    vectors = tfidf_vectors(["HELLO, hello!", "hello?"])
+
+    assert vectors == [{"hello": 1.0}, {"hello": 1.0}], "tokenization should lowercase text and ignore punctuation"
+
+
+    vectors = tfidf_vectors(["", "Echo echo"])
+
+    assert vectors[0] == {}, "a tokenless document should produce an empty vector"
+
+    assert abs(vectors[1]["echo"] - (math.log(3 / 2) + 1)) < 1e-12, "empty documents should still count toward corpus
+    size"
+
+
+    assert tfidf_vectors(["", "!!!"]) == [{}, {}], "documents with no tokens should all produce empty vectors"
+
+    assert tfidf_vectors([]) == [], "an empty input should produce an empty list"
+
+
+    vectors = tfidf_vectors(["one two"])
+
+    assert abs(vectors[0]["one"] - 0.5) < 1e-12 and abs(vectors[0]["two"] - 0.5) < 1e-12, "a single-document corpus
+    should use smoothed IDF and normalized term frequency"'
+  solution: "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return one sparse TF-IDF dictionary\
+    \ for each input document.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document\
+    \ in documents]\n    n_documents = len(tokenized)\n\n    document_frequency = {}\n    for tokens in tokenized:\n\
+    \        for token in set(tokens):\n            document_frequency[token] = document_frequency.get(token, 0)\
+    \ + 1\n\n    vectors = []\n    for tokens in tokenized:\n        if not tokens:\n            vectors.append({})\n\
+    \            continue\n\n        counts = {}\n        for token in tokens:\n            counts[token] = counts.get(token,\
+    \ 0) + 1\n\n        vector = {}\n        for token, count in counts.items():\n            tf = count / len(tokens)\n\
+    \            df = document_frequency[token]\n            idf = math.log((1 + n_documents) / (1 + df)) + 1\n\
+    \            vector[token] = tf * idf\n        vectors.append(vector)\n\n    return vectors"
   packages: []
+  topic: Curriculum
+  wrong_solutions:
+  - "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, using\
+    \ unsmoothed IDF.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document in documents]\n\
+    \    n_documents = len(tokenized)\n    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n\
+    \            df[token] = df.get(token, 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts\
+    \ = {}\n        for token in tokens:\n            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token:\
+    \ count / len(tokens) * math.log(n_documents / df[token]) for token, count in counts.items()} if tokens else\
+    \ {})\n    return vectors"
+  - "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, using\
+    \ raw term counts.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document in documents]\n\
+    \    n_documents = len(tokenized)\n    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n\
+    \            df[token] = df.get(token, 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts\
+    \ = {}\n        for token in tokens:\n            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token:\
+    \ count * (math.log((1 + n_documents) / (1 + df[token])) + 1) for token, count in counts.items()})\n    return\
+    \ vectors"
+  - "import math\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, splitting on whitespace.\"\
+    \"\"\n    tokenized = [document.lower().split() for document in documents]\n    n_documents = len(tokenized)\n\
+    \    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n            df[token] = df.get(token,\
+    \ 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts = {}\n        for token in tokens:\n\
+    \            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token: count / len(tokens) *\
+    \ (math.log((1 + n_documents) / (1 + df[token])) + 1) for token, count in counts.items()} if tokens else {})\n\
+    \    return vectors"

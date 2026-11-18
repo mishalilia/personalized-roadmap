@@ -176,37 +176,113 @@ questions:
   explanation: The equally likely outcomes are HH, HT, TH, and TT; exactly one head occurs in HT and TH, so the
     probability is 2/4 = 1/2.
 problem:
-  topic: Probability & statistics
-  title: Calculate a Sample Mean and Standard Error
-  prompt: Write `sample_mean_and_se(values)` to return the sample mean and the standard error of the mean as a tuple
-    `(mean, standard_error)`. Use the sample standard deviation, calculated with denominator `n - 1`, and then divide
-    it by `sqrt(n)`. Assume the input contains at least two numbers. For example, `sample_mean_and_se([2, 4, 6])`
-    should return `(4.0, 1.1547005383792517)` (approximately).
-  starter_code: "def sample_mean_and_se(values):\n    \"\"\"Return the sample mean and its standard error.\"\"\"\
-    \n    ..."
+  title: One-Sample Z Test
+  prompt: 'Write `one_sample_z(data, null_mean, population_sd, alpha)` to summarize a sample and perform a two-sided
+    one-sample z test, assuming independent observations and a known population standard deviation. Use a normal
+    approximation for the confidence interval and test.
+
+
+    Return a dictionary with these keys:
+
+    - `mean`: sample mean
+
+    - `standard_error`: `population_sd / sqrt(n)`
+
+    - `confidence_interval`: a `(lower, upper)` tuple for a two-sided confidence interval with confidence level
+    `1 - alpha`
+
+    - `z_stat`: `(mean - null_mean) / standard_error`
+
+    - `p_value`: the two-sided p-value
+
+    - `reject_null`: whether `p_value < alpha`
+
+
+    Use the corresponding standard normal critical value for the confidence interval; do not round intermediate
+    calculations.
+
+
+    Example call and result (values shown approximately):
+
+    ```python
+
+    one_sample_z([8, 10, 12], null_mean=10, population_sd=2, alpha=0.05)
+
+    # {''mean'': 10.0, ''standard_error'': 1.1547,
+
+    #  ''confidence_interval'': (7.7369, 12.2631), ''z_stat'': 0.0,
+
+    #  ''p_value'': 1.0, ''reject_null'': False}
+
+    ```'
+  starter_code: "def one_sample_z(data, null_mean, population_sd, alpha):\n    \"\"\"Summarize data and perform\
+    \ a two-sided one-sample z test.\"\"\"\n    ..."
   tests: 'import math
 
 
-    mean, se = sample_mean_and_se([2, 4, 6])
+    result = one_sample_z([10, 12, 14, 16], 12, 4, 0.05)
 
-    assert math.isclose(mean, 4.0), "mean should be the average of the values"
+    assert math.isclose(result["mean"], 13.0), "compute the sample mean"
 
-    assert math.isclose(se, math.sqrt(4 / 3)), "SE should use sample standard deviation"
+    assert math.isclose(result["standard_error"], 2.0), "use the known population standard deviation"
+
+    assert math.isclose(result["confidence_interval"][0], 9.080072, abs_tol=1e-5) and math.isclose(result["confidence_interval"][1],
+    16.919928, abs_tol=1e-5), "compute the confidence interval"
+
+    assert math.isclose(result["z_stat"], 0.5), "compute the z statistic"
+
+    assert math.isclose(result["p_value"], 0.617075, abs_tol=1e-5) and result["reject_null"] is False, "report the
+    two-sided p-value and decision"
 
 
-    mean, se = sample_mean_and_se([5, 5, 5, 5])
+    negative = one_sample_z([6, 8], 10, 2, 0.05)
 
-    assert math.isclose(mean, 5.0), "mean should handle repeated values"
+    assert negative["z_stat"] < 0 and math.isclose(negative["p_value"], 0.033895, abs_tol=1e-5) and negative["reject_null"]
+    is True, "handle a negative z statistic with a two-sided test"
 
-    assert math.isclose(se, 0.0), "identical values should have zero standard error"
+
+    zero_effect = one_sample_z([8, 10, 12], 10, 2, 0.05)
+
+    assert zero_effect["z_stat"] == 0 and zero_effect["p_value"] == 1.0 and zero_effect["reject_null"] is False,
+    "a zero effect has p-value one"
 
 
-    mean, se = sample_mean_and_se([1, 2])
+    other_alpha = one_sample_z([0, 2], 0, 2, 0.10)
 
-    assert math.isclose(mean, 1.5), "mean should work for a two-value sample"
+    margin = (other_alpha["confidence_interval"][1] - other_alpha["confidence_interval"][0]) / 2
 
-    assert math.isclose(se, 0.5), "two-value sample should use denominator n - 1"'
-  solution: "import math\n\ndef sample_mean_and_se(values):\n    \"\"\"Return the sample mean and its standard error.\"\
-    \"\"\n    n = len(values)\n    mean = sum(values) / n\n    sample_variance = sum((value - mean) ** 2 for value\
-    \ in values) / (n - 1)\n    standard_error = math.sqrt(sample_variance) / math.sqrt(n)\n    return mean, standard_error"
+    assert math.isclose(margin, 1.644854 * math.sqrt(2), abs_tol=1e-5), "use alpha to set the confidence interval
+    width"'
+  solution: "import math\nfrom statistics import NormalDist\n\n\ndef one_sample_z(data, null_mean, population_sd,\
+    \ alpha):\n    \"\"\"Summarize data and perform a two-sided one-sample z test.\"\"\"\n    n = len(data)\n  \
+    \  mean = sum(data) / n\n    standard_error = population_sd / math.sqrt(n)\n    z_stat = (mean - null_mean)\
+    \ / standard_error\n\n    normal = NormalDist()\n    critical_value = normal.inv_cdf(1 - alpha / 2)\n    margin\
+    \ = critical_value * standard_error\n    p_value = math.erfc(abs(z_stat) / math.sqrt(2))\n\n    return {\n \
+    \       \"mean\": mean,\n        \"standard_error\": standard_error,\n        \"confidence_interval\": (mean\
+    \ - margin, mean + margin),\n        \"z_stat\": z_stat,\n        \"p_value\": p_value,\n        \"reject_null\"\
+    : p_value < alpha,\n    }"
   packages: []
+  topic: Probability & statistics
+  wrong_solutions:
+  - "import math\nfrom statistics import NormalDist\n\n\ndef one_sample_z(data, null_mean, population_sd, alpha):\n\
+    \    \"\"\"Incorrectly use the sample standard deviation instead of the known population standard deviation.\"\
+    \"\"\n    n = len(data)\n    mean = sum(data) / n\n    sample_sd = math.sqrt(sum((x - mean) ** 2 for x in data)\
+    \ / (n - 1))\n    standard_error = sample_sd / math.sqrt(n)\n    z_stat = (mean - null_mean) / standard_error\n\
+    \    critical = NormalDist().inv_cdf(1 - alpha / 2)\n    return {\n        \"mean\": mean,\n        \"standard_error\"\
+    : standard_error,\n        \"confidence_interval\": (mean - critical * standard_error, mean + critical * standard_error),\n\
+    \        \"z_stat\": z_stat,\n        \"p_value\": math.erfc(abs(z_stat) / math.sqrt(2)),\n        \"reject_null\"\
+    : math.erfc(abs(z_stat) / math.sqrt(2)) < alpha,\n    }"
+  - "import math\nfrom statistics import NormalDist\n\n\ndef one_sample_z(data, null_mean, population_sd, alpha):\n\
+    \    \"\"\"Incorrectly report a one-sided p-value.\"\"\"\n    n = len(data)\n    mean = sum(data) / n\n    standard_error\
+    \ = population_sd / math.sqrt(n)\n    z_stat = (mean - null_mean) / standard_error\n    normal = NormalDist()\n\
+    \    critical = normal.inv_cdf(1 - alpha / 2)\n    p_value = 1 - normal.cdf(z_stat)\n    return {\n        \"\
+    mean\": mean,\n        \"standard_error\": standard_error,\n        \"confidence_interval\": (mean - critical\
+    \ * standard_error, mean + critical * standard_error),\n        \"z_stat\": z_stat,\n        \"p_value\": p_value,\n\
+    \        \"reject_null\": p_value < alpha,\n    }"
+  - "import math\n\n\ndef one_sample_z(data, null_mean, population_sd, alpha):\n    \"\"\"Incorrectly use a fixed\
+    \ 1.96 critical value for every confidence interval.\"\"\"\n    n = len(data)\n    mean = sum(data) / n\n  \
+    \  standard_error = population_sd / math.sqrt(n)\n    z_stat = (mean - null_mean) / standard_error\n    p_value\
+    \ = math.erfc(abs(z_stat) / math.sqrt(2))\n    return {\n        \"mean\": mean,\n        \"standard_error\"\
+    : standard_error,\n        \"confidence_interval\": (mean - 1.96 * standard_error, mean + 1.96 * standard_error),\n\
+    \        \"z_stat\": z_stat,\n        \"p_value\": p_value,\n        \"reject_null\": p_value < alpha,\n   \
+    \ }"

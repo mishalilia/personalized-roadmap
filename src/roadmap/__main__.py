@@ -15,7 +15,7 @@ from .curriculum import Level
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, path_difference
 from .service import Roadmap
-from .llm import LLMUnavailable, connect
+from .llm import UnusableAnswer, LLMUnavailable, connect
 from .source import CurriculumSource, checkout, load_curriculum
 
 
@@ -93,6 +93,11 @@ def _parser() -> argparse.ArgumentParser:
         help="run each reference solution against its tests instead of generating",
     )
     generate.add_argument("--all", action="store_true", help="every module")
+    generate.add_argument(
+        "--problems-only",
+        action="store_true",
+        help="write new coding problems for checkpoints that have one, keeping their questions",
+    )
     generate.add_argument(
         "--force", action="store_true", help="also replace reviewed checkpoints"
     )
@@ -208,6 +213,9 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
     if llm is None:
         sys.exit("Generating checkpoints needs a model key in .env.")
     generator = CheckpointGenerator(llm, ", ".join(llm.models))
+    if args.problems_only:
+        _new_problems(generator, store, [modules[module_id] for module_id in wanted])
+        return
     for module_id in wanted:
         existing = store.load(module_id)
         if (
@@ -223,6 +231,22 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
             print(f"No checkpoint for {module_id}: {error}")
             continue
         print(f"Draft for {module_id} written to {store.save(checkpoint)}: review it")
+
+
+def _new_problems(
+    generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module]
+) -> None:
+    """New coding problems, checked against wrong solutions, for the checkpoints that have a problem."""
+    for module in modules:
+        existing = store.load(module.id)
+        if existing is None or existing.problem is None:
+            continue
+        try:
+            checkpoint = generator.generate_problem(module, existing)
+        except (LLMUnavailable, UnusableAnswer) as error:
+            print(f"Kept the old problem for {module.id}: {error}")
+            continue
+        print(f"New problem for {module.id} written to {store.save(checkpoint)}: review it")
 
 
 def _verify(store: CheckpointStore, modules: list[Module]) -> None:

@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from . import prompts
 from .curriculum import Curriculum, Module
-from .llm import LLMClient, UnusableAnswer
+from .llm import LLMClient, LLMUnavailable, UnusableAnswer
 
 QUESTIONS_PER_ATTEMPT = 5
 PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
@@ -85,6 +85,13 @@ class CodingProblem(BaseModel):
     packages: list[str] = []
     # The module's topic the problem practises, as one of its topic titles; the page links to it.
     topic: str | None = None
+    # Plausible wrong solutions, each missing one requirement: the tests must reject every one of them, so
+    # a learner cannot pass with half a solution. Never shown to learners.
+    wrong_solutions: list[Text] = Field(
+        default=[],
+        description="Two or three plausible wrong solutions a learner might write, each missing one "
+        "requirement of the prompt; the tests must fail every one.",
+    )
 
     @model_validator(mode="after")
     def _python(self) -> CodingProblem:
@@ -94,6 +101,13 @@ class CodingProblem(BaseModel):
             except SyntaxError as error:
                 raise ValueError(
                     f"The problem's {name} is not valid Python: {error}"
+                ) from error
+        for number, wrong in enumerate(self.wrong_solutions, start=1):
+            try:
+                ast.parse(wrong)
+            except SyntaxError as error:
+                raise ValueError(
+                    f"Wrong solution {number} is not valid Python: {error}"
                 ) from error
         return self
 
@@ -221,16 +235,29 @@ class Grade(BaseModel):
 
 
 def verify_problem(problem: CodingProblem, timeout: float = 20) -> str | None:
-    """Runs the reference solution against the tests in a separate Python; None if they pass, else the
-    error. For a reviewer checking a checkpoint on their own machine: the code comes from the checkpoint
-    file, so run it only on files you have read."""
+    """Runs the reference solution against the tests in a separate Python, then each wrong solution, which
+    the tests must reject. None if all is as it should be, else what is not. For a reviewer checking a
+    checkpoint on their own machine: the code comes from the checkpoint file, so run it only on files you
+    have read."""
     if missing := [
         name for name in problem.packages if importlib.util.find_spec(name) is None
     ]:
         return f"needs {', '.join(missing)}: pip install {' '.join(missing)}"
+    if error := _run_tests(problem.solution, problem.tests, timeout):
+        return error
+    for number, wrong in enumerate(problem.wrong_solutions, start=1):
+        if _run_tests(wrong, problem.tests, timeout) is None:
+            return (
+                f"wrong solution {number} passes the tests, so they miss a requirement:\n{wrong}"
+            )
+    return None
+
+
+def _run_tests(solution: str, tests: str, timeout: float) -> str | None:
+    """None if `tests` pass against `solution`, else the end of the error."""
     with tempfile.TemporaryDirectory() as directory:
         script = Path(directory) / "check.py"
-        script.write_text(f"{problem.solution}\n\n{problem.tests}\n", encoding="utf-8")
+        script.write_text(f"{solution}\n\n{tests}\n", encoding="utf-8")
         try:
             result = subprocess.run(  # nosec B603: our own interpreter, isolated mode, no shell
                 [sys.executable, "-I", str(script)],
@@ -301,10 +328,41 @@ class GeneratedQuestions(BaseModel):
     )
 
 
+class GeneratedProblem(BaseModel):
+    problem: CodingProblem
+
+
+PROBLEM_TRIES = 3  # a problem whose checks fail is asked for again, this many times in all
+
+
 class CheckpointGenerator:
     def __init__(self, llm: LLMClient, model_name: str) -> None:
         self._llm = llm
         self._model_name = model_name
+
+    def generate_problem(self, module: Module, existing: Checkpoint) -> Checkpoint:
+        """The checkpoint with a new coding problem and its questions as they were, for a problem whose
+        tests turned out too weak. Raises UnusableAnswer when no try gives a problem that passes the checks."""
+        last: Exception | None = None
+        for _ in range(PROBLEM_TRIES):
+            try:
+                response = self._llm.ask(
+                    prompts.load("problem"),
+                    module_brief(module),
+                    GeneratedProblem,
+                    check=lambda found: _check_problem(found.problem, module),
+                )
+            except LLMUnavailable as error:
+                last = error
+                continue
+            return existing.model_copy(
+                update={
+                    "problem": _with_module_topic(response.problem, module),
+                    "status": Status.DRAFT,
+                    "reviewed_by": None,
+                }
+            )
+        raise UnusableAnswer(f"No usable problem for {module.id}: {last}")
 
     def generate(self, module: Module, curriculum_version: str) -> Checkpoint:
         response = self._llm.ask(
@@ -328,7 +386,7 @@ class CheckpointGenerator:
             curriculum_version=curriculum_version,
             generated_by=self._model_name,
             questions=questions,
-            problem=response.problem,
+            problem=_with_module_topic(response.problem, module) if response.problem else None,
         )
 
 
@@ -349,6 +407,26 @@ def _check_generated(response: GeneratedQuestions, module: Module) -> None:
         raise UnusableAnswer(
             f"Topics the module does not have: {', '.join(sorted(unknown))}"
         )
+    if response.problem is not None:
+        _check_problem(response.problem, module)
+
+
+def _check_problem(problem: CodingProblem, module: Module) -> None:
+    """A problem is kept only if its reference solution passes, it comes with wrong solutions, and its
+    tests reject each of them."""
+    if len(problem.wrong_solutions) < 2:
+        raise UnusableAnswer("The problem needs at least two wrong solutions to check its tests")
+    if error := verify_problem(problem):
+        raise UnusableAnswer(f"The problem does not check out: {error}")
+    titles = [topic.title for topic in module.topics]
+    if titles and problem.topic and _module_topic(problem.topic, titles) is None:
+        raise UnusableAnswer(f"The problem's topic is not the module's: {problem.topic}")
+
+
+def _with_module_topic(problem: CodingProblem, module: Module) -> CodingProblem:
+    titles = [topic.title for topic in module.topics]
+    found = _module_topic(problem.topic, titles) if problem.topic else None
+    return problem.model_copy(update={"topic": found or problem.topic})
 
 
 def _module_topic(topic: str, titles: list[str]) -> str | None:
