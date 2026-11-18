@@ -185,6 +185,7 @@ questions:
   explanation: CTC supports training speech recognition systems when the transcript is known but the precise alignment
     between audio frames and text tokens is not.
 problem:
+  topic: Curriculum
   title: Calculate Word Error Rate
   prompt: 'Implement `word_error_rate(reference, hypothesis)` to calculate word error rate (WER) from two transcripts.
     Split each string on whitespace and treat tokens as case-sensitive. WER is the minimum number of token insertions,

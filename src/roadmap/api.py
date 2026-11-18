@@ -15,6 +15,7 @@ on sign-in with Google (roadmap.google).
 """
 
 import hmac
+import re
 import logging
 import threading
 import time
@@ -180,6 +181,8 @@ class ProblemOut(BaseModel):
     starter_code: str
     tests: str
     packages: list[str]
+    topic: str | None = None  # the module's topic it practises
+    topic_anchor: str | None = None  # that topic's heading id on the module page, when it has one
 
 
 class ReportedQuestion(QuestionReport):
@@ -811,8 +814,13 @@ def create_app(
             raise HTTPException(
                 429, "You have asked 40 questions today. Ask again tomorrow."
             )
+        # Code for the page's coding problem: the problem goes with it, never its reference solution.
+        problem = None
+        if body.code is not None and body.module_id is not None:
+            checkpoint = edition_of(path).checkpoints.get(body.module_id)
+            problem = checkpoint.problem if checkpoint else None
         try:
-            return PathAssistant(llm).answer(path, body)
+            return PathAssistant(llm).answer(path, body, problem)
         except LLMUnavailable as error:
             logger.warning("No answer for a question: %s", error)
             raise HTTPException(
@@ -1116,9 +1124,21 @@ def create_app(
 
     @app.get("/problems/{module_id:path}")
     def problem(module_id: str, version: str | None = None) -> ProblemOut:
-        found = checkpoint_of(edition_named(version), module_id).problem
+        edition = edition_named(version)
+        found = checkpoint_of(edition, module_id).problem
         if found is None:
             raise HTTPException(404, f"No coding problem for '{module_id}'")
+        module = next(
+            (m for m in edition.roadmap.curriculum.modules if m.id == module_id), None
+        )
+        topic = next(
+            (
+                t
+                for t in (module.topics if module else [])
+                if found.topic and _bare(t.title) == _bare(found.topic)
+            ),
+            None,
+        )
         return ProblemOut(
             module_id=module_id,
             title=found.title,
@@ -1126,6 +1146,8 @@ def create_app(
             starter_code=found.starter_code,
             tests=found.tests,
             packages=found.packages,
+            topic=topic.title if topic else None,
+            topic_anchor=topic.anchor if topic else None,
         )
 
     @app.get("/report")
@@ -1166,6 +1188,11 @@ def create_app(
         )
 
     return app
+
+
+def _bare(title: str) -> str:
+    """A topic title without its heading number, for matching "1. Readable Python" to "Readable Python"."""
+    return re.sub(r"^\d+\.\s*", "", title).strip().lower()
 
 
 def _settled(item: PathItem) -> PathItem:

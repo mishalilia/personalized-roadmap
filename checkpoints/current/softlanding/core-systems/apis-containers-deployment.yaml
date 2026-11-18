@@ -183,6 +183,7 @@ questions:
   explanation: The command uses POST, includes the JSON request body, and identifies that body as JSON with `Content-Type`.
     `Accept` describes the response format the client can receive, not the request body format.
 problem:
+  topic: APIs, Containers, and Deployment
   title: Format a Prediction Result
   prompt: 'Write `format_prediction(probabilities, labels)` for a small inference layer that is kept separate from
     HTTP handling. The two lists must be non-empty and have the same length. Every probability must be a finite

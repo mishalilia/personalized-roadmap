@@ -188,6 +188,7 @@ questions:
   explanation: A tool call lets the assistant obtain the current status from the authoritative API and use that
     result in its response. Guessing or consulting old conversations cannot reliably provide current order data.
 problem:
+  topic: Curriculum
   title: Build TF-IDF features
   prompt: Write `tfidf_features(documents)` for a list of strings, where each document contains whitespace-separated
     words. Treat words case-insensitively, split on whitespace, and return `(vocabulary, vectors)`. `vocabulary`

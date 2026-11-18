@@ -186,6 +186,7 @@ questions:
   explanation: Testing a meaningful failure case checks behavior that a success-only test cannot establish. Comparing
     it with the acceptance criteria helps determine whether the implementation is suitable.
 problem:
+  topic: 'Agent-assisted engineering'
   title: Report Failed Verification Checks
   prompt: 'Write `failed_checks`, which takes a list of check records. Each record is a dictionary with a string
     `name` and a boolean `passed`. Return the names of the checks that did not pass, in their original order.

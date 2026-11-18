@@ -888,6 +888,38 @@ def test_the_assistant_knows_the_part_of_the_page_on_the_learners_screen(
     assert "The part of the page on their screen: Shell Basics" in llm.prompts[-1]
 
 
+def test_code_sent_with_a_question_comes_with_the_problem_but_not_its_solution(
+    curriculum, questions
+):
+    llm = FakeLLM(study_all(curriculum), {"reply": "Return instead of print.", "modules": []})
+    client = site_for(Roadmap(curriculum, questions, llm), problem=PROBLEM).signed_in()
+    confirmed_path(client)
+
+    response = client.post(
+        "/me/chat",
+        json={
+            "question": "Why does my solution fail?",
+            "module_id": TERMINAL,
+            "code": "def double(x):\n    print(x * 2)",
+            "error": "AssertionError",
+        },
+    )
+
+    assert response.status_code == 200
+    sent = llm.prompts[-1]
+    assert "print(x * 2)" in sent and PROBLEM.tests in sent and "AssertionError" in sent
+    assert PROBLEM.solution not in sent
+
+
+def test_a_problem_names_the_topic_it_practises(curriculum, questions):
+    practised = PROBLEM.model_copy(update={"topic": "Shell Basics"})
+    client = site_for(Roadmap(curriculum, questions, llm=None), problem=practised).learner()
+
+    problem = client.get(f"/problems/{TERMINAL}").json()
+
+    assert problem["topic"] == "1. Shell Basics"
+
+
 def test_module_ids_the_model_copies_into_the_reply_are_taken_out(
     curriculum, questions
 ):

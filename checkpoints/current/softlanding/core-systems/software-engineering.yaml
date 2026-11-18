@@ -184,6 +184,7 @@ questions:
   explanation: A useful handover records the Python version, dependencies, configuration, and run and test commands,
     while keeping credentials outside committed code.
 problem:
+  topic: '1. Readable Python'
   title: Summarize numeric readings
   prompt: 'Implement `summarize_readings(values)` to return a dictionary with the number of readings (`count`),
     the smallest reading (`min`), the largest reading (`max`), and their arithmetic mean (`mean`). The input must

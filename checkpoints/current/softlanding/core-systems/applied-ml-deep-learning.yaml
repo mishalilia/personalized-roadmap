@@ -187,6 +187,7 @@ questions:
   explanation: A state dict contains learned parameter values, so the inference script must create a compatible
     model and load those values into it. Evaluation mode sets inference behavior for modules such as dropout.
 problem:
+  topic: Applied ML and evaluation
   title: Compute binary classification metrics
   prompt: 'Write `classification_metrics(y_true, y_pred)` for binary labels, where `1` is the positive class. Return
     a dictionary with `accuracy`, `precision`, `recall`, and `f1`. If precision or recall has a zero denominator,

@@ -187,6 +187,7 @@ questions:
   explanation: The insert is part of a transaction, and committing it makes the change persist in the database.
     Closing a connection with an uncommitted transaction can discard the change.
 problem:
+  topic: Systems, Networking, and Data Foundations
   title: Persist and retrieve SQLite events
   prompt: 'Write `persist_events(db_path, messages)`. It should create an `events` table if needed, append each
     message to the database, commit the inserts, close the connection, and return all messages in insertion order.

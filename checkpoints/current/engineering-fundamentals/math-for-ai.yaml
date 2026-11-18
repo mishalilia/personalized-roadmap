@@ -176,6 +176,7 @@ questions:
   explanation: The equally likely outcomes are HH, HT, TH, and TT; exactly one head occurs in HT and TH, so the
     probability is 2/4 = 1/2.
 problem:
+  topic: Probability & statistics
   title: Calculate a Sample Mean and Standard Error
   prompt: Write `sample_mean_and_se(values)` to return the sample mean and the standard error of the mean as a tuple
     `(mean, standard_error)`. Use the sample standard deviation, calculated with denominator `n - 1`, and then divide

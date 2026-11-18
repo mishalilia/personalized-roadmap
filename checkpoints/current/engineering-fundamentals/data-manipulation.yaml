@@ -113,6 +113,7 @@ questions:
   explanation: A few very large values pull the mean up but barely move the median, so the distribution has a long
     right tail worth investigating.
 problem:
+  topic: NumPy Foundations
   title: Scale each column to 0–1
   prompt: 'Write `min_max_scale(a)` for a 2-D NumPy array: scale each column so that its smallest value becomes
     0 and its largest 1, without a Python loop. A column whose values are all equal becomes all zeros.

@@ -13,6 +13,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints
 
 from . import prompts
+from .checkpoints import CodingProblem
 from .curriculum import Module
 from .llm import LLMClient, UnusableAnswer
 from .path import LearningPath, PathItem
@@ -20,6 +21,8 @@ from .path import LearningPath, PathItem
 MAX_QUESTION = 1000
 MAX_TURN = 2000
 MAX_TURNS = 8  # earlier turns sent with a question
+MAX_CODE = 6000
+MAX_ERROR = 1000
 
 Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUESTION)
@@ -43,6 +46,9 @@ class ChatRequest(BaseModel):
     # The module whose page the learner is reading, if any, and the heading of the part on their screen.
     module_id: str | None = None
     section: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    # The learner's code for the module's coding problem and the error its tests gave, when they ask about it.
+    code: Annotated[str, StringConstraints(max_length=MAX_CODE)] | None = None
+    error: Annotated[str, StringConstraints(max_length=MAX_ERROR)] | None = None
 
 
 class ModelAnswer(BaseModel):
@@ -69,7 +75,13 @@ class PathAssistant:
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
 
-    def answer(self, path: LearningPath, request: ChatRequest) -> ChatReply:
+    def answer(
+        self,
+        path: LearningPath,
+        request: ChatRequest,
+        problem: CodingProblem | None = None,
+    ) -> ChatReply:
+        """`problem` is the coding problem of the page's module, when the learner sends their code for it."""
         items = {item.module.id: item for item in path.items}
         page = items.get(request.module_id) if request.module_id else None
 
@@ -83,7 +95,10 @@ class PathAssistant:
                 )
 
         answer = self._llm.ask(
-            prompts.load("chat"), prompt(path, request, page), ModelAnswer, check=check
+            prompts.load("chat"),
+            prompt(path, request, page, problem),
+            ModelAnswer,
+            check=check,
         )
         return ChatReply(
             reply=_without_ids(answer.reply, items),
@@ -102,7 +117,12 @@ def _without_ids(reply: str, items: dict[str, PathItem]) -> str:
     return reply
 
 
-def prompt(path: LearningPath, request: ChatRequest, page: PathItem | None) -> str:
+def prompt(
+    path: LearningPath,
+    request: ChatRequest,
+    page: PathItem | None,
+    problem: CodingProblem | None = None,
+) -> str:
     parts = [
         "# The learner",
         *_learner(path),
@@ -114,6 +134,18 @@ def prompt(path: LearningPath, request: ChatRequest, page: PathItem | None) -> s
         parts += ["", "# The module page they are reading now", *_outline(page.module)]
         if request.section:
             parts.append(f"The part of the page on their screen: {request.section}")
+    if problem is not None and request.code is not None:
+        parts += [
+            "",
+            "# The module's coding problem, and the learner's code that does not pass yet",
+            f"Problem: {problem.title}",
+            problem.prompt,
+            "Tests:",
+            problem.tests,
+            "Their code:",
+            request.code,
+            f"What the tests reported: {request.error or 'nothing'}",
+        ]
     if request.history:
         parts += ["", "# The conversation so far"]
         parts += [

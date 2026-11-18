@@ -31,4 +31,6 @@ a learner who finished the module can solve in 10 to 20 minutes:
   no input or output files, no network.
 - `solution` passes the tests. Use only the standard library, or the packages you list in `packages` (numpy,
   pandas).
+Give the problem's `topic` exactly as the title of the module's topic it practises.
+
 For other modules, leave the problem out.

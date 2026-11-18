@@ -190,6 +190,7 @@ questions:
     by that evaluated aggregate metric. A single precision measurement at one threshold does not establish overall
     superiority.
 problem:
+  topic: Curriculum
   title: Compute Bounding-Box IoU
   prompt: Write `box_iou(box_a, box_b)` for two bounding boxes represented as `(x1, y1, x2, y2)`, where the first
     corner is the top-left and the second is the bottom-right. Return the intersection area divided by the union

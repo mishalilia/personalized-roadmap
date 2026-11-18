@@ -185,6 +185,7 @@ questions:
   explanation: The API should handle access to persistent data and expose it through a defined interface; the frontend
     then requests and displays that data.
 problem:
+  topic: '3. API Design & Implementation'
   title: Build a Pagination Helper
   prompt: 'Implement `paginate(items, page, page_size)` for a REST API. Pages are **1-indexed**. Return a dictionary
     with `items` (the selected page as a list), `total` (the number of input items), `page`, `page_size`, and `pages`

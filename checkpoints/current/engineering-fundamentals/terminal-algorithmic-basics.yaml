@@ -192,6 +192,7 @@ questions:
   explanation: 'A set of previously seen values lets you check each item as you scan: an item already in the set
     is a repeat. You can stop immediately when one is found.'
 problem:
+  topic: Algorithms and Problem Solving
   title: Longest Increasing Run
   prompt: 'Write `longest_increasing_run(nums)` to return the length of the longest contiguous run in which each
     number is strictly greater than the number before it. An empty list has a run length of `0`, and a list with

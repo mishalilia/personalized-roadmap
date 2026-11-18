@@ -83,6 +83,8 @@ class CodingProblem(BaseModel):
     solution: Text = Field(description="A reference solution that passes the tests.")
     # Pyodide packages the code needs, such as numpy; standard library only when empty.
     packages: list[str] = []
+    # The module's topic the problem practises, as one of its topic titles; the page links to it.
+    topic: str | None = None
 
     @model_validator(mode="after")
     def _python(self) -> CodingProblem:
