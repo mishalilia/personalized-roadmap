@@ -66,7 +66,7 @@ from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
-from .path import Choice, LearningPath, PathStateError, Progress
+from .path import Choice, LearningPath, PathItem, PathStateError, Progress
 from .path_chat import ChatReply, ChatRequest, PathAssistant
 from .project_files import (
     ProjectError,
@@ -325,7 +325,7 @@ def create_app(
         return path.model_copy(
             update={
                 "items": [
-                    item.model_copy(update={"module": modules.get(item.module.id, item.module)})
+                    _settled(item.model_copy(update={"module": modules.get(item.module.id, item.module)}))
                     for item in path.items
                 ]
             }
@@ -1166,6 +1166,20 @@ def create_app(
         )
 
     return app
+
+
+def _settled(item: PathItem) -> PathItem:
+    """A module the path changed to study after a failed checkpoint, stored before such a change counted as
+    the path's suggestion and before a later pass updated its note."""
+    if not (item.adjustment and item.adjustment.startswith("Changed to study:")):
+        return item
+    update: dict[str, object] = {"suggested": Choice.STUDY}
+    if item.progress in (Progress.PASSED, Progress.PRACTICE):
+        update["adjustment"] = (
+            "Changed to study after the checkpoint showed gaps; "
+            f"passed on attempt {item.attempts} ({item.last_score})."
+        )
+    return item.model_copy(update=update)
 
 
 class ApiSettings(Settings):

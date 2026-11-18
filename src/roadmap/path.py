@@ -265,10 +265,19 @@ class LearningPath(BaseModel):
             "missed_topics": list(missed_topics or []),
         }
         if not passed and item.choice is Choice.PROVE:
+            # The path changes the decision, not the learner: it becomes the suggestion too, so the module
+            # is not shown as the learner's own choice.
             update["choice"] = Choice.STUDY
+            update["suggested"] = Choice.STUDY
             update["adjustment"] = (
                 f"Changed to study: the checkpoint showed gaps ({score}/{total}). "
                 "Study the module, then take the checkpoint again."
+            )
+        elif passed and item.adjustment and item.adjustment.startswith("Changed to study"):
+            # The advice to study and try again is done with; say how it ended.
+            update["adjustment"] = (
+                "Changed to study after the checkpoint showed gaps; "
+                f"passed on attempt {item.attempts + 1} ({score}/{total})."
             )
         proposals = [p for p in self.proposals if p.module_id != module_id]
         return self._replace(item.model_copy(update=update), proposals=proposals)

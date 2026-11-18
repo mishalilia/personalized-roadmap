@@ -122,9 +122,14 @@ def test_a_failed_prove_becomes_study_and_the_path_stays_confirmed(curriculum):
     failed = path.with_checkpoint_result(TERMINAL, 1, 5, passed=False)
 
     item = failed.item(TERMINAL)
-    assert item.choice is Choice.STUDY and item.suggested is Choice.PROVE
+    # The path made the change, so it is its suggestion, not the learner's own choice.
+    assert item.choice is Choice.STUDY and item.suggested is Choice.STUDY
     assert item.adjustment and "1/5" in item.adjustment
     assert failed.confirmed
+
+    passed = failed.with_checkpoint_result(TERMINAL, 5, 5, passed=True)
+    note = passed.item(TERMINAL).adjustment
+    assert note and "passed on attempt 2 (5/5)" in note and "take the checkpoint again" not in note
 
 
 def test_progress_needs_a_confirmed_path_and_an_included_module(curriculum):
