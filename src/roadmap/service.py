@@ -79,7 +79,12 @@ class Roadmap:
         """The path with the learner's checkpoint result. After a checkpoint passed without a mistake
         at the first try, the model may suggest lightening the modules that follow."""
         path = path.with_checkpoint_result(
-            module_id, grade.score, grade.total, grade.passed, grade.problem_pending
+            module_id,
+            grade.score,
+            grade.total,
+            grade.passed,
+            grade.problem_pending,
+            missed_topics=grade.review_topics,
         )
         if not grade.effortless:
             return path

@@ -142,6 +142,8 @@ def _item(item: PathItem) -> str:
     line += f"; progress: {item.progress.value}"
     if item.attempts:
         line += f"; checkpoint attempts: {item.attempts}, last score {item.last_score}"
+        if item.missed_topics:
+            line += f"; topics of the wrong answers last time: {', '.join(item.missed_topics)}"
     if module.hours:
         line += f"; about {module.hours.low:g}-{module.hours.high:g} h"
     if module.prerequisites:

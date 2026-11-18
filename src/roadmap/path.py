@@ -67,6 +67,8 @@ class PathItem(BaseModel):
     progress: Progress = Progress.NOT_STARTED
     attempts: int = 0  # checkpoint attempts so far
     last_score: str | None = None  # such as "4/5"
+    # The topics of the wrong answers in the last attempt, so the assistant can say what to review.
+    missed_topics: list[str] = []
     # Why the path changed this module on its own, after a checkpoint.
     adjustment: str | None = None
 
@@ -244,6 +246,7 @@ class LearningPath(BaseModel):
         total: int,
         passed: bool,
         problem_pending: bool = False,
+        missed_topics: list[str] | None = None,
     ) -> "LearningPath":
         """The path after a checkpoint attempt. A failed "prove" becomes "study"; the path stays
         confirmed, since the rule is the one the learner saw when they confirmed it. Passed questions
@@ -257,6 +260,7 @@ class LearningPath(BaseModel):
             "attempts": item.attempts + 1,
             "last_score": f"{score}/{total}",
             "progress": progress,
+            "missed_topics": list(missed_topics or []),
         }
         if not passed and item.choice is Choice.PROVE:
             update["choice"] = Choice.STUDY

@@ -760,6 +760,22 @@ def test_the_assistant_answers_from_the_learners_path_and_the_page_they_read(
     assert prompt.rstrip().endswith("Why is the terminal module skipped?")
 
 
+def test_after_a_failed_checkpoint_the_assistant_sees_the_topics_of_the_wrong_answers(
+    curriculum, questions
+):
+    llm = FakeLLM(
+        study_all(curriculum), {"reply": "Review the shell basics.", "modules": []}
+    )
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+    answer(client, attempt=0, right=1)
+
+    client.post("/me/chat", json={"question": "What should I review?"})
+
+    item_line = next(line for line in llm.prompts[-1].splitlines() if TERMINAL in line)
+    assert "topics of the wrong answers last time:" in item_line
+
+
 def test_module_ids_the_model_copies_into_the_reply_are_taken_out(
     curriculum, questions
 ):
