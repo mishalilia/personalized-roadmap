@@ -172,18 +172,6 @@ questions:
   answer: 1
   explanation: State lets the frontend respond to a filter change by fetching or selecting the corresponding data
     and rendering the updated visualization.
-- id: q15
-  topic: Capstone Project
-  text: In a full-stack application, a frontend needs to display a user's saved projects. Which design keeps the
-    API as the boundary between the frontend and persistent data?
-  options:
-  - Have the frontend query the database directly and format the results
-  - Have the API read the database and return project data to the frontend
-  - Have the database call the frontend with each project's data
-  - Have the frontend read project files from the API container's disk
-  answer: 1
-  explanation: The API should handle access to persistent data and expose it through a defined interface; the frontend
-    then requests and displays that data.
 - id: q16
   topic: 1. Networking Fundamentals
   text: A team finds that a server can reach an IP address on another network only after a router's route is corrected.
@@ -684,91 +672,6 @@ questions:
   answer: 0
   explanation: The frontend should get records through the API, which provides the service's intended interface
     to its data. Connecting directly to the database bypasses that boundary and exposes backend details to the client.
-- id: q58
-  topic: Capstone Project
-  text: A project-tracking app stores tasks with their project name and owner email on every task row. Which redesign
-    best reduces repeated data and update inconsistencies?
-  options:
-  - Keep one task table and update every matching row when project details change
-  - Store users, projects, and tasks separately, linking each task to its project
-  - Store all projects and tasks in one text field on each user's row
-  - Create a separate task table for each project and copy the owner email into it
-  answer: 1
-  explanation: Separate tables keep each fact in one place, while relationships connect users, projects, and tasks.
-    Updating a project's details then does not require editing every task row.
-- id: q59
-  topic: Capstone Project
-  text: You want to check that creating a task through your API both returns the expected response and saves the
-    task. Which test setup best checks this integration?
-  options:
-  - Call a single helper function with sample values and no database
-  - Open the production app manually and check whether the task appears
-  - Mock the database call and assert only that the mock was called
-  - Send a request with a test client to the API using a test database
-  answer: 3
-  explanation: An API test client and test database exercise the endpoint and its persistence interaction together.
-    A unit test or a mocked database would not verify that the task is actually saved.
-- id: q60
-  topic: Capstone Project
-  text: Your app has an API service and a PostgreSQL database, and you want to run both consistently with Docker
-    Compose. Which setup is most appropriate?
-  options:
-  - Define separate API and database services, configure their connection, and persist database data in a volume
-  - Install PostgreSQL inside the API container and rebuild that container whenever data changes
-  - Configure the API to connect to `localhost` for PostgreSQL inside the separate database container
-  - Copy the database files into the API image each time you deploy a new version
-  answer: 0
-  explanation: Separate Compose services let the API and database run independently, and a volume preserves database
-    data across container replacement. Containers on the Compose network can connect using the database service
-    name rather than `localhost`.
-- id: q61
-  topic: Capstone Project
-  text: You are setting up a CI/CD pipeline for your capstone app. Which sequence best prevents an untested change
-    from being deployed?
-  options:
-  - Deploy each change first, then run linting and tests against the live app
-  - Run tests on a developer's machine, then deploy every pushed change automatically
-  - Run linting and automated tests in CI, then deploy only when they pass
-  - Deploy changes from CI, then ask a developer to run tests if users report a problem
-  answer: 2
-  explanation: Running checks in CI before deployment catches issues before they reach users. Making successful
-    checks a deployment condition avoids releasing a change that failed them.
-- id: q62
-  topic: Capstone Project
-  text: An authenticated user opens a dashboard showing charts of their project activity. Which design best ensures
-    the chart shows only that user's data?
-  options:
-  - Return every user's activity and let the frontend hide rows that do not match
-  - Validate the user's authentication at the API and scope its data query to that user
-  - Let the frontend send a user ID and trust that ID when the API queries activity
-  - Put a fixed user ID in the chart code and use it for every dashboard request
-  answer: 1
-  explanation: The API should authenticate the request and enforce which data the user can access. Hiding other
-    users' data only in the frontend does not prevent the API from exposing it.
-- id: q63
-  topic: Capstone Project
-  text: Your capstone API needs more capacity, so you plan to run several copies behind a load balancer. What change
-    helps requests work across those copies?
-  options:
-  - Keep each user's session only in the memory of whichever API copy first receives a request
-  - Store uploaded files only in the local filesystem of the API copy that receives them
-  - Route every user to one API copy and add more copies only for new users
-  - Keep API processes stateless and put shared session or application data in a backing service
-  answer: 3
-  explanation: Stateless API processes can handle requests from any replica, while shared state belongs in a backing
-    service. Process-local sessions can be unavailable when a later request reaches a different copy.
-- id: q64
-  topic: Capstone Project
-  text: Your capstone app has mobile clients using an API response format that a new release will change. How can
-    you introduce the change without immediately breaking those clients?
-  options:
-  - Keep the existing API version available and add a new version for clients ready to migrate
-  - Change the existing response format and require all clients to update before using the API
-  - Return different response formats at random so clients can adapt to either one
-  - Create a separate database for the new response format and stop serving the old API
-  answer: 0
-  explanation: Keeping the existing version available lets current clients continue working while newer clients
-    adopt the changed format. Versioning provides a controlled migration path.
 problem:
   title: Trace an HTTP Request
   prompt: "Write `http_request_trace(host, secure)`, a function that returns a conceptual network-event trace for\

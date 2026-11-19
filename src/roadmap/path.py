@@ -229,6 +229,8 @@ class LearningPath(BaseModel):
             raise KeyError(f"'{module_id}' has no topic '{topic}'")
         if item.choice is not Choice.STUDY:
             raise PathStateError("Only a module you study has topics to skim or skip")
+        if item.module.is_project:
+            raise PathStateError("A project is done in full: its parts cannot be skimmed or skipped")
         if item.progress in (Progress.PASSED, Progress.DONE):
             raise PathStateError("This module is finished")
         skipped = {marked.topic for marked in item.skip_topics} - {topic}

@@ -317,3 +317,17 @@ def test_the_learner_studies_skims_or_skips_a_topic_without_a_new_confirmation(c
     assert proved.item(module.id).skipped_topics == frozenset()  # a module proved is checked whole
     with pytest.raises(PathStateError):
         proved.with_topic(module.id, first, TopicChoice.SKIP)
+
+
+def test_a_projects_parts_cannot_be_skimmed_or_skipped(curriculum):
+    from roadmap.curriculum import Topic
+    from roadmap.path import PathStateError, TopicChoice
+
+    project = curriculum.modules[0].model_copy(
+        update={"id": "track/capstone", "topics": [Topic(title="Deliverables"), Topic(title="Rubric")]}
+    )
+    items = [PathItem.suggestion(project if i == 0 else m, Choice.STUDY, "Build it.") for i, m in enumerate(curriculum.modules)]
+    path = path_with(curriculum, {}).model_copy(update={"items": items})
+
+    with pytest.raises(PathStateError):
+        path.with_topic(project.id, "Deliverables", TopicChoice.SKIP)

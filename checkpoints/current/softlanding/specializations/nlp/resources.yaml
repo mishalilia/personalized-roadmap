@@ -4,376 +4,1062 @@ status: draft
 generated_by: gpt-6-luna
 reviewed_by: null
 questions:
-- id: q1
-  topic: Curriculum
-  text: You are preparing short reviews for a bag-of-words classifier. The labels depend on words such as “not,”
-    so removing every common stopword could remove useful signals. What is the best preprocessing choice?
+- id: q24
+  topic: 1. Text Representation & Classical NLP
+  text: A preprocessing pipeline lowercases text, removes punctuation, and splits on spaces. What tokens result
+    from `Cats, chase cats.`?
   options:
-  - Lowercase and tokenize the reviews, then remove stopwords only if they are not useful for the task
-  - Remove all stopwords first, then lowercase only the words that remain
-  - Keep the text unchanged because bag-of-words models require original capitalization
-  - Replace each review with its most frequent word before building features
-  answer: 0
-  explanation: Lowercasing and tokenization are useful preprocessing steps, but stopword removal should depend on
-    the task. Removing “not” could erase information important for sentiment.
-- id: q2
-  topic: Curriculum
-  text: A term appears in nearly every document in a collection. You switch from raw word counts to TF-IDF features.
-    What is the likely effect on that term’s feature values?
-  options:
-  - Its values increase because its frequent occurrence makes it more informative
-  - Its values decrease because appearing in many documents makes it less distinctive
-  - Its values stay the same because TF-IDF only changes the vocabulary order
-  - Its values become zero in every document once the term is sufficiently common
+  - Cats, chase cats.
+  - cats chase cats
+  - cats chase
+  - cats cats chase chase
   answer: 1
-  explanation: TF-IDF downweights terms that occur across many documents, since they help distinguish documents
-    less. The term can still have nonzero values.
-- id: q3
-  topic: Curriculum
-  text: A text classifier uses unigrams, then you add bigrams. What is a likely trade-off as a result?
+  explanation: Lowercasing changes `Cats` to `cats`, punctuation removal removes the comma and period, and tokenization
+    splits the result into three tokens.
+- id: q25
+  topic: 1. Text Representation & Classical NLP
+  text: A sentiment dataset includes reviews like “not good.” A stopword list labels `not` as a stopword. What is
+    the best preprocessing choice for this task?
   options:
-  - The feature space grows, and phrase-specific signals may improve while the representation becomes sparser
-  - The feature space shrinks, and each feature represents a broader range of phrases
-  - The feature space stays the same, but word order is removed from the representation
-  - The feature space grows, and the model automatically learns the meaning of every phrase
+  - Keep `not`, since removing it can reverse the phrase’s sentiment.
+  - Remove `not`, since stopwords should always be deleted.
+  - Remove `good`, since it appears in many positive reviews.
+  - Keep only `not`, since other words are less informative.
   answer: 0
-  explanation: Bigrams add features for adjacent word pairs, which can capture useful phrases but usually enlarge
-    the vocabulary and increase sparsity. They do not automatically encode phrase meaning.
-- id: q4
-  topic: Curriculum
-  text: In a corpus, “doctor” and “nurse” often appear near similar words. A team wants a representation in which
-    these words may be close even though they are different tokens. Which approach best fits that goal?
+  explanation: In sentiment analysis, negation can change the meaning of the following word, so removing `not` may
+    discard important information.
+- id: q26
+  topic: 1. Text Representation & Classical NLP
+  text: A Bag-of-Words model uses the vocabulary `{blue, red}`. What vectors does it produce for the documents “red
+    blue” and “blue red,” using counts in that vocabulary order?
   options:
-  - Use raw counts for each word, keeping every word in a separate feature dimension
-  - Remove both words as stopwords before counting the remaining terms
-  - Train word embeddings to learn representations from patterns of surrounding words
-  - Increase the number of bigrams until the words share the same feature
+  - The vectors are `[1, 1]` and `[2, 0]`.
+  - The vectors are `[1, 0]` and `[0, 1]`.
+  - The vectors are `[1, 1]` and `[1, 1]`.
+  - The vectors are `[0, 2]` and `[2, 0]`.
   answer: 2
-  explanation: Embeddings can place words with similar usage contexts near one another, even when their surface
-    forms differ. Separate count features do not inherently capture that similarity.
-- id: q5
-  topic: Curriculum
-  text: You want a Word2Vec model to predict a target word from the surrounding context words. Which architecture
-    matches this training setup?
+  explanation: Bag-of-Words counts each vocabulary term without representing word order, so both documents contain
+    one `blue` and one `red`.
+- id: q27
+  topic: 1. Text Representation & Classical NLP
+  text: In a collection of product reviews, the word `product` appears in nearly every review, while `leaking` appears
+    in only a few. Which change would TF-IDF typically make compared with raw counts?
   options:
-  - Skip-gram, because it predicts context words from a target word
-  - CBOW, because it predicts a target word from its context
-  - GloVe, because it predicts each next word using a causal attention mask
-  - Skip-gram, because it averages all context words to predict one target
-  answer: 1
-  explanation: CBOW uses surrounding context to predict the center word. Skip-gram uses the center word to predict
-    surrounding context words.
-- id: q6
-  topic: Curriculum
-  text: An embedding model produces a strong similarity between two occupations and a demographic group, reflecting
-    patterns in its training text. What is the most responsible next step before using it in a product?
+  - Give `product` more weight because it occurs in more documents.
+  - Give both words equal weight because each is one token.
+  - Remove `leaking` because it occurs in too few documents.
+  - Give `leaking` more weight relative to `product` because it is rarer.
+  answer: 3
+  explanation: TF-IDF reduces the influence of terms that occur across many documents and gives relatively greater
+    weight to terms that distinguish a smaller set of documents.
+- id: q28
+  topic: 1. Text Representation & Classical NLP
+  text: A classifier treats “ice cream” as two unrelated words, even though the phrase is an important product category.
+    Which feature change most directly lets it represent that phrase?
   options:
-  - Treat the similarity as evidence that the association is objectively correct
-  - Remove the demographic words from the vocabulary and assume the pattern is gone
-  - Check for bias patterns and evaluate their likely impact in the intended use
-  - Increase the vector dimensions so the association becomes less influential
-  answer: 2
-  explanation: Embeddings can encode social biases present in their training data, so the association should be
-    investigated and assessed in context. Removing a few words or changing dimensionality does not guarantee that
-    the bias is eliminated.
-- id: q7
-  topic: Curriculum
-  text: In self-attention, a token’s query is compared with keys from other tokens to produce attention weights.
-    What happens next?
-  options:
-  - The weights combine the corresponding value vectors into a context-aware representation
-  - The weights replace the value vectors, which are then used as position identifiers
-  - The keys are averaged first, and the query is added unchanged to that average
-  - The values are used to compute the weights, while queries are summed into the output
+  - Add a bigram feature for adjacent pairs such as `ice cream`.
+  - Remove common words so `ice` and `cream` remain separate.
+  - Replace each word with its document frequency.
+  - Sort the words alphabetically before counting them.
   answer: 0
-  explanation: Attention scores derived from queries and keys are normalized into weights, which are then used to
-    combine value vectors. This gives each token a representation informed by relevant tokens.
-- id: q8
-  topic: Curriculum
-  text: A self-attention layer receives the same token embeddings for “dog bites person” and “person bites dog,”
-    with no positional information. Why might it struggle to distinguish the two sequences?
+  explanation: A bigram feature represents an adjacent two-word sequence as a feature, allowing the model to learn
+    from the phrase `ice cream` itself.
+- id: q29
+  topic: 1. Text Representation & Classical NLP
+  text: A small text dataset is represented with all unigrams and bigrams. What is a likely effect compared with
+    using unigrams alone?
   options:
-  - The attention layer cannot compare representations unless the tokens are all unique
-  - Without positional information, it has no direct signal for the tokens’ sequence order
-  - Self-attention always reads tokens from right to left, regardless of the input
-  - The attention layer discards the token embeddings and uses only the sequence length
+  - The vocabulary will shrink because each pair replaces its individual words.
+  - The vocabulary may grow, and many documents may have zeros for most features.
+  - Every document will contain most features because pairs reuse words.
+  - The feature vectors will encode word meaning more directly.
   answer: 1
-  explanation: Self-attention needs positional information to represent where tokens occur in a sequence. Without
-    it, the layer has no direct way to distinguish the order of the same tokens.
-- id: q9
-  topic: Curriculum
-  text: A team is choosing between an RNN and a Transformer for training on long sequences. Which advantage can
-    a Transformer offer during training?
+  explanation: Adding bigrams introduces features for word pairs, often increasing vocabulary size; each document
+    usually contains only a small fraction of those possible features.
+- id: q30
+  topic: 1. Text Representation & Classical NLP
+  text: A classifier uses unigram counts for “the dog bites the person” and “the person bites the dog.” Why might
+    these examples be difficult to distinguish using those features?
   options:
-  - It processes tokens sequentially, so each token can use the completed hidden state of the previous token
-  - It can compute representations for multiple positions in parallel, rather than relying on a recurrent step for
-    each token
-  - It requires no training data because attention weights are determined by token order
-  - It guarantees lower memory use than an RNN for every sequence length
-  answer: 1
-  explanation: Transformers can process many sequence positions in parallel during training, unlike architectures
-    that depend on sequential recurrent steps. This does not guarantee lower memory use in every setting.
-- id: q10
-  topic: Curriculum
-  text: A model is trained to generate the next word in a sentence without looking at later words. Which setup is
-    most appropriate?
-  options:
-  - A masked language model that predicts randomly hidden words using both directions
-  - A causal language model that restricts each position to current and earlier tokens
-  - A bag-of-words model that predicts the next token from document-level counts
-  - A causal language model that allows every position to attend to later tokens
-  answer: 1
-  explanation: Next-token generation uses a causal objective, where a position cannot use future tokens when making
-    its prediction. Masked language models instead predict hidden tokens using surrounding context.
-- id: q11
-  topic: Curriculum
-  text: A general-purpose language model performs poorly on a company’s specialized support style, even when given
-    clear instructions in the prompt. The team has examples of the desired responses and wants to adapt the model’s
-    behavior. Which next step best fits?
-  options:
-  - Continue prompting with the same instructions, without providing examples
-  - Fine-tune the model on suitable examples of the desired task and style
-  - Pretrain a new model from scratch using only the company’s examples
-  - Use a masked language model to generate every support response
-  answer: 1
-  explanation: Fine-tuning can adapt a pretrained model to task-specific examples and style. Pretraining from scratch
-    is generally unnecessary for this goal, while repeating the same prompt may not address the limitation.
-- id: q12
-  topic: Curriculum
-  text: A team needs to adapt a large model but has limited GPU memory. It wants to train fewer parameters while
-    leaving the original model weights mostly unchanged. Which approach is the best fit?
-  options:
-  - Full fine-tuning, updating every model parameter with a smaller learning rate
-  - LoRA, adding trainable low-rank updates while keeping the base weights frozen
-  - Prompting, updating all model weights after each prompt
-  - Increasing the model size so its existing representations cover the task
-  answer: 1
-  explanation: LoRA trains small low-rank adaptation matrices rather than updating all base-model parameters, which
-    reduces memory and training demands. Full fine-tuning still updates the full set of weights.
-- id: q13
-  topic: Curriculum
-  text: An engineer wants to fine-tune a large model on a single GPU with limited memory. Which description best
-    captures why QLoRA may help?
-  options:
-  - It quantizes the base model to reduce memory use and trains low-rank adapters
-  - It removes the model’s attention layers and trains the remaining weights in full precision
-  - It stores all gradients in the dataset so the GPU does not need model weights
-  - It replaces fine-tuning with retrieval, so the model parameters never affect outputs
-  answer: 0
-  explanation: QLoRA combines a quantized base model, which uses less memory, with trainable low-rank adapters.
-    It does not remove the model’s attention layers or replace training with retrieval.
-- id: q14
-  topic: Curriculum
-  text: A RAG system retrieves documents for questions about a long technical manual. Retrieval often returns chunks
-    that omit the sentence explaining an important term. What is a sensible next experiment?
-  options:
-  - Use larger or overlapping chunks and compare retrieval quality on representative questions
-  - Remove overlap and use smaller chunks so each result contains fewer words
-  - Ask the language model to answer from its general knowledge instead of retrieving documents
-  - Increase the embedding dimension without changing the chunking or evaluation
-  answer: 0
-  explanation: Larger or overlapping chunks can keep related context together, which may help retrieval return the
-    relevant explanation. The team should compare the change on representative questions rather than assume it will
-    always help.
-- id: q15
-  topic: Curriculum
-  text: A support assistant must check an order’s current shipping status. The information is available from an
-    order-status API. Which design is most appropriate?
-  options:
-  - Have the model invent a likely status based on the customer’s message
-  - Use retrieval over old support conversations as a substitute for checking the order
-  - Let the assistant call a defined tool that queries the API, then use its result in the response
-  - Ask a second language model to estimate the status from the first model’s response
+  - Unigram counts give each document a different vector whenever word order changes.
+  - Unigram counts remove repeated words, so neither document has enough features.
+  - Unigram counts preserve the words but not their order, so the two vectors match.
+  - Unigram counts represent each word’s meaning differently in each sentence.
   answer: 2
-  explanation: A tool call lets the assistant obtain the current status from the authoritative API and use that
-    result in its response. Guessing or consulting old conversations cannot reliably provide current order data.
-- id: q16
-  topic: Capstone Project
-  text: You are building a capstone assistant that answers questions about a company’s frequently updated policies.
-    Which design best keeps its answers tied to the current documents?
+  explanation: The two sentences contain the same words with the same counts, so a unigram Bag-of-Words representation
+    produces identical vectors despite the change in who bites whom.
+- id: q31
+  topic: 1. Text Representation & Classical NLP
+  text: A bigram language model has seen “peanut butter melts” many times but has rarely seen “peanut butter flies.”
+    When asked to continue “peanut butter,” what is it most likely to favor?
   options:
-  - Fine-tune the model on the policy documents and refresh training once a year
-  - Retrieve relevant document chunks for each question and provide them to the model
-  - Add longer instructions asking the model to recall the policy details accurately
-  - Train word embeddings on the documents and use the nearest policy terms as answers
+  - A continuation chosen from the overall frequency of each word, ignoring the preceding pair.
+  - A continuation chosen by understanding which sentence makes the most sense.
+  - A continuation chosen from how often each word appears in the entire corpus.
+  - A continuation that frequently follows the preceding word pair in the corpus.
+  answer: 3
+  explanation: A bigram language model uses observed adjacent-word patterns to estimate likely continuations, so
+    it favors a word that often follows `peanut butter` in its training corpus.
+- id: q32
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: In a training corpus, “doctor” and “nurse” often occur near words such as “hospital,” “patient,” and “clinic.”
+    What would a distributional embedding approach most likely do?
+  options:
+  - Place the words near each other because their contexts overlap
+  - Place the words far apart because they are different tokens
+  - Give both words identical vectors because they share contexts
+  - Place each word near the most frequent word in the corpus
+  answer: 0
+  explanation: Words that appear in similar contexts tend to receive similar vector representations. Their vectors
+    need not be identical, since their contexts are not exactly the same.
+- id: q33
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: You are configuring a Word2Vec model to use nearby words to predict a missing center word in a sentence.
+    Which architecture matches this setup?
+  options:
+  - Skip-gram, because it predicts context words from a center word
+  - CBOW, because it predicts a center word from context words
+  - GloVe, because it predicts a center word from context words
+  - Negative sampling, because it predicts context words from a center word
   answer: 1
-  explanation: Retrieval can supply the latest relevant policy text at answer time, so the model does not have to
-    rely on potentially outdated learned parameters. Fine-tuning is not a practical way to keep frequently changing
-    facts current.
-- id: q17
-  topic: Capstone Project
-  text: Your capstone uses a collection of support conversations to compare two answer-generation approaches. How
-    should you set aside evaluation examples to get a more trustworthy comparison?
+  explanation: CBOW uses surrounding context words to predict the center word. Skip-gram uses the center word to
+    predict surrounding context words.
+- id: q34
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: A corpus contains many training examples for the word “lantern,” but the vocabulary has hundreds of thousands
+    of words. Which Word2Vec setup uses “lantern” to predict nearby words?
   options:
-  - Use examples from the training set so both approaches see identical questions
-  - Select examples with the clearest answers after reviewing model outputs
-  - Keep a separate set of examples out of development and training until evaluation
-  - Evaluate only on examples the retrieval system successfully finds
+  - CBOW, which combines nearby words to predict “lantern”
+  - GloVe, which uses only sentence-level word order
+  - Skip-gram, which predicts nearby words from “lantern”
+  - Negative sampling, which replaces the context with random words
   answer: 2
-  explanation: A held-out set provides a check on performance beyond examples used to build or tune the system.
-    Choosing examples based on outputs or retrieval success can bias the comparison.
-- id: q18
-  topic: Capstone Project
-  text: A capstone RAG prototype often misses answers that depend on a sentence split across two adjacent chunks.
-    Which change is most likely to help?
+  explanation: Skip-gram takes the center word as input and trains it to predict nearby context words. Negative
+    sampling can make this training more efficient, but it is not the architecture described.
+- id: q35
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: A Word2Vec training run is slow because the vocabulary is very large. You enable negative sampling. What
+    change should you expect during training?
   options:
+  - Each example updates every word vector in the vocabulary
+  - Each example compares the target with a few sampled non-context words
+  - Each example removes words that occur less often than the target
+  - Each example replaces word vectors with corpus-wide count tables
+  answer: 1
+  explanation: Negative sampling trains against the observed target-context pair and a small number of sampled negative
+    pairs. This avoids calculating updates across the entire vocabulary for every example.
+- id: q36
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: You want embeddings that use aggregate word-pair co-occurrence counts collected across a corpus, rather
+    than learning mainly by predicting local context words in training examples. Which approach best fits?
+  options:
+  - GloVe, using global co-occurrence information
+  - CBOW, using surrounding words to predict a center word
+  - Skip-gram, using a center word to predict nearby words
+  - Cosine similarity, using vector angles to train word pairs
+  answer: 0
+  explanation: GloVe learns from global word-word co-occurrence statistics. CBOW and Skip-gram instead train through
+    context-prediction tasks, while cosine similarity is a way to compare vectors.
+- id: q37
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: An embedding lookup returns A = (1, 0), B = (4, 0), and C = (0, 1). Which word vector is most similar to
+    A when similarity is measured with cosine similarity?
+  options:
+  - C, because its vector is shorter than B’s
+  - B and C equally, because both are one-word vectors
+  - B, because it points in the same direction as A
+  - C, because it uses a different coordinate from A
+  answer: 2
+  explanation: Cosine similarity compares the angle between vectors, not their lengths. A and B point in the same
+    direction, so their cosine similarity is 1.
+- id: q38
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: A team finds that its embedding associates “nurse” more strongly with women-related terms and “engineer”
+    more strongly with men-related terms. What is the most appropriate next step?
+  options:
+  - Treat the associations as reliable facts about those occupations
+  - Remove both occupation words from the training vocabulary
+  - Assume the associations are caused only by vector length
+  - Investigate the pattern as a possible bias in the training data or embeddings
+  answer: 3
+  explanation: Embeddings can encode social patterns and stereotypes present in their training data. The associations
+    should be evaluated as potential bias, not treated as facts about people or occupations.
+- id: q39
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: In embeddings trained on a car-review corpus, the nearest neighbors of “jaguar” are mostly vehicle-related
+    words. What is the best interpretation of this result?
+  options:
+  - The model has learned that “jaguar” has only one possible meaning
+  - The corpus may emphasize the car sense, so the neighbors reflect its training contexts
+  - The model has failed because neighbors should be unrelated to the corpus
+  - The result proves cosine similarity cannot compare word meanings
+  answer: 1
+  explanation: An embedding reflects the contexts it saw during training, and a car-focused corpus may provide few
+    examples of the animal sense. The nearest neighbors do not establish that the word has only one meaning.
+- id: q40
+  topic: 3. Attention Mechanisms & Transformers
+  text: A token’s query is `[1, 0]`. Two other tokens have keys `[2, 0]` and `[0, 3]`. Using dot products to score
+    attention, which token will receive the higher score before softmax?
+  options:
+  - The token with key `[2, 0]`
+  - The token with key `[0, 3]`
+  - Both tokens receive the same score
+  - The scores cannot be compared without the values
+  answer: 0
+  explanation: The query’s dot product with `[2, 0]` is 2, while its dot product with `[0, 3]` is 0. The higher
+    score gives the first token more attention weight after softmax.
+- id: q41
+  topic: 3. Attention Mechanisms & Transformers
+  text: An attention step assigns weights `0.75` and `0.25` to value vectors `4` and `0`. What context value does
+    the weighted aggregation produce?
+  options:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  answer: 2
+  explanation: The weighted sum is `0.75 × 4 + 0.25 × 0 = 3`. Attention combines values according to their weights.
+- id: q42
+  topic: 3. Attention Mechanisms & Transformers
+  text: In a self-attention layer, you keep all keys and queries fixed but change one token’s value vector. What
+    changes directly?
+  options:
+  - The attention scores change, but the aggregated content stays the same
+  - The attention weights change, but the keys stay the same
+  - The aggregated content can change, while the attention weights stay the same
+  - Neither the attention weights nor the aggregated content can change
+  answer: 2
+  explanation: Queries and keys determine the attention scores and weights, so keeping them fixed leaves those weights
+    unchanged. The changed value can affect the weighted context that is aggregated.
+- id: q43
+  topic: 3. Attention Mechanisms & Transformers
+  text: In an attention weight matrix, the row for the word “it” assigns most of its weight to the earlier word
+    “engine.” What does this most directly indicate?
+  options:
+  - The “engine” token is being used as context when updating “it”
+  - The “it” token is being removed from the sequence
+  - The “engine” token is guaranteed to be the next generated word
+  - The “it” token has the largest value vector in the sequence
+  answer: 0
+  explanation: A row shows how much the token being updated attends to each token in the sequence. A high weight
+    on “engine” means its information contributes strongly to the context for “it.”
+- id: q44
+  topic: 3. Attention Mechanisms & Transformers
+  text: A team removes positional encodings and feeds a Transformer encoder the same words in a different order.
+    Which problem should they expect?
+  options:
+  - The encoder can no longer compute query-key dot products
+  - The encoder has less information about which token appeared at which position
+  - The encoder automatically sorts the words by attention weight
+  - The encoder treats each word as a separate training example
+  answer: 1
+  explanation: Self-attention alone does not tell the model the sequence order. Positional encodings provide information
+    about where tokens occur.
+- id: q45
+  topic: 3. Attention Mechanisms & Transformers
+  text: A team wants to process all tokens in a training sequence in parallel rather than wait for each token’s
+    recurrent state to be computed. Which design best supports this?
+  options:
+  - A Transformer layer that computes attention across the sequence
+  - An RNN that passes each token’s state to the next token
+  - A tokenizer that converts each token into a longer string
+  - A language model that processes only one token per training example
+  answer: 0
+  explanation: A Transformer can compute attention for sequence positions in parallel during training. An RNN’s
+    recurrent state creates a step-by-step dependency across tokens.
+- id: q46
+  topic: 3. Attention Mechanisms & Transformers
+  text: A classification task provides the entire input sentence at once, and the model should use context from
+    both earlier and later words. Which attention setup fits this goal?
+  options:
+  - An encoder using self-attention across the input tokens
+  - A decoder that masks every input token from the others
+  - An RNN that only reads the final token
+  - A decoder that attends only to tokens generated so far
+  answer: 0
+  explanation: An encoder’s self-attention can let each input token use information from other positions, including
+    later words. A causal decoder restricts attention to earlier positions.
+- id: q47
+  topic: 3. Attention Mechanisms & Transformers
+  text: After a Transformer layer’s self-attention has mixed information across tokens, the same feed-forward network
+    is applied separately at each position. What is its role?
+  options:
+  - To add another position-dependent interaction between different tokens
+  - To transform each position’s representation without mixing positions
+  - To calculate the attention weights from the query and key vectors
+  - To restore the original word order after attention
+  answer: 1
+  explanation: The feed-forward network transforms each token representation independently at its position. Mixing
+    information between positions is the role of the attention operation.
+- id: q48
+  topic: 4. Large Language Models (LLMs)
+  text: A training example contains the tokens `The cat sat on`. For a next-token prediction objective, which target
+    should the model learn to predict from this context?
+  options:
+  - The whole sentence, including the context tokens
+  - The next token, such as `the`
+  - A masked token selected from anywhere in the sentence
+  - A label describing whether the sentence is grammatical
+  answer: 1
+  explanation: Next-token prediction trains the model to predict the token that follows the supplied context. Predicting
+    a masked token from anywhere in the sentence is a different objective.
+- id: q49
+  topic: 4. Large Language Models (LLMs)
+  text: A team has a pretrained language model and a small set of labeled examples for classifying customer messages.
+    They want the model to perform better on this classification task. Which approach best fits?
+  options:
+  - Continue pretraining from scratch on the labeled examples
+  - Increase the context window without changing the task setup
+  - Fine-tune the pretrained model on the labeled examples
+  - Generate more unlabeled text and use it as classification labels
+  answer: 2
+  explanation: Fine-tuning adapts an already pretrained model to a more specific task using task-relevant examples.
+    Pretraining from scratch is unnecessary for this goal and dataset.
+- id: q50
+  topic: 4. Large Language Models (LLMs)
+  text: An application needs a model to continue a user-provided paragraph by generating text one token at a time.
+    Which model behavior is best suited to this task?
+  options:
+  - Use a causal model that predicts each token from earlier tokens
+  - Use a masked model that fills in missing tokens using both sides
+  - Use a masked model that predicts each token from later tokens only
+  - Use a causal model that reads future tokens before generating
+  answer: 0
+  explanation: A causal model generates continuations using the preceding context and does not rely on future tokens.
+    A masked model is designed to infer missing tokens from surrounding text.
+- id: q51
+  topic: 4. Large Language Models (LLMs)
+  text: A developer includes three solved examples in a prompt, then asks an LLM to solve a similar new problem.
+    The model improves without any training run. What best explains this result?
+  options:
+  - The examples permanently updated the model's weights
+  - The examples increased the model's number of parameters
+  - The model performed a new pretraining run during the prompt
+  - The model used examples in its context to guide its response
+  answer: 3
+  explanation: The model can use examples in the current context to guide its answer, a form of in-context learning.
+    This does not require changing its weights.
+- id: q52
+  topic: 4. Large Language Models (LLMs)
+  text: Two training runs use the same compute budget. One uses a much larger model but substantially less training
+    data; the other uses a smaller model and more data. What is the soundest way to decide which will perform better?
+  options:
+  - Choose the larger model, because parameter count determines performance
+  - Compare measured performance, since size and data trade-offs matter
+  - Choose the run with more data, because data always outweighs model size
+  - Assume they perform equally, because the compute budgets match
+  answer: 1
+  explanation: Model size, training data, and compute interact, so equal compute does not guarantee equal performance.
+    Comparing the runs provides evidence about the trade-off for this setup.
+- id: q53
+  topic: 4. Large Language Models (LLMs)
+  text: An LLM gives a confident answer about a recent policy change, but the team cannot verify the claim from
+    the model's response. What should they do before relying on it?
+  options:
+  - Treat the confident wording as evidence that the answer is correct
+  - Ask the same model again and accept the more detailed response
+  - Check the claim against a reliable, up-to-date source
+  - Increase the model's response length so it includes more details
+  answer: 2
+  explanation: LLMs can produce plausible but incorrect or outdated claims, so confidence and detail are not verification.
+    The team should check the claim against a reliable current source.
+- id: q54
+  topic: 4. Large Language Models (LLMs)
+  text: A prompt containing a long report exceeds the model's context limit, and the model misses information near
+    the beginning. Which change most directly addresses the problem?
+  options:
+  - Shorten the input to fit within the model's context limit
+  - Repeat the full report several times in the same prompt
+  - Ask the model to generate a longer answer from the same input
+  - Use more examples after the report without reducing its length
+  answer: 0
+  explanation: The model can only process input that fits within its context limit, so shortening the prompt can
+    keep the relevant information available. Making the answer longer does not expand that limit.
+- id: q55
+  topic: 4. Large Language Models (LLMs)
+  text: A team compares a base model with a fine-tuned version on a specialized task. The fine-tuned model does
+    better on its training examples but worse on a separate validation set. What is the most appropriate next step?
+  options:
+  - Keep training until the training performance is nearly perfect
+  - Evaluate only the training examples to confirm the improvement
+  - Increase the model size so the validation results cannot worsen
+  - Review for overfitting and adjust training using validation results
+  answer: 3
+  explanation: Better training performance alongside worse validation performance suggests the model may be overfitting.
+    The team should use validation results to guide adjustments rather than optimize only for the training examples.
+- id: q56
+  topic: 5. Fine-Tuning Methods
+  text: A support team has thousands of examples of its preferred response style and wants a model to follow that
+    style consistently across many requests. Which approach best fits this goal?
+  options:
+  - Fine-tune the model on examples of the preferred responses
+  - Add the same long style instruction to every prompt
+  - Retrieve a style guide and append it to each request
+  - Increase the model's context window for every request
+  answer: 0
+  explanation: Fine-tuning can adapt a model's behavior using repeated examples of the desired task and style. Prompting
+    or retrieval can also guide individual responses, but they do not update the model.
+- id: q57
+  topic: 5. Fine-Tuning Methods
+  text: A team wants to adapt a pretrained model but has limited GPU memory and would like to avoid updating every
+    model parameter. Which method is the best starting point?
+  options:
+  - Full fine-tuning with all model parameters trainable
+  - LoRA with a small set of trainable adapter parameters
+  - Pretraining the model again on the original corpus
+  - Prompting the model while keeping its weights unchanged
+  answer: 1
+  explanation: LoRA trains a small number of added parameters rather than updating the full model, which typically
+    reduces memory and compute needs. Full fine-tuning updates all parameters, while prompting does not train the
+    model.
+- id: q58
+  topic: 5. Fine-Tuning Methods
+  text: A large base model will not fit in GPU memory for adaptation. The team wants to keep its base weights quantized
+    and train small LoRA adapters. Which approach matches this plan?
+  options:
+  - Full fine-tuning in standard precision
+  - Prompt tuning with an unquantized base model
+  - QLoRA with a quantized base model and trainable adapters
+  - Pretraining a smaller model from scratch
+  answer: 2
+  explanation: QLoRA combines a quantized base model with trainable low-rank adapters, reducing the memory required
+    for fine-tuning. The other approaches do not match both parts of the team's plan.
+- id: q59
+  topic: 5. Fine-Tuning Methods
+  text: During fine-tuning, training loss keeps falling while validation loss begins rising for several evaluations.
+    What is the most appropriate response?
+  options:
+  - Train longer so the training loss falls further
+  - Increase the learning rate to move past the rise
+  - Remove the validation set from the monitoring process
+  - Stop early and consider stronger regularization
+  answer: 3
+  explanation: Falling training loss alongside rising validation loss is a common sign of overfitting. Early stopping
+    and regularization can help the model generalize better.
+- id: q60
+  topic: 5. Fine-Tuning Methods
+  text: A team has trained a LoRA adapter and wants to deploy it while keeping the original model available for
+    other tasks. What should it package for inference?
+  options:
+  - The original base model together with the LoRA adapter
+  - Only the LoRA adapter, without the base model
+  - Only the tokenizer and training examples
+  - A newly pretrained model with the adapter discarded
+  answer: 0
+  explanation: A LoRA adapter contains updates to apply to a base model, so inference generally needs both. Keeping
+    them separate also lets the team reuse the base model with other adapters.
+- id: q61
+  topic: 5. Fine-Tuning Methods
+  text: A fine-tuning run shows repeated sharp loss spikes immediately after optimizer updates. Which adjustment
+    is a sensible first step to improve training stability?
+  options:
+  - Raise the learning rate to make updates more decisive
+  - Lower the learning rate to make updates smaller
+  - Increase the number of training epochs without changing settings
+  - Disable validation so it cannot affect the updates
+  answer: 1
+  explanation: An excessively large learning rate can cause unstable updates, so lowering it is a sensible first
+    adjustment. More epochs or disabling validation would not address the unstable updates.
+- id: q62
+  topic: 5. Fine-Tuning Methods
+  text: A team wants to know whether fine-tuning improves a model over its base and prompted versions. Which comparison
+    gives the clearest evidence?
+  options:
+  - Compare one hand-picked output from each version
+  - Run each version on a different set of evaluation examples
+  - Evaluate all versions on the same held-out examples using the same criteria
+  - Choose whichever version has the shortest responses
+  answer: 2
+  explanation: Using the same held-out examples and evaluation criteria makes the comparison fair and helps isolate
+    the effect of fine-tuning. A few hand-picked outputs or different test sets can give a misleading result.
+- id: q63
+  topic: 5. Fine-Tuning Methods
+  text: A LoRA run is exceeding its memory budget, and the team can accept a possible small loss in adaptation capacity.
+    Which change directly reduces the number of trainable LoRA parameters?
+  options:
+  - Increase the LoRA rank
+  - Make all base-model weights trainable
+  - Add more training examples to each batch
+  - Reduce the LoRA rank
+  answer: 3
+  explanation: Reducing LoRA rank reduces the size of the trainable low-rank updates and can lower memory use. Increasing
+    the rank adds adapter parameters, while making base weights trainable increases the training footprint.
+- id: q64
+  topic: 6. RAG and AI Agents orchestration
+  text: A support assistant must answer questions using a collection of internal policy documents. Which setup lets
+    it use relevant document content at answer time?
+  options:
+  - Retrieve relevant document chunks for the question, then provide them to the language model
+  - Add every document to the model’s prompt before each question
+  - Fine-tune the model on the documents whenever a question arrives
+  - Ask the model to answer from its existing knowledge, then search for confirmation
+  answer: 0
+  explanation: RAG retrieves relevant content for each question and supplies it as context to the model. This grounds
+    the response in the documents without requiring the entire collection in every prompt.
+- id: q65
+  topic: 6. RAG and AI Agents orchestration
+  text: A relevant answer is missed because its key sentence was split across two document chunks. Which change
+    is most directly aimed at preserving context across chunk boundaries?
+  options:
+  - Use smaller chunks and remove all repeated text
+  - Increase the number of agents searching the same index
   - Add some overlap between neighboring chunks
-  - Remove all punctuation before creating chunks
-  - Increase the embedding vector dimension
-  - Train the generator for more epochs on the same documents
-  answer: 0
-  explanation: Overlap preserves some shared context across chunk boundaries, making it more likely that retrieval
-    returns the complete relevant passage. Changing punctuation or generator training does not directly address
-    the boundary problem.
-- id: q19
-  topic: Capstone Project
-  text: Your capstone assistant must check a live shipment status through an external service. What should happen
-    when a user asks for an update?
-  options:
-  - Ask the language model to predict the shipment status from its training
-  - Fine-tune the model on yesterday’s shipment records
-  - Search a vector database of past shipment questions
-  - Have the model call the status tool and use its returned result
-  answer: 3
-  explanation: A tool call can retrieve the live status from the external service, which is the appropriate source
-    for current information. Training data and past questions cannot reliably provide a shipment’s present state.
-- id: q20
-  topic: Capstone Project
-  text: 'A capstone project uses two agents: one extracts facts from research papers, and the other writes a summary
-    from those facts. What is the main benefit of this setup?'
-  options:
-  - The agents can avoid needing evaluation because they check each other
-  - Each agent can focus on a distinct responsibility before coordinating
-  - The writing agent can access every tool without any task boundaries
-  - The agents can guarantee that extracted facts are free from errors
-  answer: 1
-  explanation: Specializing the agents separates fact extraction from summary writing and gives the workflow clear
-    responsibilities. Multiple agents do not automatically eliminate errors or the need for evaluation.
-- id: q21
-  topic: Capstone Project
-  text: For a capstone prototype, a base model understands the task but sometimes ignores a requested output format.
-    You have only a few examples and need to test the idea quickly. What is the best first step?
-  options:
-  - Pretrain a new language model on a large general text collection
-  - Replace the model with a bag-of-words classifier
-  - Try a clearer prompt with a small number of format examples
-  - Quantize the model and expect its output format to improve
+  - Store the documents without converting them to embeddings
   answer: 2
-  explanation: Prompting with clear instructions and examples is a quick way to test whether the model can follow
-    the desired format. Pretraining is far beyond the need, while quantization mainly affects model storage and
-    computation.
-- id: q22
-  topic: Capstone Project
-  text: Your capstone team has limited GPU memory but wants to adapt a large model for a narrow task. Which approach
-    best fits that constraint?
+  explanation: Overlapping neighboring chunks repeats some text at the boundary, making it more likely that retrieval
+    returns the sentence with enough surrounding context.
+- id: q66
+  topic: 6. RAG and AI Agents orchestration
+  text: A vector database was populated with document embeddings from one embedding model, but queries are now embedded
+    with a different model and retrieval quality drops. What is the best fix?
   options:
-  - Use QLoRA to train adapter parameters with a quantized base model
-  - Use full fine-tuning and update every model parameter
-  - Increase the model size so its task knowledge is more complete
-  - Run inference at higher precision while training all model weights
-  answer: 0
-  explanation: QLoRA combines a quantized base model with trainable low-rank adapters to reduce memory requirements
-    during adaptation. Full fine-tuning updates all parameters and generally demands more memory.
-- id: q23
-  topic: Capstone Project
-  text: A capstone RAG assistant produces fluent answers, but some claims are unsupported by retrieved documents.
-    Which evaluation change would best reveal this failure?
+  - Increase the language model’s temperature during generation
+  - Re-embed the documents and queries using the same embedding model
+  - Store more copies of each query in the vector database
+  - Ask the language model to ignore the retrieved results
+  answer: 1
+  explanation: Document and query vectors need to be comparable in the same embedding space. Using a consistent
+    embedding model for both helps the vector search retrieve relevant documents.
+- id: q67
+  topic: 6. RAG and AI Agents orchestration
+  text: Several retrieved chunks are relevant, but placing all of them in the prompt exceeds the model’s context
+    window. What should the pipeline do?
   options:
-  - Measure only how quickly the assistant responds
-  - Compare answer length across several prompt styles
-  - Count the number of chunks stored in the vector database
-  - Check whether answer claims are supported by the retrieved evidence
+  - Keep all chunks and let the model discard the extras
+  - Replace retrieval with a longer user question
+  - Send each chunk to a different agent and combine every response
+  - Select the most relevant chunks and fit them within the available context
   answer: 3
-  explanation: Checking claims against retrieved evidence directly tests whether the assistant is grounded in its
-    sources. Speed, answer length, and collection size do not show whether claims are supported.
+  explanation: Context window optimization means prioritizing useful retrieved content and fitting it within the
+    model’s input limit. Including every result can exceed that limit.
+- id: q68
+  topic: 6. RAG and AI Agents orchestration
+  text: A user asks for the current delivery status of an order, and the assistant has access to a shipping API.
+    Which workflow uses tool calling appropriately?
+  options:
+  - Have the assistant invent a likely status, then call the API if the user disagrees
+  - Have the assistant produce a tool call with the order ID, execute it, and use the result in its reply
+  - Put the API documentation in the prompt and ask the assistant to infer the live status
+  - Fine-tune the assistant on previous shipping statuses before answering
+  answer: 1
+  explanation: Tool calling lets the assistant request an external function with structured inputs, such as an order
+    ID. The system executes the API call and can return its result for the assistant to use.
+- id: q69
+  topic: 6. RAG and AI Agents orchestration
+  text: During one chat session, a user says, “Compare that plan with the one I mentioned earlier.” Which design
+    best helps the assistant resolve the reference?
+  options:
+  - Maintain relevant conversation state for that session
+  - Search the document vector database for every earlier user message
+  - Share one global memory containing all users’ conversations
+  - Start a fresh context for each message in the session
+  answer: 0
+  explanation: Session context or memory can retain relevant earlier details so references in later turns can be
+    interpreted. It should be scoped to the appropriate conversation rather than shared across users.
+- id: q70
+  topic: 6. RAG and AI Agents orchestration
+  text: A task requires finding recent sources and then checking whether their claims agree. Which multi-agent design
+    best uses role specialization?
+  options:
+  - Have every agent perform the entire task independently and keep the first answer
+  - Give all agents the same role and combine their unverified outputs
+  - Assign one agent to find sources and another to compare and verify their claims
+  - Use separate agents to rewrite the task without sharing their results
+  answer: 2
+  explanation: Specialized roles can divide a complex task into coordinated responsibilities, such as source gathering
+    and claim verification. Their outputs need to be passed between agents to complete the workflow.
+- id: q71
+  topic: 6. RAG and AI Agents orchestration
+  text: An agent calls a database tool, but the result is incomplete and another lookup may be needed. What should
+    its orchestration loop do next?
+  options:
+  - Repeat the same tool call until the result changes
+  - Return a confident answer without considering the tool result
+  - Restart the entire workflow with no prior state
+  - Use the result to choose a next step, then stop when the task is sufficiently answered
+  answer: 3
+  explanation: An agent loop uses observations from tool execution to guide its next action. It should also have
+    a stopping condition so it can return an answer once the task is sufficiently complete.
 problem:
-  title: Scaled Dot-Product Attention
-  prompt: 'Write `self_attention(queries, keys, values)` to compute a basic self-attention layer from already-projected
-    Query, Key, and Value vectors. The inputs are lists of vectors with the same sequence length; each vector in
-    a list has the same width.
+  title: Build Classical Text Features
+  prompt: 'Write `classical_text_features(documents)`, which builds Bag-of-Words and TF-IDF features for a list
+    of documents.
 
 
-    For each query, compute its dot product with every key, divide each score by the square root of the key width,
-    and apply softmax across that query''s scores. Use those attention weights to compute a weighted sum of the
-    value vectors. Return `(weights, outputs)`, where each is a list of rows: `weights` contains one attention distribution
-    per query, and `outputs` contains the corresponding weighted value vectors. Use only the standard library.
+    Preprocess each document by lowercasing it, extracting tokens matching `[a-z0-9]+`, and removing these stopwords:
+    `a`, `an`, `and`, `are`, `in`, `is`, `of`, `the`, `to`. Build a lexicographically sorted vocabulary from the
+    remaining tokens. Return a tuple `(vocabulary, bow, tfidf)`, where `bow` contains raw token counts for each
+    document.
+
+
+    For TF-IDF, use raw counts as term frequency and calculate each term''s IDF as `1 + ln((1 + N) / (1 + df))`,
+    where `N` is the number of documents and `df` is the number of documents containing that term. L2-normalize
+    each document''s TF-IDF vector. A zero vector stays zero; if the vocabulary is empty, each document''s vector
+    is an empty list.
 
 
     Example:
 
     ```python
 
-    weights, outputs = self_attention([[1.0], [0.0]], [[1.0], [0.0]], [[10.0], [20.0]])
+    classical_text_features(["Cats, cats!", "The dog"])
 
-    # weights: [[0.731058..., 0.268941...], [0.5, 0.5]]
-
-    # outputs: [[12.689414..., 15.0]]
+    # ([''cats'', ''dog''], [[2, 0], [0, 1]], [[1.0, 0.0], [0.0, 1.0]])
 
     ```'
-  starter_code: "def self_attention(queries, keys, values):\n    \"\"\"Return (attention_weights, weighted_value_outputs)\
-    \ for self-attention.\"\"\"\n    ..."
+  starter_code: "def classical_text_features(documents):\n    \"\"\"Return (sorted_vocabulary, raw_count_vectors,\
+    \ L2-normalized TF-IDF vectors).\"\"\"\n    ..."
   tests: 'import math
 
 
-    # Scores use the key width for scaling, then softmax across each query''s keys.
+    # Lowercasing, punctuation handling, stopword removal, sorting, and raw counts.
 
-    q = [[1.0, 0.0], [0.0, 1.0]]
+    vocab, bow, tfidf = classical_text_features(["Bats, bats!", "the bat"])
 
-    k = [[1.0, 0.0], [0.0, 1.0]]
+    assert vocab == ["bat", "bats"] and bow == [[0, 2], [1, 0]], "preprocess and count tokens"
 
-    v = [[2.0, 0.0], [0.0, 4.0]]
-
-    weights, outputs = self_attention(q, k, v)
-
-    p = 1.0 / (1.0 + math.exp(-1.0 / math.sqrt(2.0)))
-
-    assert abs(weights[0][0] - p) < 1e-9 and abs(weights[0][1] - (1.0 - p)) < 1e-9, "scaled softmax weights"
-
-    assert abs(sum(weights[0]) - 1.0) < 1e-9 and abs(sum(weights[1]) - 1.0) < 1e-9, "each query''s weights sum to
-    one"
-
-    assert abs(outputs[0][0] - 2.0 * p) < 1e-9 and abs(outputs[0][1] - 4.0 * (1.0 - p)) < 1e-9, "outputs are weighted
-    value sums"
+    assert tfidf == [[0.0, 1.0], [1.0, 0.0]], "normalize single-term document vectors"
 
 
-    # A one-token sequence attends entirely to itself.
+    # Repeated tokens must affect raw counts, not just whether a token occurs.
 
-    w, out = self_attention([[2.0, -1.0]], [[0.5, 3.0]], [[7.0, -2.0]])
+    vocab, bow, _ = classical_text_features(["pear pear plum"])
 
-    assert w == [[1.0]] and out == [[7.0, -2.0]], "single-token edge case"
+    assert vocab == ["pear", "plum"] and bow == [[2, 1]], "preserve repeated-token counts"
 
 
-    # Equal scores produce uniform attention, not an unnormalized score weighting.
+    # IDF weighting and L2 normalization when terms have different document frequencies.
 
-    w, out = self_attention([[0.0], [0.0]], [[2.0], [3.0]], [[2.0, 4.0], [6.0, 8.0]])
+    vocab, bow, tfidf = classical_text_features(["cat cat dog", "cat bird", "dog bird", "bird"])
 
-    assert w == [[0.5, 0.5], [0.5, 0.5]], "equal scores give uniform weights"
+    assert vocab == ["bird", "cat", "dog"] and bow[0] == [0, 2, 1], "build counts in vocabulary order"
 
-    assert out == [[4.0, 6.0], [4.0, 6.0]], "uniform weights average the values"'
-  solution: "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Return (attention_weights, weighted_value_outputs)\
-    \ for self-attention.\"\"\"\n    key_width = len(keys[0])\n    scale = math.sqrt(key_width)\n    weights = []\n\
-    \    outputs = []\n\n    for query in queries:\n        scores = [\n            sum(q * k for q, k in zip(query,\
-    \ key)) / scale\n            for key in keys\n        ]\n        peak = max(scores)\n        exp_scores = [math.exp(score\
-    \ - peak) for score in scores]\n        total = sum(exp_scores)\n        row_weights = [score / total for score\
-    \ in exp_scores]\n        weights.append(row_weights)\n\n        output = [\n            sum(weight * value[dimension]\
-    \ for weight, value in zip(row_weights, values))\n            for dimension in range(len(values[0]))\n     \
-    \   ]\n        outputs.append(output)\n\n    return weights, outputs"
+    a = 1 + math.log(5 / 3)
+
+    b = 1 + math.log(5 / 4)
+
+    assert abs(tfidf[0][1] - 2 / math.sqrt(5)) < 1e-9, "weight and normalize the first document"
+
+    assert abs(tfidf[0][2] - 1 / math.sqrt(5)) < 1e-9, "retain within-document term frequency"
+
+    assert tfidf[1][1] > tfidf[1][0], "rarer terms receive higher IDF weight"
+
+    assert abs(sum(x * x for x in tfidf[1]) - 1.0) < 1e-9, "L2-normalize nonzero vectors"
+
+
+    # Empty documents and documents with no retained tokens have zero vectors.
+
+    vocab, bow, tfidf = classical_text_features(["", "the and", "owl"])
+
+    assert vocab == ["owl"] and bow == [[0], [0], [1]], "keep a row for every input document"
+
+    assert tfidf == [[0.0], [0.0], [1.0]], "zero vectors stay zero"
+
+
+    # If no tokens remain anywhere, retain one empty vector per document.
+
+    assert classical_text_features(["the and", "in a"]) == ([], [[], []], [[], []]), "handle an empty vocabulary"
+
+
+    # An empty input produces empty outputs.
+
+    assert classical_text_features([]) == ([], [], []), "handle an empty document list"'
+  solution: "import math\nimport re\n\n\ndef classical_text_features(documents):\n    \"\"\"Return (sorted_vocabulary,\
+    \ raw_count_vectors, L2-normalized TF-IDF vectors).\"\"\"\n    stopwords = {\"a\", \"an\", \"and\", \"are\"\
+    , \"in\", \"is\", \"of\", \"the\", \"to\"}\n    tokenized = [\n        [token for token in re.findall(r\"[a-z0-9]+\"\
+    , document.lower()) if token not in stopwords]\n        for document in documents\n    ]\n    vocabulary = sorted({token\
+    \ for tokens in tokenized for token in tokens})\n    index = {token: i for i, token in enumerate(vocabulary)}\n\
+    \n    bow = []\n    for tokens in tokenized:\n        counts = [0] * len(vocabulary)\n        for token in tokens:\n\
+    \            counts[index[token]] += 1\n        bow.append(counts)\n\n    n_documents = len(documents)\n   \
+    \ document_frequency = [\n        sum(1 for counts in bow if counts[i] > 0)\n        for i in range(len(vocabulary))\n\
+    \    ]\n    idf = [1 + math.log((1 + n_documents) / (1 + df)) for df in document_frequency]\n\n    tfidf = []\n\
+    \    for counts in bow:\n        weights = [count * idf[i] for i, count in enumerate(counts)]\n        norm\
+    \ = math.sqrt(sum(weight * weight for weight in weights))\n        tfidf.append([weight / norm for weight in\
+    \ weights] if norm else [0.0] * len(vocabulary))\n\n    return vocabulary, bow, tfidf"
   packages: []
-  topic: Curriculum
+  topic: 1. Text Representation & Classical NLP
   wrong_solutions:
-  - "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Compute attention but omit the required\
-    \ key-width scaling.\"\"\"\n    weights = []\n    outputs = []\n    for query in queries:\n        scores =\
-    \ [sum(q * k for q, k in zip(query, key)) for key in keys]\n        peak = max(scores)\n        exps = [math.exp(score\
-    \ - peak) for score in scores]\n        total = sum(exps)\n        row = [x / total for x in exps]\n       \
-    \ weights.append(row)\n        outputs.append([\n            sum(w * value[d] for w, value in zip(row, values))\n\
-    \            for d in range(len(values[0]))\n        ])\n    return weights, outputs"
-  - "import math\n\n\ndef self_attention(queries, keys, values):\n    \"\"\"Scale scores, but use them directly\
-    \ rather than applying softmax.\"\"\"\n    scale = math.sqrt(len(keys[0]))\n    weights = []\n    outputs =\
-    \ []\n    for query in queries:\n        row = [sum(q * k for q, k in zip(query, key)) / scale for key in keys]\n\
-    \        weights.append(row)\n        outputs.append([\n            sum(w * value[d] for w, value in zip(row,\
-    \ values))\n            for d in range(len(values[0]))\n        ])\n    return weights, outputs"
-  - "def self_attention(queries, keys, values):\n    \"\"\"Return uniform attention regardless of query-key scores.\"\
-    \"\"\n    row = [1.0 / len(keys)] * len(keys)\n    weights = [row[:] for _ in queries]\n    outputs = [\n  \
-    \      [sum(w * value[d] for w, value in zip(row, values)) for d in range(len(values[0]))]\n        for _ in\
-    \ queries\n    ]\n    return weights, outputs"
-problems: []
+  - "import re\n\ndef classical_text_features(documents):\n    tokens_by_doc = [re.findall(r\"[a-z0-9]+\", doc.lower())\
+    \ for doc in documents]\n    vocabulary = sorted({token for tokens in tokens_by_doc for token in tokens})\n\
+    \    index = {token: i for i, token in enumerate(vocabulary)}\n    bow = []\n    for tokens in tokens_by_doc:\n\
+    \        counts = [0] * len(vocabulary)\n        for token in tokens:\n            counts[index[token]] += 1\n\
+    \        bow.append(counts)\n    return vocabulary, bow, [[float(x > 0) for x in row] for row in bow]"
+  - "import re\n\ndef classical_text_features(documents):\n    stopwords = {\"a\", \"an\", \"and\", \"are\", \"\
+    in\", \"is\", \"of\", \"the\", \"to\"}\n    tokens_by_doc = [[t for t in re.findall(r\"[a-z0-9]+\", doc.lower())\
+    \ if t not in stopwords] for doc in documents]\n    vocabulary = sorted({token for tokens in tokens_by_doc for\
+    \ token in tokens})\n    index = {token: i for i, token in enumerate(vocabulary)}\n    bow = []\n    for tokens\
+    \ in tokens_by_doc:\n        present = [0] * len(vocabulary)\n        for token in tokens:\n            present[index[token]]\
+    \ = 1\n        bow.append(present)\n    return vocabulary, bow, [[float(x) for x in row] for row in bow]"
+  - "import math\nimport re\n\ndef classical_text_features(documents):\n    stopwords = {\"a\", \"an\", \"and\"\
+    , \"are\", \"in\", \"is\", \"of\", \"the\", \"to\"}\n    tokens_by_doc = [[t for t in re.findall(r\"[a-z0-9]+\"\
+    , doc.lower()) if t not in stopwords] for doc in documents]\n    vocabulary = sorted({token for tokens in tokens_by_doc\
+    \ for token in tokens})\n    index = {token: i for i, token in enumerate(vocabulary)}\n    bow = []\n    for\
+    \ tokens in tokens_by_doc:\n        counts = [0] * len(vocabulary)\n        for token in tokens:\n         \
+    \   counts[index[token]] += 1\n        bow.append(counts)\n    tfidf = []\n    for counts in bow:\n        norm\
+    \ = math.sqrt(sum(count * count for count in counts))\n        tfidf.append([count / norm for count in counts]\
+    \ if norm else [0.0] * len(vocabulary))\n    return vocabulary, bow, tfidf"
+problems:
+- title: Compare Word Embeddings
+  prompt: 'Write `cosine_similarity(a, b)` to measure the cosine similarity of two equal-length embedding vectors.
+    Return a float in the range `[-1, 1]` for nonzero vectors. If either vector is all zeros, return `0.0`.
+
+
+    For nonzero vectors, compute the dot product divided by the product of their Euclidean lengths. For example:
+
+
+    ```python
+
+    cosine_similarity([1, 2], [2, 1])
+
+    # 0.8
+
+    ```
+
+
+    Assume both inputs are sequences of numbers with the same length.'
+  starter_code: "def cosine_similarity(a, b):\n    \"\"\"Return the cosine similarity of two equal-length embedding\
+    \ vectors.\"\"\"\n    ..."
+  tests: 'import math
+
+
+    assert math.isclose(cosine_similarity([1, 2], [2, 1]), 0.8), "should divide the dot product by both vector lengths"
+
+    assert math.isclose(cosine_similarity([1, 0], [0, 1]), 0.0), "orthogonal vectors should have zero similarity"
+
+    assert math.isclose(cosine_similarity([1, 0], [-1, 0]), -1.0), "opposite vectors should have negative similarity"
+
+    assert math.isclose(cosine_similarity([3, 4], [6, 8]), 1.0), "positive rescaling should not change similarity"
+
+    assert cosine_similarity([0, 0], [1, 2]) == 0.0, "a zero vector should return zero similarity"
+
+    assert cosine_similarity([1, 2, 3], [3, 2, 1]) == cosine_similarity([3, 2, 1], [1, 2, 3]), "similarity should
+    be symmetric"'
+  solution: "import math\n\ndef cosine_similarity(a, b):\n    \"\"\"Return the cosine similarity of two equal-length\
+    \ embedding vectors.\"\"\"\n    dot = math.fsum(x * y for x, y in zip(a, b))\n    norm_a = math.sqrt(math.fsum(x\
+    \ * x for x in a))\n    norm_b = math.sqrt(math.fsum(y * y for y in b))\n    if norm_a == 0 or norm_b == 0:\n\
+    \        return 0.0\n    return dot / (norm_a * norm_b)"
+  packages: []
+  topic: 2. Word Embeddings & Distributional Semantics
+  wrong_solutions:
+  - "def cosine_similarity(a, b):\n    \"\"\"Incorrect: returns the dot product instead of normalizing by vector\
+    \ lengths.\"\"\"\n    return sum(x * y for x, y in zip(a, b))"
+  - "import math\n\ndef cosine_similarity(a, b):\n    \"\"\"Incorrect: does not handle zero vectors.\"\"\"\n   \
+    \ dot = sum(x * y for x, y in zip(a, b))\n    return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y\
+    \ * y for y in b)))"
+  - "import math\n\ndef cosine_similarity(a, b):\n    \"\"\"Incorrect: discards the sign of the cosine similarity.\"\
+    \"\"\n    dot = sum(x * y for x, y in zip(a, b))\n    norms = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y\
+    \ * y for y in b))\n    if norms == 0:\n        return 0.0\n    return abs(dot / norms)"
+- title: Scaled Self-Attention
+  prompt: "Write `self_attention(queries, keys, values, causal=False)`, which computes scaled dot-product self-attention\
+    \ using Python lists.\n\nEach input is a list of vectors. For each query vector, compute its dot product with\
+    \ every key vector, divide each score by the square root of the query dimension, and apply softmax to get attention\
+    \ weights. Return a pair `(outputs, weights)`, where each output is the weighted sum of the value vectors and\
+    \ `weights` is the attention matrix (one row per query).\n\nWhen `causal=True`, a query at position `i` may\
+    \ attend only to keys at positions `0` through `i`; its weights for later positions must be zero. Assume inputs\
+    \ have compatible dimensions and, in causal mode, queries, keys, and values have the same sequence length. Handle\
+    \ softmax stably for large scores.\n\nExample:\n```python\noutputs, weights = self_attention(\n    [[1, 0]],\
+    \ [[1, 0], [0, 1]], [[1, 0], [0, 1]]\n)\n# outputs ≈ [[0.66976, 0.33024]]\n# weights ≈ [[0.66976, 0.33024]]\n\
+    ```"
+  starter_code: "def self_attention(queries, keys, values, causal=False):\n    \"\"\"Compute scaled dot-product\
+    \ attention; return (outputs, attention_weights).\"\"\"\n    ..."
+  tests: 'outputs, weights = self_attention([[1, 0]], [[1, 0], [0, 1]], [[1, 0], [0, 1]])
+
+    assert abs(weights[0][0] - 0.6697615) < 1e-5 and abs(weights[0][1] - 0.3302385) < 1e-5, "use scaled dot-product
+    softmax"
+
+    assert abs(outputs[0][0] - weights[0][0]) < 1e-10 and abs(outputs[0][1] - weights[0][1]) < 1e-10, "weight and
+    combine values"
+
+
+    outputs, weights = self_attention([[0, 0]], [[1, 0], [0, 1]], [[2, 0], [0, 4]])
+
+    assert weights == [[0.5, 0.5]] and outputs == [[1.0, 2.0]], "zero scores give uniform weights"
+
+
+    outputs, weights = self_attention([[3]], [[-2]], [[7]])
+
+    assert outputs == [[7.0]] and weights == [[1.0]], "handle a single key and value"
+
+
+    outputs, weights = self_attention([[2, 0, 0, 0]], [[1, 0, 0, 0], [-1, 0, 0, 0]], [[1], [0]])
+
+    assert abs(weights[0][0] - 0.8807971) < 1e-5, "scale scores by the square root of the key dimension"
+
+
+    outputs, weights = self_attention([[0], [0], [0]], [[0], [0], [0]], [[1], [2], [9]], causal=True)
+
+    assert weights == [[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [1.0 / 3, 1.0 / 3, 1.0 / 3]], "causal weights cannot include
+    future positions"
+
+    assert outputs == [[1.0], [1.5], [4.0]], "causal outputs use only available values"
+
+
+    outputs, weights = self_attention([[0]], [[0], [0], [0]], [[1], [2], [9]])
+
+    assert outputs == [[4.0]] and weights == [[1.0 / 3, 1.0 / 3, 1.0 / 3]], "noncausal attention can use every key"
+
+
+    outputs, weights = self_attention([[1000, 1000]], [[1, 1], [0, 0]], [[7], [2]])
+
+    assert outputs == [[7.0]] and weights[0][0] == 1.0 and weights[0][1] == 0.0, "softmax remains stable for large
+    scores"'
+  solution: "import math\n\n\ndef self_attention(queries, keys, values, causal=False):\n    \"\"\"Compute scaled\
+    \ dot-product attention; return (outputs, attention_weights).\"\"\"\n    outputs = []\n    all_weights = []\n\
+    \    scale = math.sqrt(len(queries[0]))\n\n    for i, query in enumerate(queries):\n        scores = []\n  \
+    \      for j, key in enumerate(keys):\n            if causal and j > i:\n                scores.append(float(\"\
+    -inf\"))\n            else:\n                scores.append(sum(q * k for q, k in zip(query, key)) / scale)\n\
+    \n        max_score = max(scores)\n        exp_scores = [math.exp(score - max_score) for score in scores]\n\
+    \        total = sum(exp_scores)\n        weights = [score / total for score in exp_scores]\n        output\
+    \ = [\n            sum(weights[j] * values[j][d] for j in range(len(values)))\n            for d in range(len(values[0]))\n\
+    \        ]\n        all_weights.append(weights)\n        outputs.append(output)\n\n    return outputs, all_weights"
+  packages: []
+  topic: 3. Attention Mechanisms & Transformers
+  wrong_solutions:
+  - "import math\n\ndef self_attention(queries, keys, values, causal=False):\n    outputs, all_weights = [], []\n\
+    \    for i, query in enumerate(queries):\n        scores = [sum(q * k for q, k in zip(query, key)) for key in\
+    \ keys]\n        if causal:\n            scores = [score if j <= i else float('-inf') for j, score in enumerate(scores)]\n\
+    \        peak = max(scores)\n        exps = [math.exp(score - peak) for score in scores]\n        total = sum(exps)\n\
+    \        weights = [x / total for x in exps]\n        outputs.append([sum(weights[j] * values[j][d] for j in\
+    \ range(len(values))) for d in range(len(values[0]))])\n        all_weights.append(weights)\n    return outputs,\
+    \ all_weights"
+  - "def self_attention(queries, keys, values, causal=False):\n    outputs, all_weights = [], []\n    for i, query\
+    \ in enumerate(queries):\n        weights = [1.0 / len(keys)] * len(keys)\n        outputs.append([sum(weights[j]\
+    \ * values[j][d] for j in range(len(values))) for d in range(len(values[0]))])\n        all_weights.append(weights)\n\
+    \    return outputs, all_weights"
+  - "import math\n\ndef self_attention(queries, keys, values, causal=False):\n    outputs, all_weights = [], []\n\
+    \    scale = math.sqrt(len(queries[0]))\n    for query in queries:\n        scores = [sum(q * k for q, k in\
+    \ zip(query, key)) / scale for key in keys]\n        peak = max(scores)\n        exps = [math.exp(score - peak)\
+    \ for score in scores]\n        total = sum(exps)\n        weights = [x / total for x in exps]\n        outputs.append([sum(weights[j]\
+    \ * values[j][d] for j in range(len(values))) for d in range(len(values[0]))])\n        all_weights.append(weights)\n\
+    \    return outputs, all_weights"
+- title: Build Next-Token Examples
+  prompt: 'Write `make_next_token_examples(tokens, context_size)` to prepare a token sequence for causal next-token
+    training. For every token after the first, return a `(context, target)` pair, where `context` contains only
+    preceding tokens and is limited to the most recent `context_size` tokens. Keep the examples in sequence order.
+    Assume `context_size` is a positive integer.
+
+
+    Example:
+
+    ```python
+
+    make_next_token_examples(["the", "cat", "sat"], 2)
+
+    # [(["the"], "cat"), (["the", "cat"], "sat")]
+
+    ```'
+  starter_code: "def make_next_token_examples(tokens, context_size):\n    \"\"\"Return causal (context, next_token)\
+    \ training pairs.\"\"\"\n    ..."
+  tests: 'assert make_next_token_examples(["the", "cat", "sat"], 2) == [(["the"], "cat"), (["the", "cat"], "sat")],
+    "should pair each token with its preceding context"
+
+    assert make_next_token_examples([], 3) == [], "empty input should produce no examples"
+
+    assert make_next_token_examples(["only"], 3) == [], "a single token has no next-token target"
+
+    assert make_next_token_examples(["a", "b", "c", "d"], 1) == [(["a"], "b"), (["b"], "c"), (["c"], "d")], "context
+    size one should use only the immediately preceding token"
+
+    assert make_next_token_examples(["a", "b", "c", "d", "e"], 2) == [(["a"], "b"), (["a", "b"], "c"), (["b", "c"],
+    "d"), (["c", "d"], "e")], "long sequences should use a rolling context window"
+
+    assert make_next_token_examples(["a", "b", "c"], 5) == [(["a"], "b"), (["a", "b"], "c")], "contexts should grow
+    naturally when the window exceeds the available history"'
+  solution: "def make_next_token_examples(tokens, context_size):\n    \"\"\"Return causal (context, next_token)\
+    \ training pairs.\"\"\"\n    examples = []\n    for i in range(1, len(tokens)):\n        context = tokens[max(0,\
+    \ i - context_size):i]\n        examples.append((context, tokens[i]))\n    return examples"
+  packages: []
+  topic: 4. Large Language Models (LLMs)
+  wrong_solutions:
+  - "def make_next_token_examples(tokens, context_size):\n    \"\"\"Return causal (context, next_token) training\
+    \ pairs.\"\"\"\n    return [(tokens[:i], tokens[i]) for i in range(1, len(tokens))]"
+  - "def make_next_token_examples(tokens, context_size):\n    \"\"\"Return causal (context, next_token) training\
+    \ pairs.\"\"\"\n    return [(tokens[max(0, i - context_size):i + 1], tokens[i]) for i in range(1, len(tokens))]"
+  - "def make_next_token_examples(tokens, context_size):\n    \"\"\"Return causal (context, next_token) training\
+    \ pairs.\"\"\"\n    if len(tokens) < 2:\n        return []\n    return [(tokens[max(0, len(tokens) - 1 - context_size):-1],\
+    \ tokens[-1])]"
+- title: Estimate LoRA Adapter Costs
+  prompt: 'Write `lora_parameter_stats(layers, rank, bytes_per_parameter=4)` to compare trainable weight counts
+    and storage for full fine-tuning versus LoRA.
+
+
+    Each item in `layers` is `(in_features, out_features)` for one linear layer. Count full fine-tuning parameters
+    as `in_features * out_features`. For LoRA, count both low-rank matrices, so each layer has `rank * (in_features
+    + out_features)` adapter parameters. Sum across layers. Assume the supplied rank is used as-is, even if the
+    resulting matrices have more parameters than the original weight matrix.
+
+
+    Return a dictionary with `full_params`, `adapter_params`, `saved_params`, `reduction_percent`, `full_trainable_bytes`,
+    and `adapter_bytes`. Compute `saved_params` as full minus adapter parameters, `reduction_percent` as the percentage
+    reduction relative to full parameters, and each byte count as its parameter count times `bytes_per_parameter`.
+    These byte counts cover trainable weights only; do not include the frozen base model, biases, or optimizer state.
+    Assume positive dimensions, rank, and bytes per parameter, and at least one layer.
+
+
+    Example:
+
+    ```python
+
+    lora_parameter_stats([(4, 8)], rank=2, bytes_per_parameter=2)
+
+    # {''full_params'': 32, ''adapter_params'': 24, ''saved_params'': 8,
+
+    #  ''reduction_percent'': 25.0, ''full_trainable_bytes'': 64, ''adapter_bytes'': 48}
+
+    ```'
+  starter_code: "def lora_parameter_stats(layers: list[tuple[int, int]], rank: int, bytes_per_parameter: int = 4)\
+    \ -> dict:\n    \"\"\"Compare full fine-tuning and LoRA trainable parameter counts and storage.\"\"\"\n    ..."
+  tests: 'result = lora_parameter_stats([(4, 8)], rank=2, bytes_per_parameter=2)
+
+    assert result == {"full_params": 32, "adapter_params": 24, "saved_params": 8, "reduction_percent": 25.0, "full_trainable_bytes":
+    64, "adapter_bytes": 48}, "should count both LoRA matrices and report all statistics"
+
+
+    result = lora_parameter_stats([(4, 8), (8, 2)], rank=2)
+
+    assert result["full_params"] == 48 and result["adapter_params"] == 44, "should sum parameter counts across layers"
+
+
+    assert result["saved_params"] == 4, "should report full parameters minus adapter parameters"
+
+    assert abs(result["reduction_percent"] - 100 * 4 / 48) < 1e-9, "should calculate reduction relative to full
+    parameters"
+
+
+    result = lora_parameter_stats([(3, 7)], rank=1, bytes_per_parameter=2)
+
+    assert result["full_trainable_bytes"] == 42 and result["adapter_bytes"] == 20, "should use the requested bytes
+    per parameter"
+
+
+    rank_one = lora_parameter_stats([(3, 7)], rank=1)
+
+    rank_two = lora_parameter_stats([(3, 7)], rank=2)
+
+    assert rank_two["adapter_params"] == 2 * rank_one["adapter_params"], "should scale adapter parameters with the
+    supplied rank"
+
+
+    result = lora_parameter_stats([(2, 2)], rank=2)
+
+    assert result["adapter_params"] == 8 and result["saved_params"] == -4, "should use the requested rank even when
+    adapters exceed the full weight count"
+
+    assert result["reduction_percent"] == -100.0, "should allow a negative reduction when adapters use more parameters"'
+  solution: "def lora_parameter_stats(layers: list[tuple[int, int]], rank: int, bytes_per_parameter: int = 4) ->\
+    \ dict:\n    \"\"\"Compare full fine-tuning and LoRA trainable parameter counts and storage.\"\"\"\n    full_params\
+    \ = sum(in_features * out_features for in_features, out_features in layers)\n    adapter_params = sum(rank *\
+    \ (in_features + out_features) for in_features, out_features in layers)\n    saved_params = full_params - adapter_params\n\
+    \    reduction_percent = 100 * saved_params / full_params\n    return {\n        \"full_params\": full_params,\n\
+    \        \"adapter_params\": adapter_params,\n        \"saved_params\": saved_params,\n        \"reduction_percent\"\
+    : reduction_percent,\n        \"full_trainable_bytes\": full_params * bytes_per_parameter,\n        \"adapter_bytes\"\
+    : adapter_params * bytes_per_parameter,\n    }"
+  packages: []
+  topic: 5. Fine-Tuning Methods
+  wrong_solutions:
+  - "def lora_parameter_stats(layers: list[tuple[int, int]], rank: int, bytes_per_parameter: int = 4) -> dict:\n\
+    \    \"\"\"Incorrectly counts only one of the two LoRA matrices.\"\"\"\n    full_params = sum(i * o for i, o\
+    \ in layers)\n    adapter_params = sum(rank * i for i, o in layers)\n    saved_params = full_params - adapter_params\n\
+    \    return {\n        \"full_params\": full_params,\n        \"adapter_params\": adapter_params,\n        \"\
+    saved_params\": saved_params,\n        \"reduction_percent\": 100 * saved_params / full_params,\n        \"\
+    full_trainable_bytes\": full_params * bytes_per_parameter,\n        \"adapter_bytes\": adapter_params * bytes_per_parameter,\n\
+    \    }"
+  - "def lora_parameter_stats(layers: list[tuple[int, int]], rank: int, bytes_per_parameter: int = 4) -> dict:\n\
+    \    \"\"\"Incorrectly counts an adapter as rank times the smaller dimension.\"\"\"\n    full_params = sum(i\
+    \ * o for i, o in layers)\n    adapter_params = sum(rank * min(i, o) for i, o in layers)\n    saved_params =\
+    \ full_params - adapter_params\n    return {\n        \"full_params\": full_params,\n        \"adapter_params\"\
+    : adapter_params,\n        \"saved_params\": saved_params,\n        \"reduction_percent\": 100 * saved_params\
+    \ / full_params,\n        \"full_trainable_bytes\": full_params * bytes_per_parameter,\n        \"adapter_bytes\"\
+    : adapter_params * bytes_per_parameter,\n    }"
+  - "def lora_parameter_stats(layers: list[tuple[int, int]], rank: int, bytes_per_parameter: int = 4) -> dict:\n\
+    \    \"\"\"Incorrectly assumes four bytes per parameter regardless of the argument.\"\"\"\n    full_params =\
+    \ sum(i * o for i, o in layers)\n    adapter_params = sum(rank * (i + o) for i, o in layers)\n    saved_params\
+    \ = full_params - adapter_params\n    return {\n        \"full_params\": full_params,\n        \"adapter_params\"\
+    : adapter_params,\n        \"saved_params\": saved_params,\n        \"reduction_percent\": 100 * saved_params\
+    \ / full_params,\n        \"full_trainable_bytes\": full_params * 4,\n        \"adapter_bytes\": adapter_params\
+    \ * 4,\n    }"
+- title: Retrieve Relevant Text Chunks
+  prompt: "Write `retrieve_context(documents, query, chunk_size, overlap, top_k)` to perform a small lexical retrieval\
+    \ step for a RAG pipeline.\n\nSplit each document on whitespace. For each document, make chunks starting at\
+    \ word indices `0`, `chunk_size - overlap`, `2 * (chunk_size - overlap)`, and so on, stopping when the start\
+    \ index reaches the document's word count. A final chunk may be shorter than `chunk_size`. Rejoin chunk words\
+    \ with single spaces; report each chunk's start index in its original document.\n\nNormalize text for matching\
+    \ by extracting lowercase alphanumeric tokens (`[a-z0-9]+`). A chunk's score is the number of **distinct query\
+    \ tokens** that occur in it, regardless of how many times they occur. Return only chunks with a positive score,\
+    \ sorted by descending score; preserve document and chunk order when scores tie. Return at most `top_k` results.\
+    \ Each result is `(document_index, start_word_index, chunk_text, score)`. An empty query or no matching chunks\
+    \ returns `[]`.\n\nAssume `chunk_size > 0`, `0 <= overlap < chunk_size`, and `top_k > 0`.\n\nExample:\n\n```python\n\
+    retrieve_context(\n    [\"Cats chase small mice. Cats nap.\", \"Dogs chase balls.\"],\n    \"cats mice\",\n\
+    \    chunk_size=4,\n    overlap=1,\n    top_k=2,\n)\n# [(0, 0, 'Cats chase small mice.', 2), (0, 3, 'mice. Cats\
+    \ nap.', 2)]\n```"
+  starter_code: "def retrieve_context(documents, query, chunk_size, overlap, top_k):\n    \"\"\"Return ranked matching\
+    \ document chunks as (doc index, start, text, score).\"\"\"\n    ..."
+  tests: 'result = retrieve_context(["Cats chase small mice. Cats nap.", "Dogs chase balls."], "cats mice", 4, 1,
+    2)
+
+    assert result == [(0, 0, "Cats chase small mice.", 2), (0, 3, "mice. Cats nap.", 2)], "should retrieve matching
+    chunks in stable tie order"
+
+
+    result = retrieve_context(["red blue green gold white"], "green white", 3, 1, 10)
+
+    assert result == [(0, 2, "green gold white", 2), (0, 0, "red blue green", 1), (0, 4, "white", 1)], "should use
+    overlapping chunks and include a short final chunk"
+
+
+    result = retrieve_context(["red blue", "red red red blue"], "red red blue", 4, 0, 2)
+
+    assert result == [(0, 0, "red blue", 2), (1, 0, "red red red blue", 2)], "should score distinct query tokens
+    rather than repeated occurrences"
+
+
+    result = retrieve_context(["Cats, chase mice!"], "CATS mice", 5, 0, 1)
+
+    assert result == [(0, 0, "Cats, chase mice!", 2)], "should normalize case and punctuation for matching"
+
+
+    assert retrieve_context(["sun moon"], "ocean", 2, 0, 3) == [], "should omit chunks with no query-token matches"
+
+    assert retrieve_context(["sun moon"], "!!!", 2, 0, 3) == [], "should return an empty result for a query with
+    no tokens"
+
+    assert retrieve_context([], "sun", 2, 0, 3) == [], "should handle an empty document collection"
+
+
+    result = retrieve_context(["alpha beta", "beta gamma", "gamma"], "alpha beta gamma", 2, 0, 2)
+
+    assert result == [(0, 0, "alpha beta", 2), (1, 0, "beta gamma", 2)], "should rank by score and limit results
+    to top_k"'
+  solution: "import re\n\n\ndef retrieve_context(documents, query, chunk_size, overlap, top_k):\n    \"\"\"Return\
+    \ ranked matching document chunks as (doc index, start, text, score).\"\"\"\n    query_tokens = set(re.findall(r\"\
+    [a-z0-9]+\", query.lower()))\n    if not query_tokens:\n        return []\n\n    stride = chunk_size - overlap\n\
+    \    matches = []\n    for document_index, document in enumerate(documents):\n        words = document.split()\n\
+    \        for start in range(0, len(words), stride):\n            chunk_text = \" \".join(words[start : start\
+    \ + chunk_size])\n            chunk_tokens = set(re.findall(r\"[a-z0-9]+\", chunk_text.lower()))\n         \
+    \   score = len(query_tokens & chunk_tokens)\n            if score:\n                matches.append((document_index,\
+    \ start, chunk_text, score))\n\n    matches.sort(key=lambda item: -item[3])\n    return matches[:top_k]"
+  packages: []
+  topic: 6. RAG and AI Agents orchestration
+  wrong_solutions:
+  - "import re\n\n\ndef retrieve_context(documents, query, chunk_size, overlap, top_k):\n    \"\"\"Wrong: makes\
+    \ chunks without overlap.\"\"\"\n    query_tokens = set(re.findall(r\"[a-z0-9]+\", query.lower()))\n    matches\
+    \ = []\n    for document_index, document in enumerate(documents):\n        words = document.split()\n      \
+    \  for start in range(0, len(words), chunk_size):\n            text = \" \".join(words[start : start + chunk_size])\n\
+    \            score = len(query_tokens & set(re.findall(r\"[a-z0-9]+\", text.lower())))\n            if score:\n\
+    \                matches.append((document_index, start, text, score))\n    matches.sort(key=lambda item: -item[3])\n\
+    \    return matches[:top_k]"
+  - "def retrieve_context(documents, query, chunk_size, overlap, top_k):\n    \"\"\"Wrong: matches case-insensitive\
+    \ whitespace-separated strings, not normalized tokens.\"\"\"\n    query_tokens = set(query.lower().split())\n\
+    \    matches = []\n    stride = chunk_size - overlap\n    for document_index, document in enumerate(documents):\n\
+    \        words = document.split()\n        for start in range(0, len(words), stride):\n            text = \"\
+    \ \".join(words[start : start + chunk_size])\n            score = len(query_tokens & set(text.lower().split()))\n\
+    \            if score:\n                matches.append((document_index, start, text, score))\n    matches.sort(key=lambda\
+    \ item: -item[3])\n    return matches[:top_k]"
+  - "import re\n\n\ndef retrieve_context(documents, query, chunk_size, overlap, top_k):\n    \"\"\"Wrong: counts\
+    \ token occurrences, so repeated words inflate a chunk's score.\"\"\"\n    query_tokens = set(re.findall(r\"\
+    [a-z0-9]+\", query.lower()))\n    matches = []\n    stride = chunk_size - overlap\n    for document_index, document\
+    \ in enumerate(documents):\n        words = document.split()\n        for start in range(0, len(words), stride):\n\
+    \            text = \" \".join(words[start : start + chunk_size])\n            chunk_tokens = re.findall(r\"\
+    [a-z0-9]+\", text.lower())\n            score = sum(token in query_tokens for token in chunk_tokens)\n     \
+    \       if score:\n                matches.append((document_index, start, text, score))\n    matches.sort(key=lambda\
+    \ item: -item[3])\n    return matches[:top_k]"

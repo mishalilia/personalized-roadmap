@@ -48,7 +48,7 @@ def _topics_for(module: Module, decision: ModuleDecision) -> tuple[list[SkimTopi
     """The topics to skim and to skip, as the module's own titles: only for a module to study, never a topic
     the module does not have, and at least one topic left to study in full; else the module would be one to
     prove or skip."""
-    if decision.choice is not Choice.STUDY:
+    if decision.choice is not Choice.STUDY or module.is_project:
         return [], []
 
     def key(title: str) -> str:

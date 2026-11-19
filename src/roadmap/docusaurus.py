@@ -269,19 +269,31 @@ _NOT_A_TOPIC = (
     "next steps",
     "workload",
     "finish this module",
+    # A resources page's note on the specialization's project, which is a module of its own.
+    "capstone",
 )
 
 
 def _topics(body: str) -> list[Topic]:
-    """The page's second-level headings with the bullet points under them, as plain text."""
+    """The page's second-level headings with the bullet points under them, as plain text. A "Curriculum"
+    section split into third-level headings, as on a specialization's resources page, gives those headings."""
     text = _CODE_BLOCK.sub("", body)
-    headings = [match for match in _HEADING.finditer(text) if len(match.group(1)) == 2]
+    headings = [match for match in _HEADING.finditer(text) if len(match.group(1)) in (2, 3)]
     topics = []
     for index, match in enumerate(headings):
+        level = len(match.group(1))
         title = _plain_text(match.group(2))
+        parent = _parent_title(headings, index)
+        if level == 3 and parent != "curriculum":
+            continue
+        if level == 2 and title.lower() == "curriculum" and _has_subtopics(headings, index):
+            continue
         if not title or any(word in title.lower() for word in _NOT_A_TOPIC):
             continue
         end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        if level == 2:
+            following = [h for h in headings[index + 1 :] if len(h.group(1)) == 2]
+            end = following[0].start() if following else len(text)
         section = text[match.end() : end]
         outcomes = [
             _plain_text(item)
@@ -297,6 +309,19 @@ def _topics(body: str) -> list[Topic]:
             )
         )
     return topics
+
+
+def _parent_title(headings: list[re.Match[str]], index: int) -> str | None:
+    """The lower-case title of the second-level heading above a third-level one."""
+    for match in reversed(headings[:index]):
+        if len(match.group(1)) == 2:
+            return _plain_text(match.group(2)).lower()
+    return None
+
+
+def _has_subtopics(headings: list[re.Match[str]], index: int) -> bool:
+    following = headings[index + 1 : index + 2]
+    return bool(following) and len(following[0].group(1)) == 3
 
 
 def _page_id(path: Path, docs_dir: Path) -> str:

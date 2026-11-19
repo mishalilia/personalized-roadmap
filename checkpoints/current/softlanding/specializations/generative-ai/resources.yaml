@@ -4,378 +4,542 @@ status: draft
 generated_by: gpt-6-luna
 reviewed_by: null
 questions:
-- id: q1
-  topic: Curriculum
-  text: In a corpus, the words “the” and “quasar” appear equally often in one document. “The” occurs in almost every
-    document, while “quasar” occurs in only one. Which TF-IDF behavior should you expect?
+- id: q24
+  topic: Foundations of Natural Language Processing
+  text: 'A corpus contains three documents: “red cat,” “red dog,” and “red bird.” When comparing the terms in the
+    first document using TF-IDF, which term should receive the lower IDF weight?'
   options:
-  - The two words receive similar weights because their counts in the document match.
-  - “The” receives a higher weight because it occurs in more documents.
-  - “Quasar” receives a higher weight because it is rare across the corpus.
-  - Neither word receives a weight unless the document contains both.
+  - “red,” because it appears in every document
+  - “cat,” because it appears in only one document
+  - “red,” because it appears once in each document
+  - “cat,” because it appears beside “red”
+  answer: 0
+  explanation: IDF decreases for terms that appear in more documents. Since “red” occurs in all three documents,
+    it has a lower IDF weight than “cat.”
+- id: q25
+  topic: Foundations of Natural Language Processing
+  text: A Bag-of-Words system represents “dogs chase cats” and “cats chase dogs” using the same vocabulary and count
+    features. What should you expect from their vectors?
+  options:
+  - The vectors differ because the first word has a larger count
+  - The vectors are identical because both contain the same word counts
+  - The vectors differ because the final word gets extra weight
+  - The vectors are identical only if the words are sorted first
+  answer: 1
+  explanation: A count-based Bag-of-Words representation records which words occur and how often, not their order.
+    Both sentences therefore have the same feature counts.
+- id: q26
+  topic: Foundations of Natural Language Processing
+  text: A BPE tokenizer encounters a word it did not see as a complete word during training. What is it generally
+    designed to do?
+  options:
+  - Replace the entire word with the nearest word in its vocabulary
+  - Skip the word because it has no complete-word vocabulary entry
+  - Represent it using available subword units when possible
+  - Add the entire word to its vocabulary before encoding it
   answer: 2
-  explanation: TF-IDF downweights terms that appear across many documents and gives more weight to terms that are
-    distinctive to fewer documents. So “quasar” is expected to receive the higher weight.
-- id: q2
-  topic: Curriculum
-  text: A classifier uses Bag-of-Words features for the sentences “the dog chased the cat” and “the cat chased the
-    dog.” What is a likely problem?
+  explanation: BPE can represent a word as a sequence of subword units, including for words not seen as whole units
+    during training. It does not need to skip the word or add it to the vocabulary at inference time.
+- id: q27
+  topic: Foundations of Natural Language Processing
+  text: You are training a Word2Vec model on sentences and want each training example to use a word to predict nearby
+    words. Which setup matches that goal?
   options:
-  - The sentences can have identical vectors because Bag-of-Words does not represent word order.
-  - The sentences will have different vectors because each word position gets its own feature.
-  - The sentences cannot be vectorized because they contain repeated words.
-  - The sentences will have identical vectors only if their word embeddings are also identical.
+  - Use nearby words to predict a center word
+  - Use a document vector to predict its word count
+  - Use a word to predict its position in the vocabulary
+  - Use a center word to predict nearby words
+  answer: 3
+  explanation: Skip-gram uses a center word to predict its surrounding context words. Using nearby words to predict
+    the center word instead corresponds to CBOW.
+- id: q28
+  topic: Foundations of Natural Language Processing
+  text: A pretrained embedding gives cosine similarities of 0.81 between “doctor” and “nurse,” 0.34 between “doctor”
+    and “mountain,” and 0.22 between “doctor” and “bicycle.” Which word would be the nearest of these to “doctor”
+    in this embedding space?
+  options:
+  - “mountain,” because its score is closer to zero
+  - “nurse,” because its score is the largest
+  - “bicycle,” because its score is the smallest
+  - All three, because cosine similarity ignores the scores
+  answer: 1
+  explanation: Among the listed words, “nurse” has the highest cosine similarity to “doctor,” so it is the nearest
+    in this comparison. Similarity in an embedding space does not by itself guarantee that two words have identical
+    meanings.
+- id: q29
+  topic: Foundations of Natural Language Processing
+  text: In a self-attention layer, a token assigns most of its attention weight to another token. Which information
+    most directly contributes to the first token’s updated representation?
+  options:
+  - The other token’s value vector, weighted by the attention score
+  - The other token’s query vector, copied without weighting
+  - The first token’s key vector, multiplied by the sequence length
+  - The first token’s position encoding, used instead of token values
   answer: 0
-  explanation: Bag-of-Words records which words occur and often how often, but not their order. These sentences
-    contain the same word counts, so their vectors can be identical despite their different meanings.
-- id: q3
-  topic: Curriculum
-  text: A résumé search system uses nearest neighbors in pretrained word embeddings. It often places male-associated
-    terms near “engineer” and female-associated terms near “assistant.” What is the best interpretation?
+  explanation: Attention weights determine how much each token’s value vector contributes to the output. Queries
+    and keys help calculate the weights, but they are not the vectors combined to produce that output.
+- id: q30
+  topic: Foundations of Natural Language Processing
+  text: A model receives token embeddings for “birds eat seeds.” If it has no positional information, what problem
+    is it likely to have when distinguishing this sentence from “seeds eat birds”?
   options:
-  - The embedding has discovered which occupations each group is naturally suited for.
-  - The embedding may reflect associations in its training text, including social biases.
-  - The results prove the vocabulary needs to be expanded before the system can be used.
-  - The nearest neighbors are reliable because embeddings remove patterns from training data.
+  - It will treat the words as unknown because their order changed
+  - It will automatically infer order from the words’ frequencies
+  - It will receive the same collection of token embeddings without a signal of their positions
+  - It will add a different vocabulary entry for each sentence
+  answer: 2
+  explanation: Without positional information, the model has no explicit signal indicating where each token occurs
+    in the sequence. The two sentences contain the same tokens, so their token embeddings alone do not encode the
+    changed order.
+- id: q31
+  topic: Foundations of Natural Language Processing
+  text: You want to train a model that predicts the next word in “The train arrived at the”. Which training setup
+    best matches a causal language model such as GPT?
+  options:
+  - Hide a middle word and predict it using both left and right context
+  - Predict each word using only words that come after it
+  - Predict the next word using the preceding words as context
+  - Predict all words at once using the complete, unmasked sentence
+  answer: 2
+  explanation: A causal language model predicts the next token from preceding context and does not use future tokens
+    for that prediction. Hiding a word and using context on both sides is the masked-language-model setup associated
+    with BERT.
+- id: q32
+  topic: Diffusion Models Foundations
+  text: A team needs a model that can create new images resembling its training set, rather than label incoming
+    images. Which approach best fits that goal?
+  options:
+  - Train a discriminative model to assign each image a category.
+  - Train a generative model to learn the image distribution and sample from it.
+  - Train a classifier to predict whether each image is correctly labeled.
+  - Train an encoder to map each image to its category ID.
   answer: 1
-  explanation: Embedding similarity reflects patterns learned from the data, which can include biased associations.
-    A nearest neighbor is not evidence that the association is an objective fact.
-- id: q4
-  topic: Curriculum
-  text: A self-attention layer processes the words in “The animal crossed the road because it was tired.” What does
-    the layer use to determine how much information one token gets from another?
+  explanation: A generative model learns patterns in the data so it can produce new samples. A discriminative model
+    is typically used to distinguish classes or predict labels.
+- id: q33
+  topic: Diffusion Models Foundations
+  text: A learner encodes two different images with a VAE, averages their latent vectors, and decodes the result.
+    What should they expect if the latent space is organized usefully?
   options:
-  - It compares the values directly and averages every token equally.
-  - It compares query-key compatibility, then uses the resulting weights to combine values.
-  - It matches each token to a fixed dictionary entry and ignores the other tokens.
-  - It uses positional encodings as the attention weights and discards token content.
-  answer: 1
-  explanation: Attention scores come from comparing queries with keys. Those scores determine how strongly the layer
-    combines the corresponding value vectors.
-- id: q5
-  topic: Curriculum
-  text: A transformer receives the same words in two different orders. Which design choice helps it distinguish
-    the sequences?
-  options:
-  - Add positional information to token representations before or during attention.
-  - Replace each token representation with the average of all token representations.
-  - Use the same attention weights at every position in the sequence.
-  - Remove token representations and rely on the sequence length alone.
+  - A blended image that may share visual features from both inputs.
+  - An exact copy of the first image, because decoding ignores the average.
+  - A random noise image, because VAEs cannot decode interpolated vectors.
+  - A label identifying which input image had greater brightness.
   answer: 0
-  explanation: Self-attention alone does not encode token order. Positional information lets the model distinguish
-    sequences with the same tokens in different arrangements.
-- id: q6
-  topic: Curriculum
-  text: A model needs to use different relationships in a sentence at the same time—for example, linking a pronoun
-    to its referent while also tracking nearby word structure. Which approach is most suitable?
+  explanation: A VAE maps examples into a latent space that can support meaningful interpolation. Decoding a point
+    between two encoded examples may produce an image with features of both.
+- id: q34
+  topic: Diffusion Models Foundations
+  text: A GAN produces nearly the same kind of image for many different random inputs, even though the training
+    set contains varied examples. Which issue does this suggest?
   options:
-  - Use one attention head with a smaller vocabulary.
-  - Use multiple attention heads that can learn different patterns.
-  - Use a single fixed attention pattern for every sentence.
-  - Use more positional information without changing the attention layer.
+  - The discriminator has learned to generate the training images.
+  - The noise schedule adds too much noise to each generated image.
+  - The generator is covering only a narrow range of the data.
+  - The encoder is mapping every image to the same label.
+  answer: 2
+  explanation: 'This behavior is characteristic of mode collapse: the generator produces a limited variety of outputs
+    instead of representing the diversity of the data.'
+- id: q35
+  topic: Diffusion Models Foundations
+  text: During the forward process, a diffusion model gradually adds noise to a training image. What should happen
+    as the process advances to later timesteps?
+  options:
+  - The image should become clearer as its fine details are restored.
+  - The image should become noisier as more of its original structure is obscured.
+  - The image should keep the same noise level while its colors change.
+  - The image should turn into a class label predicted by the model.
   answer: 1
-  explanation: Multiple attention heads let a transformer attend to different relationships or representation subspaces
-    in parallel. This supports learning several kinds of patterns at once.
-- id: q7
-  topic: Curriculum
-  text: A team wants a model that generates a sentence one token at a time without using future tokens. Which training
-    setup matches that goal?
+  explanation: The forward process progressively adds noise, so later timesteps contain less visible information
+    about the original image. The reverse process learns to undo this corruption.
+- id: q36
+  topic: Diffusion Models Foundations
+  text: While training a simple DDPM, a developer creates a noisy image at a sampled timestep. What is a suitable
+    basic training target for the denoising network?
   options:
-  - A masked-language setup that hides random tokens and predicts them from both sides.
-  - A causal-language setup that predicts the next token using only earlier tokens.
-  - A word-classification setup that predicts a label for the whole sentence.
-  - A bidirectional setup that predicts every token using the complete sentence.
+  - The category label of the original image.
+  - The random noise that was added to the original image.
+  - The next image in the training dataset.
+  - The timestep at which the original image was captured.
   answer: 1
-  explanation: Causal language modeling masks future positions so each prediction can depend only on earlier tokens.
-    This matches generation that proceeds from left to right.
-- id: q8
-  topic: Curriculum
-  text: A team has a large pretrained model and wants to adapt it to a small domain dataset using limited GPU memory.
-    Which approach best fits the goal?
-  options:
-  - Fine-tune every model weight and increase the training batch size.
-  - Freeze the base model and train a small set of LoRA adapter parameters.
-  - Train a new model from scratch and reuse the pretrained tokenizer.
-  - Replace the model’s attention layers with a fixed lookup table.
-  answer: 1
-  explanation: LoRA adapts a model by training a comparatively small number of added parameters rather than updating
-    all the base weights. This can reduce memory and training requirements.
-- id: q9
-  topic: Curriculum
-  text: A team trains a VAE on images and wants nearby points in its latent space to decode into gradually changing
-    images. Which approach best supports this?
-  options:
-  - Interpolate between latent vectors and decode points along the path.
-  - Interpolate between the final image pixels and encode only the endpoints.
-  - Choose unrelated latent vectors so the decoder sees more variation.
-  - Interpolate between class labels while keeping the latent vector fixed.
-  answer: 0
-  explanation: A VAE learns a structured latent representation that can support meaningful interpolation. Decoding
-    points between two latent vectors can show gradual changes between their generated images.
-- id: q10
-  topic: Curriculum
-  text: During GAN training, generated images look diverse at first, but later the generator produces nearly the
-    same image for many different inputs. What problem does this suggest?
-  options:
-  - The discriminator has learned to produce the generator’s output directly.
-  - The generator has stopped covering the variety of examples in the data.
-  - The latent vectors have become too large for the discriminator to process.
-  - The training data has become balanced across all possible image types.
-  answer: 1
-  explanation: Mode collapse occurs when a GAN generator produces a narrow range of outputs instead of representing
-    the diversity of the training data.
-- id: q11
-  topic: Curriculum
-  text: A diffusion model is being trained to generate images. What happens to a clean training image during the
-    forward process?
-  options:
-  - It is gradually perturbed with noise according to a schedule.
-  - It is gradually sharpened until only its edges remain.
-  - It is replaced by a class label before the model learns to generate it.
-  - It is compressed into a text embedding and decoded without noise.
-  answer: 0
-  explanation: The forward diffusion process adds noise to data progressively according to a noise schedule. The
-    model learns the reverse process to generate samples by denoising.
-- id: q12
-  topic: Curriculum
-  text: A diffusion model takes too long to generate an image, and the team wants to try sampling with fewer denoising
-    steps. Which approach is designed to allow this?
+  explanation: A common simplified DDPM objective trains the network to predict the noise added to the image, given
+    the noisy image and its timestep. The model can then use that prediction during denoising.
+- id: q37
+  topic: Diffusion Models Foundations
+  text: A team wants to generate images with fewer sampling steps to reduce inference time, and is willing to experiment
+    with the sampling method. Which choice best matches this goal?
   options:
   - Use DDIM sampling, which can generate samples with fewer steps.
-  - Use a larger forward noise schedule and keep every sampling step.
-  - Use CTC decoding so the model can skip image denoising.
-  - Use a masked-language objective to predict the missing pixels.
+  - Use the forward process alone, which directly creates finished images.
+  - Use a GAN discriminator during every denoising step.
+  - Use a longer noise schedule to guarantee fewer sampling steps.
   answer: 0
-  explanation: DDIM is a diffusion sampling approach that can produce samples using fewer steps than the standard
-    DDPM procedure, often reducing sampling time.
-- id: q13
-  topic: Curriculum
-  text: A designer wants a generated image to follow the pose and outline in a supplied sketch while still responding
-    to a text prompt. Which approach is most suitable?
+  explanation: DDIM is a sampling approach that can produce images with fewer steps than a conventional DDPM sampling
+    process. The forward process adds noise rather than generating a finished sample.
+- id: q38
+  topic: Diffusion Models Foundations
+  text: A Stable Diffusion user raises the guidance scale because the generated image is not following the prompt
+    closely enough. What trade-off might they observe?
   options:
-  - Use ControlNet to condition generation on the sketch.
-  - Increase the tokenizer vocabulary to represent more sketch details.
-  - Use a mel spectrogram as the image-generation condition.
-  - Remove text conditioning so the sketch can become the prompt.
-  answer: 0
-  explanation: ControlNet provides structured image conditioning, such as a sketch or pose map, to guide the generated
-    image while allowing text conditioning as well.
-- id: q14
-  topic: Curriculum
-  text: A speech-processing model needs a time-frequency representation that uses a frequency scale better aligned
-    with human hearing than a linear-frequency spectrogram. Which feature should the team use?
-  options:
-  - A mel spectrogram computed from short-time Fourier transforms.
-  - A raw waveform resampled to a higher bit depth.
-  - A bag-of-words vector computed from the transcript.
-  - A sequence of MFCC values computed without any spectral analysis.
-  answer: 0
-  explanation: A mel spectrogram maps frequency information onto the mel scale, which is more aligned with human
-    perception than a linear frequency scale.
-- id: q15
-  topic: Curriculum
-  text: An ASR training dataset provides audio clips and their transcripts, but not the exact frame-by-frame alignment
-    between the two. Which approach is designed to learn from this kind of data?
-  options:
-  - CTC, which can train without a pre-specified alignment.
-  - A vocoder, which converts transcript tokens into aligned audio frames.
-  - A mel filter bank, which assigns transcript words to audio frames.
-  - A causal text decoder, which requires a frame label for every audio sample.
-  answer: 0
-  explanation: CTC supports training speech recognition systems when the transcript is known but the precise alignment
-    between audio frames and text tokens is not.
-- id: q16
-  topic: Capstone Project
-  text: For an ASR capstone, you need to compare small and large Whisper models on accented, noisy recordings. Which
-    evaluation plan best supports a fair comparison?
-  options:
-  - Use the same held-out recordings for each model and compare WER and transcription speed
-  - Use different recordings for each model and compare the number of transcribed words
-  - Choose the model with the clearest output on one clip and report its average speed
-  - Compare training loss across models and use it to estimate transcription accuracy
-  answer: 0
-  explanation: Testing each model on the same held-out audio makes the comparison fair, while WER and speed measure
-    accuracy and inference cost. Training loss or a single example does not provide the same evaluation.
-- id: q17
-  topic: Capstone Project
-  text: Your text-classification capstone must treat “the package arrived late” and “my delivery was delayed” as
-    related complaints despite their different wording. Which representation is the best fit to explore?
-  options:
-  - Raw word counts, since frequent words capture shared meaning
-  - TF-IDF vectors, since rare words automatically encode paraphrases
-  - Contextual embeddings, since they can represent meaning beyond exact word overlap
-  - Character counts, since similar message lengths indicate similar intent
-  answer: 2
-  explanation: Contextual embeddings can represent a sentence using its surrounding words, helping capture related
-    meanings despite limited word overlap. Bag-of-Words and TF-IDF primarily represent token occurrence or weighting.
-- id: q18
-  topic: Capstone Project
-  text: In an image-generation capstone, users must provide a rough pose drawing and have the generated image follow
-    its structure. Which approach should you try?
-  options:
-  - Use ControlNet to condition generation on the drawing
-  - Increase the text prompt length so it describes the pose in more detail
-  - Use a text-only classifier to select a matching generated image
-  - Train a language model to predict the next pose-description token
-  answer: 0
-  explanation: ControlNet is designed to guide image generation with an additional structured input, such as a pose
-    or drawing. A text-only prompt does not provide the same direct structural conditioning.
-- id: q19
-  topic: Capstone Project
-  text: Your TTS capstone mispronounces dates and abbreviations in user-submitted text. Which change best addresses
-    this before speech is generated?
-  options:
-  - Pass the original text directly to the vocoder
-  - Convert the text to a mel spectrogram before expanding abbreviations
-  - Use voice cloning to teach the model the intended pronunciation
-  - Normalize the text and convert it to pronunciation-oriented inputs before the acoustic model
-  answer: 3
-  explanation: Text normalization and grapheme-to-phoneme conversion can turn dates, abbreviations, and written
-    forms into inputs that better represent how they should be spoken. The vocoder comes later, converting acoustic
-    features into waveform audio.
-- id: q20
-  topic: Capstone Project
-  text: Generated images in your diffusion capstone often ignore important details in the prompt. You want to test
-    whether guidance scale affects prompt adherence. Which experiment is most informative?
-  options:
-  - Change the prompt and guidance scale for every image, then compare the results
-  - Keep the prompt and other settings fixed while generating outputs at several guidance scales
-  - Change the noise schedule for each guidance scale and compare only the sharpest result
-  - Use a different model for each guidance scale so each setting gets a fresh trial
+  - The image will necessarily use fewer denoising steps and lower resolution.
+  - The prompt may influence the image more strongly, but quality or variety may suffer.
+  - The model will stop using the text prompt and follow only the initial noise.
+  - The image will contain more training examples blended into the output.
   answer: 1
-  explanation: Varying guidance scale while holding other settings constant helps isolate its effect on prompt adherence.
-    Changing several factors at once makes it difficult to tell what caused a difference.
-- id: q21
-  topic: Capstone Project
-  text: You want a diffusion capstone to generate images of a custom object, but you have limited compute and want
-    to avoid updating all the model weights. What should you try?
+  explanation: Increasing guidance scale generally strengthens the prompt's influence on generation. Very strong
+    guidance can come at the expense of image quality or diversity.
+- id: q39
+  topic: Diffusion Models Foundations
+  text: An artist wants to generate a new image from a prompt while keeping the layout indicated by an input edge
+    map. Which approach is most suitable?
   options:
-  - Replace the denoising U-Net with a text tokenizer
-  - Train a new diffusion model from scratch using only the object images
-  - Fine-tune the model with a LoRA adapter on examples of the object
-  - Increase the sampling steps without changing the model parameters
+  - Use ControlNet to condition generation on the edge map.
+  - Use a VAE decoder to turn the edge map directly into text.
+  - Use DDIM to classify the edges before generating an image.
+  - Use a GAN discriminator to convert the prompt into an edge map.
+  answer: 0
+  explanation: ControlNet can provide structural image conditions, such as edges, to guide diffusion generation
+    alongside a text prompt. This helps preserve a desired layout or structure.
+- id: q40
+  topic: Speech Technologies
+  text: A speech model expects audio sampled at 16 kHz, but your recording is at 48 kHz. What should you do before
+    passing it to the model?
+  options:
+  - Change the sample-rate label to 16 kHz without changing the samples
+  - Remove two out of every three samples without processing the signal
+  - Resample the audio from 48 kHz to 16 kHz
+  - Increase the bit depth until the recording is 16 kHz
   answer: 2
-  explanation: LoRA adapts a model using a relatively small set of added trainable parameters, making it a practical
-    option for limited-resource fine-tuning. Increasing sampling steps changes inference, not what the model has
-    learned.
-- id: q22
-  topic: Capstone Project
-  text: For a mini language-model capstone, the model should generate a sequence one token at a time without using
-    tokens that come later in the sequence. Which training setup matches this goal?
+  explanation: Resampling converts the audio data to the model's expected sampling rate. Changing only the label
+    misrepresents the signal's timing.
+- id: q41
+  topic: Speech Technologies
+  text: You need a plot that shows how the frequencies in a spoken recording change over time. Which representation
+    should you create?
   options:
-  - Mask random input tokens and predict all masked tokens at once
-  - Encode the whole sequence and classify its overall topic
-  - Use an unmasked attention layer and predict the first token from the last
-  - Use causal attention and train the model to predict the next token
+  - A spectrogram computed from short-time Fourier transforms
+  - A single Fourier transform of the entire recording
+  - A waveform plot with its amplitude axis removed
+  - A list of the recording's sample values
+  answer: 0
+  explanation: A spectrogram uses short-time windows to show frequency content at successive moments. A transform
+    of the entire recording does not show when each frequency occurred.
+- id: q42
+  topic: Speech Technologies
+  text: A speech feature pipeline should represent frequency content using bands spaced to better reflect human
+    hearing. Which representation is the best fit?
+  options:
+  - A raw waveform with each sample kept as a feature
+  - A linear-frequency spectrogram with evenly spaced bands
+  - A bit-depth histogram of the complete recording
+  - A mel spectrogram with mel-spaced frequency bands
   answer: 3
-  explanation: Causal attention blocks access to future tokens, matching next-token prediction during autoregressive
-    generation. Masked-token prediction is a different objective that uses context on both sides of a masked position.
-- id: q23
-  topic: Capstone Project
-  text: Your audio capstone combines clips recorded at different sample rates, but the speech model expects one
-    fixed rate. What should the preprocessing pipeline do?
+  explanation: Mel spectrograms group frequency information on a scale designed to better reflect human auditory
+    perception. A linear-frequency spectrogram uses evenly spaced frequency bands instead.
+- id: q43
+  topic: Speech Technologies
+  text: A long recording contains pauses before and after a short spoken command. Which preprocessing step can help
+    reduce the audio sent to a speech recognizer?
   options:
-  - Relabel each clip with the expected rate without changing its samples
-  - Resample each clip to the model’s expected rate before feature extraction
-  - Convert every clip to a mel spectrogram before checking its sample rate
-  - Increase the bit depth so all clips have the same number of samples per second
+  - Increase the amplitude of the pauses until they resemble speech
+  - Use voice activity detection to identify and trim non-speech regions
+  - Convert the pauses into extra copies of the spoken command
+  - Apply text normalization to the audio waveform
   answer: 1
-  explanation: Resampling changes the audio samples so they represent the signal at the required rate; changing
-    only the rate label would misrepresent the audio. Bit depth describes amplitude precision, not samples per second.
+  explanation: Voice activity detection can locate speech regions so non-speech portions, such as long pauses, can
+    be trimmed. Text normalization is applied to text, not directly to a waveform.
+- id: q44
+  topic: Speech Technologies
+  text: You have speech recordings paired with transcripts, but no timestamped alignment between transcript characters
+    and audio frames. Which training approach is designed to handle this?
+  options:
+  - Train a vocoder to align each word with a waveform segment
+  - Use a mel spectrogram as the transcript for each recording
+  - Use CTC loss to learn from the audio and transcript without frame-level alignments
+  - Use word error rate to provide the alignment during training
+  answer: 2
+  explanation: CTC loss supports training with audio and transcripts without requiring frame-by-frame labels. Word
+    error rate evaluates recognition output rather than learning the alignment.
+- id: q45
+  topic: Speech Technologies
+  text: Your team wants to compare two recognizers by counting word-level insertions, deletions, and substitutions
+    against reference transcripts. Which metric should it use?
+  options:
+  - Word error rate
+  - Character error rate
+  - Sampling rate
+  - Mel-frequency cepstral coefficients
+  answer: 0
+  explanation: Word error rate compares recognized words with reference words, including insertions, deletions,
+    and substitutions. Character error rate performs a similar comparison at the character level.
+- id: q46
+  topic: Speech Technologies
+  text: A text-to-speech system has already converted a sentence into acoustic features. What should happen next
+    to produce listenable audio?
+  options:
+  - A voice activity detector should convert the features into words
+  - A text normalizer should turn the features into punctuation
+  - A sampling-rate converter should infer the missing sentence
+  - A neural vocoder should convert the features into a waveform
+  answer: 3
+  explanation: A vocoder turns acoustic features into an audio waveform, completing this part of the TTS pipeline.
+    Text normalization prepares text before acoustic generation.
+- id: q47
+  topic: Speech Technologies
+  text: A live captioning app must show words while a person is still speaking, rather than waiting for the whole
+    recording to finish. Which recognition setup fits this requirement?
+  options:
+  - Offline recognition that processes the complete recording after it ends
+  - Streaming recognition that processes incoming audio and can return partial results
+  - A transcription setup that waits for a manually supplied transcript
+  - A TTS setup that converts the speaker's audio into generated speech
+  answer: 1
+  explanation: Streaming recognition processes audio as it arrives, allowing partial transcription before the speaker
+    finishes. Offline recognition typically processes a completed recording.
 problem:
   title: Build TF-IDF Vectors
-  prompt: 'Write `tfidf_vectors(documents)`, which converts a list of documents into sparse TF-IDF vectors. Return
-    one dictionary per document, mapping each token to its TF-IDF value; omit tokens that do not occur in that document.
+  prompt: 'Write `tfidf_vectors(documents)`, which returns one dictionary per document, mapping each token in that
+    document to its TF-IDF weight.
 
 
-    Normalize text by lowercasing it and extracting tokens with the pattern `[a-z0-9]+` (ASCII letters and digits).
-    For each document, calculate term frequency as `count(token) / number_of_tokens_in_document`. Calculate inverse
-    document frequency as `log((1 + N) / (1 + df)) + 1`, where `N` is the total number of documents and `df` is
-    the number of documents containing the token. Multiply TF by IDF. Do not round or L2-normalize the results.
-    An empty or tokenless document has an empty dictionary; it still counts toward `N`. An empty input list returns
-    an empty list.
+    Use these rules:
+
+    - Lowercase the text and tokenize with the regular expression `[a-z0-9]+` (contiguous letters or digits). Ignore
+    punctuation and whitespace.
+
+    - Term frequency is the raw count of a token in that document.
+
+    - For a corpus of `N` documents, use smoothed inverse document frequency: `idf = ln((1 + N) / (1 + df)) + 1`,
+    where `df` is the number of documents containing the token.
+
+    - Multiply term frequency by IDF, then L2-normalize each nonempty document''s weights. Leave tokens absent from
+    a document out of its dictionary. An empty document maps to `{}`, and an empty corpus maps to `[]`.
 
 
     Example:
 
     ```python
 
-    vectors = tfidf_vectors(["red red blue", "blue green"])
+    tfidf_vectors(["Cats, cats! purr", "Dogs purr"])
 
-    [{k: round(v, 3) for k, v in d.items()} for d in vectors]
+    # Approximately:
 
-    # [{''red'': 0.937, ''blue'': 0.333}, {''blue'': 0.5, ''green'': 0.703}]
+    # [{''cats'': 0.9422, ''purr'': 0.3352},
+
+    #  {''dogs'': 0.8148, ''purr'': 0.5797}]
 
     ```'
-  starter_code: "def tfidf_vectors(documents):\n    \"\"\"Return one sparse TF-IDF dictionary for each input document.\"\
-    \"\"\n    ..."
+  starter_code: "def tfidf_vectors(documents):\n    \"\"\"Return L2-normalized, smoothed TF-IDF dictionaries for\
+    \ the documents.\"\"\"\n    ..."
   tests: 'import math
 
 
-    vectors = tfidf_vectors(["red red blue", "blue green"])
+    assert tfidf_vectors([]) == [], "An empty corpus should produce no vectors."
 
-    rare_idf = math.log(3 / 2) + 1
+    assert tfidf_vectors([""]) == [{}], "An empty document should produce an empty vector."
 
-    assert abs(vectors[0]["red"] - (2 / 3) * rare_idf) < 1e-12, "term frequency should use the document token count"
-
-    assert abs(vectors[0]["blue"] - 1 / 3) < 1e-12, "terms in every document should use the smoothed IDF"
-
-    assert abs(vectors[1]["green"] - 0.5 * rare_idf) < 1e-12, "rare terms should receive their corpus IDF"
+    assert tfidf_vectors(["Hello, HELLO!", "world"])[0] == {"hello": 1.0}, "Tokenization should lowercase and ignore
+    punctuation."
 
 
-    vectors = tfidf_vectors(["HELLO, hello!", "hello?"])
+    v = tfidf_vectors(["fox fox den"])[0]
 
-    assert vectors == [{"hello": 1.0}, {"hello": 1.0}], "tokenization should lowercase text and ignore punctuation"
-
-
-    vectors = tfidf_vectors(["", "Echo echo"])
-
-    assert vectors[0] == {}, "a tokenless document should produce an empty vector"
-
-    assert abs(vectors[1]["echo"] - (math.log(3 / 2) + 1)) < 1e-12, "empty documents should still count toward corpus
-    size"
+    assert math.isclose(v["fox"], 2 / math.sqrt(5)) and math.isclose(v["den"], 1 / math.sqrt(5)), "Repeated terms
+    should use raw term counts and vectors should be normalized."
 
 
-    assert tfidf_vectors(["", "!!!"]) == [{}, {}], "documents with no tokens should all produce empty vectors"
+    v = tfidf_vectors(["sun moon", "sun"])[0]
 
-    assert tfidf_vectors([]) == [], "an empty input should produce an empty list"
+    r = math.log(3 / 2) + 1
+
+    assert math.isclose(v["sun"], 1 / math.sqrt(1 + r * r)) and math.isclose(v["moon"], r / math.sqrt(1 + r * r)),
+    "Rare terms should receive greater smoothed IDF weight."
 
 
-    vectors = tfidf_vectors(["one two"])
+    v = tfidf_vectors(["a b c", "a"])[0]
 
-    assert abs(vectors[0]["one"] - 0.5) < 1e-12 and abs(vectors[0]["two"] - 0.5) < 1e-12, "a single-document corpus
-    should use smoothed IDF and normalized term frequency"'
-  solution: "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return one sparse TF-IDF dictionary\
-    \ for each input document.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document\
-    \ in documents]\n    n_documents = len(tokenized)\n\n    document_frequency = {}\n    for tokens in tokenized:\n\
-    \        for token in set(tokens):\n            document_frequency[token] = document_frequency.get(token, 0)\
-    \ + 1\n\n    vectors = []\n    for tokens in tokenized:\n        if not tokens:\n            vectors.append({})\n\
-    \            continue\n\n        counts = {}\n        for token in tokens:\n            counts[token] = counts.get(token,\
-    \ 0) + 1\n\n        vector = {}\n        for token, count in counts.items():\n            tf = count / len(tokens)\n\
-    \            df = document_frequency[token]\n            idf = math.log((1 + n_documents) / (1 + df)) + 1\n\
-    \            vector[token] = tf * idf\n        vectors.append(vector)\n\n    return vectors"
+    assert math.isclose(sum(weight * weight for weight in v.values()), 1.0), "Each nonempty vector should have unit
+    L2 norm."
+
+    assert "b" not in tfidf_vectors(["a b", "a"])[1], "Tokens absent from a document should not appear in its vector."'
+  solution: "import math\nimport re\nfrom collections import Counter\n\n\ndef tfidf_vectors(documents):\n    \"\"\
+    \"Return L2-normalized, smoothed TF-IDF dictionaries for the documents.\"\"\"\n    tokenized = [re.findall(r\"\
+    [a-z0-9]+\", document.lower()) for document in documents]\n    if not tokenized:\n        return []\n\n    counts\
+    \ = [Counter(tokens) for tokens in tokenized]\n    document_frequency = Counter()\n    for counter in counts:\n\
+    \        document_frequency.update(counter.keys())\n\n    n_documents = len(documents)\n    vectors = []\n \
+    \   for counter in counts:\n        weights = {\n            token: count * (math.log((1 + n_documents) / (1\
+    \ + document_frequency[token])) + 1)\n            for token, count in counter.items()\n        }\n        norm\
+    \ = math.sqrt(sum(weight * weight for weight in weights.values()))\n        if norm:\n            weights =\
+    \ {token: weight / norm for token, weight in weights.items()}\n        vectors.append(weights)\n    return vectors"
   packages: []
-  topic: Curriculum
+  topic: Foundations of Natural Language Processing
   wrong_solutions:
-  - "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, using\
-    \ unsmoothed IDF.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document in documents]\n\
-    \    n_documents = len(tokenized)\n    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n\
-    \            df[token] = df.get(token, 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts\
-    \ = {}\n        for token in tokens:\n            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token:\
-    \ count / len(tokens) * math.log(n_documents / df[token]) for token, count in counts.items()} if tokens else\
-    \ {})\n    return vectors"
-  - "import math\nimport re\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, using\
-    \ raw term counts.\"\"\"\n    tokenized = [re.findall(r\"[a-z0-9]+\", document.lower()) for document in documents]\n\
-    \    n_documents = len(tokenized)\n    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n\
-    \            df[token] = df.get(token, 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts\
-    \ = {}\n        for token in tokens:\n            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token:\
-    \ count * (math.log((1 + n_documents) / (1 + df[token])) + 1) for token, count in counts.items()})\n    return\
-    \ vectors"
-  - "import math\n\n\ndef tfidf_vectors(documents):\n    \"\"\"Return sparse TF-IDF dictionaries, splitting on whitespace.\"\
-    \"\"\n    tokenized = [document.lower().split() for document in documents]\n    n_documents = len(tokenized)\n\
-    \    df = {}\n    for tokens in tokenized:\n        for token in set(tokens):\n            df[token] = df.get(token,\
-    \ 0) + 1\n    vectors = []\n    for tokens in tokenized:\n        counts = {}\n        for token in tokens:\n\
-    \            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token: count / len(tokens) *\
-    \ (math.log((1 + n_documents) / (1 + df[token])) + 1) for token, count in counts.items()} if tokens else {})\n\
-    \    return vectors"
-problems: []
+  - "import re\nfrom collections import Counter\n\ndef tfidf_vectors(documents):\n    tokenized = [re.findall(r\"\
+    [a-z0-9]+\", d.lower()) for d in documents]\n    counts = [Counter(tokens) for tokens in tokenized]\n    result\
+    \ = []\n    for counter in counts:\n        norm = sum(counter.values()) ** 0.5\n        result.append({token:\
+    \ count / norm for token, count in counter.items()} if norm else {})\n    return result"
+  - "import math\nfrom collections import Counter\n\ndef tfidf_vectors(documents):\n    tokenized = [d.lower().split()\
+    \ for d in documents]\n    counts = [Counter(tokens) for tokens in tokenized]\n    df = Counter()\n    for counter\
+    \ in counts:\n        df.update(counter.keys())\n    result = []\n    for counter in counts:\n        weights\
+    \ = {token: count * (math.log((1 + len(documents)) / (1 + df[token])) + 1) for token, count in counter.items()}\n\
+    \        norm = math.sqrt(sum(value * value for value in weights.values()))\n        result.append({token: value\
+    \ / norm for token, value in weights.items()} if norm else {})\n    return result"
+  - "import math\nimport re\nfrom collections import Counter\n\ndef tfidf_vectors(documents):\n    tokenized = [re.findall(r\"\
+    [a-z0-9]+\", d.lower()) for d in documents]\n    counts = [Counter(tokens) for tokens in tokenized]\n    df\
+    \ = Counter()\n    for counter in counts:\n        df.update(counter.keys())\n    result = []\n    for counter\
+    \ in counts:\n        weights = {token: count * (math.log((1 + len(documents)) / (1 + df[token])) + 1) for token,\
+    \ count in counter.items()}\n        result.append(weights)\n    return result"
+problems:
+- title: Diffuse a Clean Vector
+  prompt: 'Write `forward_diffuse(clean, noise, betas, t)` to compute one forward-diffusion step for a vector. `betas`
+    contains the noise variance for each step, and `t` is a **1-based** step count: use the first `t` beta values.
+    Assume the vectors have equal lengths, `1 <= t <= len(betas)`, and each beta is between 0 and 1.
+
+
+    For each step, let `alpha = 1 - beta`. Compute the cumulative product `alpha_bar` through step `t`, then return
+    a new vector using the same supplied noise at every component:
+
+
+    `x_t[i] = sqrt(alpha_bar) * clean[i] + sqrt(1 - alpha_bar) * noise[i]`
+
+
+    Use only the standard library. For example:
+
+
+    ```python
+
+    forward_diffuse([2, -1], [1, 0], [0.25], 1)
+
+    # [2.232050807568877, -0.8660254037844386]
+
+    ```'
+  starter_code: "def forward_diffuse(clean, noise, betas, t):\n    \"\"\"Return the forward-diffused vector at the\
+    \ 1-based step t.\"\"\"\n    ..."
+  tests: 'import math
+
+
+    result = forward_diffuse([2, -1], [1, 0], [0.25], 1)
+
+    assert abs(result[0] - (2 * math.sqrt(0.75) + 0.5)) < 1e-12 and abs(result[1] + math.sqrt(0.75)) < 1e-12, "first
+    step must use the diffusion formula"
+
+
+    result = forward_diffuse([1], [0], [0.1, 0.2], 2)
+
+    assert abs(result[0] - math.sqrt(0.72)) < 1e-12, "later steps must use the cumulative alpha product"
+
+
+    result = forward_diffuse([0, 0], [2, -4], [0.1, 0.2], 2)
+
+    assert abs(result[0] - 2 * math.sqrt(0.28)) < 1e-12 and abs(result[1] + 4 * math.sqrt(0.28)) < 1e-12, "noise
+    must be scaled by the square root of one minus cumulative alpha"
+
+
+    result = forward_diffuse([3, -2], [100, 50], [0], 1)
+
+    assert result == [3, -2], "zero beta must leave the clean vector unchanged"
+
+
+    result = forward_diffuse([3], [-2], [0.2, 0, 0.5], 3)
+
+    assert abs(result[0] - (3 * math.sqrt(0.4) - 2 * math.sqrt(0.6))) < 1e-12, "include all steps through t, including
+    a zero-beta step"
+
+
+    result = forward_diffuse([0], [1], [0.5], 1)
+
+    assert abs(result[0] - math.sqrt(0.5)) < 1e-12, "a zero clean value must still produce the correctly scaled
+    noise"'
+  solution: "import math\n\n\ndef forward_diffuse(clean, noise, betas, t):\n    \"\"\"Return the forward-diffused\
+    \ vector at the 1-based step t.\"\"\"\n    alpha_bar = 1.0\n    for beta in betas[:t]:\n        alpha_bar *=\
+    \ 1.0 - beta\n\n    clean_scale = math.sqrt(alpha_bar)\n    noise_scale = math.sqrt(1.0 - alpha_bar)\n    return\
+    \ [clean_scale * value + noise_scale * eps\n            for value, eps in zip(clean, noise)]"
+  packages: []
+  topic: Diffusion Models Foundations
+  wrong_solutions:
+  - "import math\n\n\ndef forward_diffuse(clean, noise, betas, t):\n    \"\"\"Return the forward-diffused vector\
+    \ at the 1-based step t.\"\"\"\n    alpha = 1.0 - betas[t - 1]\n    return [math.sqrt(alpha) * value + math.sqrt(1.0\
+    \ - alpha) * eps\n            for value, eps in zip(clean, noise)]"
+  - "import math\n\n\ndef forward_diffuse(clean, noise, betas, t):\n    \"\"\"Return the forward-diffused vector\
+    \ at the 1-based step t.\"\"\"\n    alpha_bar = 1.0\n    for beta in betas[:t]:\n        alpha_bar *= 1.0 -\
+    \ beta\n    return [math.sqrt(alpha_bar) * value + (1.0 - alpha_bar) * eps\n            for value, eps in zip(clean,\
+    \ noise)]"
+  - "import math\n\n\ndef forward_diffuse(clean, noise, betas, t):\n    \"\"\"Return the forward-diffused vector\
+    \ at the 1-based step t.\"\"\"\n    alpha_bar = 1.0\n    for beta in betas[:t - 1]:\n        alpha_bar *= 1.0\
+    \ - beta\n    return [math.sqrt(alpha_bar) * value + math.sqrt(1.0 - alpha_bar) * eps\n            for value,\
+    \ eps in zip(clean, noise)]"
+- title: Measure Speech Recognition Errors
+  prompt: 'Write `speech_error_rates(reference, hypothesis)` to calculate word error rate (WER) and character error
+    rate (CER) for a speech recognition hypothesis.
+
+
+    Before scoring, lowercase both strings, remove ASCII punctuation, and collapse runs of whitespace to single
+    spaces. WER is the word-level Levenshtein distance divided by the number of reference words. CER is the character-level
+    Levenshtein distance divided by the number of characters in the normalized reference, including spaces. If both
+    normalized inputs are empty, return 0 for both rates; if only the reference is empty, return 1 for both rates.
+    Return a dictionary with the keys `wer` and `cer`, containing rates as fractions rather than percentages. Insertion
+    rates can exceed 1.
+
+
+    Example:
+
+    ```python
+
+    speech_error_rates("the cat", "the cut")
+
+    # {''wer'': 0.5, ''cer'': 0.14285714285714285}
+
+    ```'
+  starter_code: "def speech_error_rates(reference: str, hypothesis: str) -> dict[str, float]:\n    \"\"\"Return\
+    \ normalized word and character error rates for a hypothesis.\"\"\"\n    ..."
+  tests: 'assert speech_error_rates("Hello, WORLD!", "hello world") == {"wer": 0.0, "cer": 0.0}, "case and punctuation
+    should be normalized"
+
+    assert speech_error_rates("the cat", "the cut") == {"wer": 0.5, "cer": 1 / 7}, "WER and CER should use different
+    units"
+
+    assert speech_error_rates("we code", "we quickly code")["wer"] == 0.5, "a word insertion should count as an
+    edit"
+
+    assert speech_error_rates("we really code", "we code")["wer"] == 1 / 3, "a word deletion should count as an
+    edit"
+
+    assert speech_error_rates("", "") == {"wer": 0.0, "cer": 0.0}, "two empty normalized strings should have zero
+    error"
+
+    assert speech_error_rates("", "hello") == {"wer": 1.0, "cer": 1.0}, "an empty reference should use the specified
+    convention"
+
+    assert speech_error_rates("a", "a b c") == {"wer": 2.0, "cer": 4.0}, "insertion rates can exceed one"'
+  solution: "import string\n\n\ndef _edit_distance(left: list[str] | str, right: list[str] | str) -> int:\n    previous\
+    \ = list(range(len(right) + 1))\n    for i, left_item in enumerate(left, start=1):\n        current = [i]\n\
+    \        for j, right_item in enumerate(right, start=1):\n            current.append(min(\n                current[j\
+    \ - 1] + 1,\n                previous[j] + 1,\n                previous[j - 1] + (left_item != right_item),\n\
+    \            ))\n        previous = current\n    return previous[-1]\n\n\ndef speech_error_rates(reference:\
+    \ str, hypothesis: str) -> dict[str, float]:\n    \"\"\"Return normalized word and character error rates for\
+    \ a hypothesis.\"\"\"\n    punctuation = str.maketrans(\"\", \"\", string.punctuation)\n\n    def normalize(text:\
+    \ str) -> str:\n        return \" \".join(text.lower().translate(punctuation).split())\n\n    reference = normalize(reference)\n\
+    \    hypothesis = normalize(hypothesis)\n    if not reference:\n        rate = 0.0 if not hypothesis else 1.0\n\
+    \        return {\"wer\": rate, \"cer\": rate}\n\n    reference_words = reference.split()\n    hypothesis_words\
+    \ = hypothesis.split()\n    wer = _edit_distance(reference_words, hypothesis_words) / len(reference_words)\n\
+    \    cer = _edit_distance(reference, hypothesis) / len(reference)\n    return {\"wer\": wer, \"cer\": cer}"
+  packages: []
+  topic: Speech Technologies
+  wrong_solutions:
+  - "import string\n\n\ndef speech_error_rates(reference: str, hypothesis: str) -> dict[str, float]:\n    reference_words\
+    \ = reference.split()\n    hypothesis_words = hypothesis.split()\n    punctuation = str.maketrans(\"\", \"\"\
+    , string.punctuation)\n    reference_chars = reference.translate(punctuation)\n    hypothesis_chars = hypothesis.translate(punctuation)\n\
+    \    wer = sum(a != b for a, b in zip(reference_words, hypothesis_words)) + abs(len(reference_words) - len(hypothesis_words))\n\
+    \    cer = sum(a != b for a, b in zip(reference_chars, hypothesis_chars)) + abs(len(reference_chars) - len(hypothesis_chars))\n\
+    \    return {\"wer\": wer / max(1, len(reference_words)), \"cer\": cer / max(1, len(reference_chars))}"
+  - "import string\n\n\ndef speech_error_rates(reference: str, hypothesis: str) -> dict[str, float]:\n    punctuation\
+    \ = str.maketrans(\"\", \"\", string.punctuation)\n    reference = \" \".join(reference.lower().translate(punctuation).split())\n\
+    \    hypothesis = \" \".join(hypothesis.lower().translate(punctuation).split())\n    reference_words = reference.split()\n\
+    \    hypothesis_words = hypothesis.split()\n    edits = sum(a != b for a, b in zip(reference_words, hypothesis_words))\
+    \ + abs(len(reference_words) - len(hypothesis_words))\n    rate = edits / max(1, len(reference_words))\n   \
+    \ return {\"wer\": rate, \"cer\": rate}"
+  - "import string\n\n\ndef speech_error_rates(reference: str, hypothesis: str) -> dict[str, float]:\n    punctuation\
+    \ = str.maketrans(\"\", \"\", string.punctuation)\n    reference = \" \".join(reference.lower().translate(punctuation).split()).split()\n\
+    \    hypothesis = \" \".join(hypothesis.lower().translate(punctuation).split()).split()\n    edits = sum(a !=\
+    \ b for a, b in zip(reference, hypothesis)) + abs(len(reference) - len(hypothesis))\n    return {\"wer\": edits\
+    \ / max(1, len(reference)), \"cer\": edits / max(1, len(reference))}"

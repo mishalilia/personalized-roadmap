@@ -4,297 +4,606 @@ status: draft
 generated_by: gpt-6-luna
 reviewed_by: null
 questions:
-- id: q1
-  topic: Curriculum
-  text: A PyTorch image batch has shape `(8, 3, 224, 224)`. Which interpretation is correct?
+- id: q24
+  topic: Core Computer Vision & Deep Learning
+  text: A batch contains 8 RGB images, each 32 pixels tall and 32 pixels wide. If the images use the channels-first
+    layout `(batch, channels, height, width)`, what is the batch tensor shape?
   options:
-  - 8 images, each with 3 channels and height and width 224
-  - 3 images, each with 8 channels and height and width 224
-  - 8 images, each with height 3 and width 224 and 224 channels
-  - 224 images, each with 8 channels and height and width 3
-  answer: 0
-  explanation: PyTorch image batches commonly use the order batch, channels, height, width. Here the batch contains
-    8 RGB images of size 224 by 224.
-- id: q2
-  topic: Curriculum
-  text: A convolution receives a 32 × 32 feature map and uses a 3 × 3 kernel, padding 1, and stride 2. What is the
-    output's spatial size?
-  options:
-  - 15 × 15
-  - 16 × 16
-  - 17 × 17
-  - 32 × 32
-  answer: 1
-  explanation: The convolution output size is ⌊(32 + 2·1 − 3)/2⌋ + 1 = 16 in each dimension. Padding preserves size
-    only when the stride is 1.
-- id: q3
-  topic: Curriculum
-  text: A CNN's first layers respond to edges, while later layers respond to combinations of shapes that often indicate
-    object parts. Which change would most directly help the network build more complex visual representations?
-  options:
-  - Replace all convolutions with a single global average
-  - Add learned layers that combine earlier feature maps
-  - Convert every intermediate feature map to class probabilities
-  - Keep only the first layer's feature maps for classification
-  answer: 1
-  explanation: Successive learned layers can combine simpler patterns into more complex features. Turning every
-    layer into class probabilities or discarding later features would not support that hierarchy.
-- id: q4
-  topic: Curriculum
-  text: A model must assign each image to exactly one of five classes. Which output and loss pairing best fits this
-    task?
-  options:
-  - Five sigmoid outputs with binary cross-entropy
-  - One linear output with mean squared error
-  - Five softmax scores with cross-entropy
-  - Five ReLU outputs with intersection over union
+  - (8, 32, 32, 3)
+  - (3, 8, 32, 32)
+  - (8, 3, 32, 32)
+  - (32, 32, 3, 8)
   answer: 2
-  explanation: Softmax scores represent a distribution over mutually exclusive classes, and cross-entropy compares
-    that distribution with the target class. Sigmoid outputs are more natural when classes can occur independently.
-- id: q5
-  topic: Curriculum
-  text: A training loop calls `loss.backward()` and `optimizer.step()` on every batch, but never clears gradients.
-    What is the likely result?
+  explanation: The batch dimension comes first, followed by the three color channels, height, and width. That gives
+    a shape of `(8, 3, 32, 32)`.
+- id: q25
+  topic: Core Computer Vision & Deep Learning
+  text: A convolution takes a 9×9 feature map, uses a 3×3 kernel, stride 2, and padding 1. What is the output's
+    spatial size?
   options:
-  - Gradients accumulate across batches, changing the intended updates
-  - The model's parameters are reset before every optimizer step
-  - Autograd computes gradients only for the final batch
-  - The loss is averaged automatically across the whole epoch
+  - 5×5
+  - 4×4
+  - 6×6
+  - 7×7
   answer: 0
-  explanation: PyTorch accumulates gradients in parameter `.grad` fields until they are cleared. Without clearing
-    them, each update uses gradients from the current and earlier batches.
-- id: q6
-  topic: Curriculum
-  text: Training with a fixed learning rate makes progress uneven because gradients vary considerably from batch
-    to batch. Which approach is a reasonable first choice to try?
+  explanation: For each dimension, the output size is floor((9 + 2 − 3) / 2) + 1 = 5. The output is therefore 5×5.
+- id: q26
+  topic: Core Computer Vision & Deep Learning
+  text: When inspecting a trained CNN, early layers respond to edges while later layers respond to combinations
+    resembling object parts. What is the best interpretation?
   options:
-  - Use an optimizer such as Adam that adapts updates using gradient history
-  - Remove the loss function so the optimizer can infer the target
-  - Increase the batch size until each update contains the whole dataset
-  - Replace gradient updates with random changes to the parameters
-  answer: 0
-  explanation: Adam adapts parameter updates using estimates based on recent gradients, which can help when gradients
-    vary across batches. The other choices either remove necessary training information or change the process into
-    something other than gradient-based learning.
-- id: q7
-  topic: Curriculum
-  text: A vision model performs well on its training images but poorly on new images. Which change is most directly
-    aimed at reducing overfitting?
-  options:
-  - Apply varied, label-preserving image augmentations during training
-  - Tune hyperparameters repeatedly against the test set
-  - Increase the model's capacity without changing the training data
-  - Evaluate only on training images to avoid noisy measurements
-  answer: 0
-  explanation: Label-preserving augmentation exposes the model to more varied training examples and can improve
-    generalization. Repeatedly using the test set for tuning leaks evaluation information rather than addressing
-    overfitting cleanly.
-- id: q8
-  topic: Curriculum
-  text: You have a pretrained CNN and a small labeled dataset for a related image task. Which plan is a sensible
-    starting point?
-  options:
-  - Discard the pretrained weights and train the entire network from scratch
-  - Freeze the feature layers, train a new task-specific head, then consider unfreezing some layers
-  - Freeze the classifier head and train only the final output labels
-  - Use the pretrained model without changing its output layer or evaluating it
-  answer: 1
-  explanation: A new head adapts the model to the target labels while frozen pretrained features reduce the amount
-    of data needed initially. If appropriate, unfreezing some feature layers allows further fine-tuning.
-- id: q9
-  topic: Curriculum
-  text: An image contains two dogs and a bicycle, and the application needs a class and a location for each object.
-    Which model output is needed?
-  options:
-  - One class label for the entire image
-  - A class label and bounding box for each detected object
-  - One bounding box around the full image with no class labels
-  - A pixel intensity estimate for each image channel
-  answer: 1
-  explanation: Object detection must identify multiple objects and localize each one, typically with a class label
-    and bounding box. A single image-level label does not say how many objects are present or where they are.
-- id: q10
-  topic: Curriculum
-  text: A predicted box overlaps the ground-truth box, but also extends far beyond it. Which change would increase
-    their Intersection over Union (IoU)?
-  options:
-  - Move the predicted box so its overlap with the ground-truth box increases and its excess area decreases
-  - Increase the predicted box's area while leaving the overlap unchanged
-  - Lower the confidence score while keeping both boxes unchanged
-  - Add more predicted classes while keeping both boxes unchanged
-  answer: 0
-  explanation: IoU is intersection area divided by union area, so increasing overlap and reducing excess area raises
-    the ratio. Changing confidence or class count does not alter the IoU of these two boxes.
-- id: q11
-  topic: Curriculum
-  text: A detector misses many true objects. Lowering its confidence threshold finds more objects, but also adds
-    more false detections. What is the likely metric effect?
-  options:
-  - Recall tends to increase while precision may decrease
-  - Precision tends to increase while recall must remain unchanged
-  - Both precision and recall must decrease
-  - Neither precision nor recall can change
-  answer: 0
-  explanation: A lower threshold generally accepts more predictions, including some previously missed true objects,
-    raising recall. It can also admit more false positives, which may lower precision.
-- id: q12
-  topic: Curriculum
-  text: A system must process video on a device with limited compute, and small increases in localization accuracy
-    are less important than low latency. Which detector design is a reasonable fit?
-  options:
-  - A two-stage detector that first proposes regions and then classifies each region
-  - A one-stage detector that predicts classes and boxes directly in one pass
-  - A sliding-window classifier run at many scales for every frame
-  - A classifier that outputs only the most likely class for each frame
-  answer: 1
-  explanation: One-stage detectors predict boxes and classes in a single pass and are often chosen when inference
-    speed matters. Two-stage and sliding-window approaches generally require more sequential work, while an image
-    classifier does not localize objects.
-- id: q13
-  topic: Curriculum
-  text: In a grid-based detector, an object's center falls inside one grid cell. Which prediction responsibility
-    is most consistent with that setup?
-  options:
-  - The cell predicts information for the object, including its class and box
-  - Every cell predicts the same full-image class distribution
-  - The cell predicts only the object's color, leaving location to postprocessing
-  - The cell is ignored unless the object's corners also fall inside it
-  answer: 0
-  explanation: In grid-based formulations, the cell containing an object's center is commonly assigned responsibility
-    for predicting that object's class and localization. Requiring the entire object to fit inside one cell would
-    make many ordinary detections impossible.
-- id: q14
-  topic: Curriculum
-  text: After applying a crop to a training image, the image changes but its bounding-box labels are left as they
-    were. What is the main likely consequence?
-  options:
-  - The labels no longer match the objects' locations in the transformed image
-  - The labels become more precise because the image has fewer pixels
-  - The model automatically recovers the original box coordinates during training
-  - The crop changes the class labels but leaves box coordinates valid
-  answer: 0
-  explanation: Geometric image transforms change object positions, so corresponding boxes must be transformed or
-    invalid boxes removed. Unchanged coordinates provide incorrect localization targets.
-- id: q15
-  topic: Curriculum
-  text: Two detection models are evaluated on the same dataset. Model A has higher precision at one chosen confidence
-    threshold, but Model B has higher mAP across the evaluated classes and IoU criteria. Which conclusion is best
-    supported?
-  options:
-  - Model A is necessarily better because one threshold determines all detector quality
-  - Model B performs better on the evaluated aggregate detection metric
-  - The models must have identical recall because their precision values differ
-  - Neither model can be compared unless their training losses are identical
-  answer: 1
-  explanation: mAP summarizes average precision across classes and specified IoU criteria, so Model B is better
-    by that evaluated aggregate metric. A single precision measurement at one threshold does not establish overall
-    superiority.
-- id: q16
-  topic: Capstone
-  text: A capstone system must identify several objects in each image and draw a separate box around each one. Which
-    model output best fits the requirement?
-  options:
-  - A detector that predicts a class and box for each object
-  - A classifier that predicts one label for the whole image
-  - A feature extractor that returns one vector for each image
-  - A classifier that returns probabilities for image-level labels
-  answer: 0
-  explanation: Object detection predicts both object classes and their locations, including multiple objects in
-    one image. Image classification alone does not provide separate bounding boxes.
-- id: q17
-  topic: Capstone
-  text: You prepare a custom YOLO dataset, but training reports incorrect classes for some objects. What should
-    you check first?
-  options:
-  - Whether the optimizer uses momentum during training
-  - Whether label class IDs match the dataset's class-name order
-  - Whether the validation images have a higher resolution
-  - Whether the model uses a sigmoid activation in its head
-  answer: 1
-  explanation: YOLO labels refer to classes by ID, so those IDs must correspond to the class names in the dataset
-    configuration. A mismatch can cause objects to be trained under the wrong classes.
-- id: q18
-  topic: Capstone
-  text: Your capstone dataset contains many frames from each video. Which split strategy gives a more trustworthy
-    evaluation?
-  options:
-  - Randomly split all frames after resizing them
-  - Put frames with rare classes in the validation set
-  - Split by source video before assigning frames to sets
-  - Use the same frames for training and validation
-  answer: 2
-  explanation: Frames from the same video are often very similar, so splitting by source video reduces near-duplicate
-    examples across training and validation. This gives a more realistic measure of performance on unseen footage.
-- id: q19
-  topic: Capstone
-  text: You have a small labeled dataset for a new object-detection task. Which starting approach is most likely
-    to make effective use of it?
-  options:
-  - Train a detector from scratch and stop after one epoch
-  - Train only on the validation set to conserve labels
-  - Remove the detection head and use the model as a classifier
-  - Fine-tune a pretrained detector on the labeled images
+  - Later layers mainly preserve raw pixel values.
+  - Every layer learns the same visual patterns.
+  - Early layers identify complete object categories.
+  - Features become more complex across layers.
   answer: 3
-  explanation: Fine-tuning lets the model reuse visual features learned from earlier data, which is often helpful
-    when the new labeled dataset is small. Training from scratch generally requires more data and training.
-- id: q20
-  topic: Capstone
-  text: When you plot your capstone's training annotations over the images, many boxes appear shifted and oversized.
-    What should you investigate first?
+  explanation: 'CNNs typically build hierarchical representations: early layers capture simple patterns, and later
+    layers combine them into more complex features. This progression explains the different responses.'
+- id: q27
+  topic: Core Computer Vision & Deep Learning
+  text: A classifier must choose exactly one of five image categories. Which activation should convert its five
+    output scores into probabilities that sum to 1?
   options:
-  - The annotation coordinate format and any required normalization
-  - The learning-rate scheduler and its warm-up period
-  - The number of classes in the model's output layer
-  - The GPU batch size and available device memory
-  answer: 0
-  explanation: Misplaced or oversized plotted boxes point to an annotation-format or coordinate-scaling mismatch.
-    Fixing that data issue is more relevant than changing training settings.
-- id: q21
-  topic: Capstone
-  text: During capstone inference, you move the model to CUDA but get a device-mismatch error when passing it an
-    image batch. What should you do?
-  options:
-  - Convert the model weights to a different floating-point type
-  - Move the image batch to the same CUDA device as the model
-  - Increase the confidence threshold before running inference
-  - Switch the model to training mode before passing the batch
+  - ReLU
+  - Softmax
+  - Sigmoid
+  - Linear activation
   answer: 1
-  explanation: A model and its input tensors must be on compatible devices for the forward pass. Moving the image
-    batch to the model's CUDA device resolves this mismatch.
-- id: q22
-  topic: Capstone
-  text: Your detector has high precision but misses many labeled objects. Predictions appear only when the confidence
-    score is very high. Which change should you test?
+  explanation: Softmax converts the category scores into a distribution whose values sum to 1. Sigmoid treats each
+    output independently, which does not enforce a single choice.
+- id: q28
+  topic: Core Computer Vision & Deep Learning
+  text: A vision model predicts one of 10 mutually exclusive classes, and each training example has an integer class
+    label. Which loss is the best fit?
   options:
-  - Raise the confidence threshold to remove more predictions
-  - Increase the IoU threshold used to match predicted boxes
-  - Lower the confidence threshold and re-evaluate precision and recall
-  - Evaluate using only the training images instead of validation images
+  - Mean squared error on the input pixels
+  - Binary cross-entropy on one class only
+  - Cross-entropy on the class scores
+  - ReLU applied to the class labels
   answer: 2
-  explanation: Lowering the confidence threshold allows more predictions through, which can recover missed objects
-    and improve recall. Re-evaluating also shows the effect on precision.
-- id: q23
-  topic: Capstone
-  text: Your capstone detector has good mAP, but it must run in real time on a specific edge device. What is the
-    most useful next evaluation?
+  explanation: Cross-entropy is suited to classification with mutually exclusive classes and integer labels. It
+    compares the predicted class distribution with the correct class.
+- id: q29
+  topic: Core Computer Vision & Deep Learning
+  text: A training loop computes a loss, then runs `optimizer.step()`, but the model parameters never change. Which
+    missing operation should happen before the optimizer step?
   options:
-  - Measure training time on the computer used to build the model
-  - Compare the number of parameters without running inference
-  - Measure latency only on a high-end desktop GPU
-  - Measure end-to-end inference latency on the target device
+  - Backpropagate the loss to calculate gradients.
+  - Apply softmax to the model parameters.
+  - Add the loss value to the input images.
+  - Replace the optimizer with a loss function.
+  answer: 0
+  explanation: Backpropagation computes gradients of the loss with respect to the parameters. The optimizer uses
+    those gradients to update the parameters.
+- id: q30
+  topic: Core Computer Vision & Deep Learning
+  text: During CNN training, parameters have gradients with very different scales, and a single fixed step size
+    makes tuning difficult. Which optimizer is a reasonable choice to try?
+  options:
+  - Plain SGD with one fixed step size
+  - A loss function with a larger batch
+  - Dropout applied to the gradients
+  - Adam with adaptive parameter updates
   answer: 3
-  explanation: Deployment speed depends on the target hardware and the inference pipeline, not just model accuracy
-    or parameter count. Measuring end-to-end latency on the intended device directly tests the real-time requirement.
+  explanation: Adam adapts update sizes using estimates of gradient statistics, making it a reasonable option when
+    parameter gradients vary in scale. It still requires choosing an overall learning rate.
+- id: q31
+  topic: Core Computer Vision & Deep Learning
+  text: A CNN performs very well on its training images but poorly on validation images, and the training set is
+    small. Which change is most directly aimed at reducing this overfitting?
+  options:
+  - Increase the number of training epochs.
+  - Apply label-preserving image augmentation.
+  - Remove the validation images from evaluation.
+  - Increase the model's number of filters.
+  answer: 1
+  explanation: Label-preserving augmentation creates varied training examples from the small dataset, which can
+    help the model generalize. Training longer or increasing model capacity may worsen overfitting.
+- id: q32
+  topic: Hands-On Deep Learning with PyTorch
+  text: 'What is in `x.grad` after this code runs?
+
+    `x = torch.tensor([1., 2.], requires_grad=True)`
+
+    `y = (x * 3).sum()`
+
+    `y.backward()`'
+  options:
+  - A tensor containing `[3., 3.]`
+  - A tensor containing `[1., 2.]`
+  - A tensor containing `[3., 6.]`
+  - It remains `None` because `y` is a scalar
+  answer: 0
+  explanation: The sum is `3*x[0] + 3*x[1]`, so the gradient with respect to each element is 3. Calling `backward()`
+    stores those gradients in `x.grad`.
+- id: q33
+  topic: Hands-On Deep Learning with PyTorch
+  text: You are building a module with one linear layer that should be reused on every call. Which design does that
+    correctly?
+  options:
+  - Create the layer in `__init__` and apply it to `x` in `forward`.
+  - Create a new layer inside `forward` and apply it to `x`.
+  - Create the layer in `__init__` and apply it to `x` only during training.
+  - Create the layer after calling `forward` and apply it to the returned output.
+  answer: 0
+  explanation: Defining the layer in `__init__` registers its parameters with the module, and `forward` applies
+    those same parameters to each input. Creating it inside `forward` would make a new layer on every call.
+- id: q34
+  topic: Hands-On Deep Learning with PyTorch
+  text: A training loop computes the loss and gradients but the model parameters never change. Which step should
+    be added after `loss.backward()`?
+  options:
+  - Call `optimizer.zero_grad()` to apply the gradients.
+  - Call `optimizer.step()` to update the parameters.
+  - Call `model.eval()` to apply the gradients.
+  - Call `loss.item()` to update the parameters.
+  answer: 1
+  explanation: '`loss.backward()` computes gradients, but the optimizer changes parameters only when `optimizer.step()`
+    is called. `zero_grad()` clears gradients before a later pass rather than applying them.'
+- id: q35
+  topic: Hands-On Deep Learning with PyTorch
+  text: A classifier returns a tensor of raw scores shaped `[batch_size, num_classes]`, and each label is an integer
+    class index. Which loss setup fits this output?
+  options:
+  - Apply softmax to the scores, then pass the probabilities and integer labels to `CrossEntropyLoss`.
+  - Pass the raw scores and one-hot encoded labels to `CrossEntropyLoss`.
+  - Pass the raw scores and integer labels to `CrossEntropyLoss`.
+  - Apply sigmoid to the scores, then pass the probabilities and integer labels to `MSELoss`.
+  answer: 2
+  explanation: '`CrossEntropyLoss` expects raw class scores (logits) and integer class indices in this setup. Applying
+    softmax first is unnecessary and changes the input it is designed to receive.'
+- id: q36
+  topic: Hands-On Deep Learning with PyTorch
+  text: 'This inference code raises a device mismatch error. What is the best fix?
+
+    `model = model.to("cuda")`
+
+    `images = images.to("cpu")`
+
+    `outputs = model(images)`'
+  options:
+  - Move the model and images to the same device before calling the model.
+  - Move only the outputs to CUDA after calling the model.
+  - Convert the images to a Python list before calling the model.
+  - Move the model to CPU while leaving the images on CPU.
+  answer: 0
+  explanation: A model and its input tensors must be on the same device for the forward pass. Moving both to CUDA
+    or both to CPU resolves the mismatch.
+- id: q37
+  topic: Hands-On Deep Learning with PyTorch
+  text: You are validating a model with dropout and want to avoid building gradients for the validation pass. Which
+    approach should you use?
+  options:
+  - Keep the model in training mode and call `loss.backward()` for each batch.
+  - Call `model.train()` and wrap the pass in `torch.enable_grad()`.
+  - Call `model.eval()` and wrap the pass in `torch.no_grad()`.
+  - Call `optimizer.step()` after each validation batch.
+  answer: 2
+  explanation: '`model.eval()` switches modules such as dropout to evaluation behavior, while `torch.no_grad()`
+    prevents gradient tracking. Validation should not update model parameters.'
+- id: q38
+  topic: Hands-On Deep Learning with PyTorch
+  text: You saved a model with `torch.save(model.state_dict(), path)`. How should you reuse those weights in a new
+    model instance with the same architecture?
+  options:
+  - Load the file as a tensor and assign it to the model's output.
+  - Call `model.load_state_dict(torch.load(path))` on the new instance.
+  - Call `model.train(torch.load(path))` on the new instance.
+  - Call `optimizer.load_state_dict(torch.load(path))` to restore the model weights.
+  answer: 1
+  explanation: A saved `state_dict` contains the model's parameter values, which can be loaded into a new instance
+    of the same architecture with `load_state_dict`. The optimizer's state is separate from the model's weights.
+- id: q39
+  topic: Hands-On Deep Learning with PyTorch
+  text: 'A backward pass fails in this training code. What caused the problem?
+
+    `loss = criterion(outputs, labels)`
+
+    `loss = loss.item()`
+
+    `loss.backward()`'
+  options:
+  - The loss must be moved to the GPU before calling `backward()`.
+  - The labels must be converted to Python numbers before computing the loss.
+  - The output tensor must be detached before computing the loss.
+  - Calling `.item()` converted the loss tensor to a Python number, which has no gradient graph.
+  answer: 3
+  explanation: '`.item()` extracts a Python scalar from a one-element tensor and breaks the connection to the computation
+    graph. Keep the loss as a tensor for `backward()` and use `.item()` only when reporting its value.'
+- id: q40
+  topic: Object Detection Models & Architectures
+  text: A photo contains several different products, and a system must report each product's class and location.
+    Which output best fits the task?
+  options:
+  - One label for the main product in the whole photo
+  - A class label and bounding box for each product
+  - A probability score for each possible photo category
+  - A segmentation mask for the background only
+  answer: 1
+  explanation: Object detection identifies multiple objects and gives a location, usually a bounding box, for each
+    one. A single image-level label is classification, not detection.
+- id: q41
+  topic: Object Detection Models & Architectures
+  text: A predicted box and a ground-truth box overlap by 24 square units, and their combined area is 80 square
+    units. What is their IoU?
+  options:
+  - '0.30'
+  - '0.43'
+  - '0.70'
+  - '3.33'
+  answer: 0
+  explanation: 'IoU is the intersection area divided by the union area: 24 ÷ 80 = 0.30. It measures how much the
+    predicted and ground-truth boxes overlap relative to their combined area.'
+- id: q42
+  topic: Object Detection Models & Architectures
+  text: A detector assigns the correct class to a bicycle but places its bounding box mostly over the road beside
+    it. Which part of the detection result is wrong?
+  options:
+  - The class prediction
+  - The image-level category
+  - The object localization
+  - The number of image channels
+  answer: 2
+  explanation: The class is correct, but the box does not accurately locate the bicycle. That is a localization
+    error.
+- id: q43
+  topic: Object Detection Models & Architectures
+  text: A detector must handle objects that are often tall and narrow as well as short and wide. How can anchor
+    boxes help?
+  options:
+  - They replace image features with object labels
+  - They provide box shapes that predictions can adjust
+  - They ensure every object receives the same box size
+  - They remove the need to predict object locations
+  answer: 1
+  explanation: Anchor boxes provide starting shapes at locations in the image, and the model predicts adjustments
+    to fit objects. Different shapes can better suit objects with different aspect ratios.
+- id: q44
+  topic: Object Detection Models & Architectures
+  text: A two-stage detector first identifies promising image regions, then classifies and refines boxes for those
+    regions. What is the purpose of the first stage?
+  options:
+  - To generate candidate regions for further processing
+  - To assign the final class to every image pixel
+  - To calculate the dataset's average precision
+  - To resize every object to the same aspect ratio
+  answer: 0
+  explanation: The first stage proposes candidate regions that may contain objects. The next stage processes those
+    regions to classify objects and refine their boxes.
+- id: q45
+  topic: Object Detection Models & Architectures
+  text: A team needs detections quickly on a video stream and is willing to use an architecture that predicts boxes
+    and classes in one pass. Which detector style best fits?
+  options:
+  - A two-stage detector that refines region proposals
+  - A sliding-window classifier that checks every crop
+  - A one-stage detector that predicts directly
+  - An image classifier that returns one label
+  answer: 2
+  explanation: A one-stage detector predicts object classes and locations directly, without a separate region-proposal
+    stage. This design is often chosen when inference speed is important.
+- id: q46
+  topic: Object Detection Models & Architectures
+  text: A detector finds most real objects but also reports many objects that are not present. Which metric is most
+    directly affected by these false positives?
+  options:
+  - Recall
+  - Precision
+  - Intersection over Union
+  - Bounding-box width
+  answer: 1
+  explanation: Precision reflects the fraction of predicted detections that are correct, so false positives lower
+    it. Recall instead focuses on how many real objects were found.
+- id: q47
+  topic: Object Detection Models & Architectures
+  text: You need a single summary for comparing two detectors across object classes, using their precision-recall
+    performance. Which metric is designed for this?
+  options:
+  - Mean Average Precision (mAP)
+  - Intersection over Union (IoU)
+  - The number of candidate regions
+  - The bounding-box regression loss
+  answer: 0
+  explanation: mAP summarizes average precision across classes, drawing on precision-recall performance. IoU measures
+    overlap between boxes rather than summarizing detection performance across classes.
+- id: q48
+  topic: Single-Stage Detectors (YOLO Family)
+  text: In a grid-based YOLO detector, an object's center falls inside grid cell (4, 7). Which cell is responsible
+    for predicting that object's location?
+  options:
+  - The cell containing the object's top-left corner
+  - The cell containing the object's center
+  - The cell with the largest overlap with the object
+  - The cell nearest to the image center
+  answer: 1
+  explanation: In the grid-based formulation, the cell containing an object's center is responsible for predicting
+    it. The object's edges may extend into neighboring cells without changing that assignment.
+- id: q49
+  topic: Single-Stage Detectors (YOLO Family)
+  text: A dataset contains many long, narrow objects, but a detector's anchor boxes are mostly square. Which change
+    is most likely to help the detector predict these objects?
+  options:
+  - Use anchor boxes with more elongated shapes
+  - Make every anchor box smaller but keep it square
+  - Remove anchor boxes so the grid predicts only classes
+  - Use the same anchor shapes but add more image channels
+  answer: 0
+  explanation: Anchor boxes provide reference shapes for predicted boxes, so elongated anchors better match long,
+    narrow objects. This gives the detector a more suitable starting shape to adjust.
+- id: q50
+  topic: Single-Stage Detectors (YOLO Family)
+  text: An anchor-based YOLO head uses an anchor that is close to an object's size and shape. What does its bounding-box
+    regression prediction primarily do?
+  options:
+  - Replace the anchor with a class label
+  - Choose which grid cell contains the object's center
+  - Adjust the anchor to better match the object's box
+  - Calculate how many objects are in the full dataset
+  answer: 2
+  explanation: Bounding-box regression predicts adjustments that move and resize the reference anchor toward the
+    target box. The class label and dataset size are not box-regression outputs.
+- id: q51
+  topic: Single-Stage Detectors (YOLO Family)
+  text: During training, a YOLO prediction gives a true object's class correctly and has high confidence that an
+    object is present, but its box is poorly placed. Which part of the loss should most directly encourage improvement?
+  options:
+  - The classification loss
+  - The localization loss
+  - The objectness loss for empty cells
+  - The image preprocessing step
+  answer: 1
+  explanation: Localization loss penalizes differences between predicted and target box coordinates, so it directly
+    addresses the misplaced box. The prediction already identifies the class and object presence with high confidence.
+- id: q52
+  topic: Single-Stage Detectors (YOLO Family)
+  text: A YOLO model must run within a strict latency budget on a small device. Which adjustment is most likely
+    to reduce inference time, while potentially reducing detection detail?
+  options:
+  - Increase the input image resolution
+  - Add more prediction anchors at every grid cell
+  - Use a larger model with more layers
+  - Reduce the input image resolution
+  answer: 3
+  explanation: A lower input resolution usually means fewer image computations and can reduce inference time. The
+    trade-off is that smaller objects or fine details may be harder to detect.
+- id: q53
+  topic: Single-Stage Detectors (YOLO Family)
+  text: A team needs a detector that predicts object classes and bounding boxes in one forward pass, rather than
+    first generating region proposals for a separate stage. Which approach best fits?
+  options:
+  - A two-stage detector that classifies each proposal
+  - A classifier that outputs one label for the entire image
+  - A single-stage YOLO detector that predicts boxes and classes together
+  - A sliding-window classifier that processes each crop separately
+  answer: 2
+  explanation: YOLO is a single-stage detector that predicts candidate boxes and their classes together in one pass.
+    A two-stage detector separates proposal generation from later classification and refinement.
+- id: q54
+  topic: Single-Stage Detectors (YOLO Family)
+  text: A simplified grid detector allows only one object prediction per cell. Two small objects have centers inside
+    the same cell. What limitation is most likely to occur?
+  options:
+  - The cell may not represent both objects as separate predictions
+  - The detector will automatically move one object's center to another cell
+  - The cell will predict both objects but assign them the same box
+  - The detector will treat the entire image as one object
+  answer: 0
+  explanation: If the detector permits only one prediction per cell, two object centers assigned to that cell can
+    create a collision. The cell may therefore fail to represent both objects independently.
+- id: q55
+  topic: Single-Stage Detectors (YOLO Family)
+  text: During training, many grid locations contain no object, but some of them receive high predicted objectness
+    scores. Which loss signal should discourage those predictions?
+  options:
+  - The box localization loss for matched objects
+  - The objectness loss for locations without objects
+  - The class loss for correctly classified objects
+  - The regression offsets for positive anchors
+  answer: 1
+  explanation: Objectness indicates whether a location predicts an object, so the loss for locations without objects
+    should penalize high objectness there. Localization and class losses primarily apply to predictions matched
+    with objects.
+- id: q56
+  topic: Practical Object Detection (YOLOv11)
+  text: A training run reports that many YOLO label coordinates are invalid. The label files contain pixel-based
+    `x_min, y_min, x_max, y_max` values. What should you do before training?
+  options:
+  - Convert each box to normalized `class_id, x_center, y_center, width, height` values
+  - Replace each box with normalized `x_min, y_min, width, height` values
+  - Keep the coordinates and increase the image size in the training settings
+  - Move the box coordinates into the dataset configuration file
+  answer: 0
+  explanation: YOLO detection labels use a class ID followed by normalized center coordinates, width, and height.
+    Pixel-based corner coordinates need to be converted to that format.
+- id: q57
+  topic: Practical Object Detection (YOLOv11)
+  text: 'Your dataset configuration lists `names: ["helmet", "vest"]`, but a vest annotation uses class ID `2`.
+    What is the appropriate fix?'
+  options:
+  - Add one to every class ID so IDs start at 1
+  - Change the vest annotation to class ID `1`
+  - Keep the ID and add a third name for the background
+  - Change the image filename so it matches the class ID
+  answer: 1
+  explanation: Class IDs correspond to positions in the names list and start at zero. With two names, `helmet` is
+    ID 0 and `vest` is ID 1.
+- id: q58
+  topic: Practical Object Detection (YOLOv11)
+  text: You have a small labeled dataset for detecting a new set of objects. Which starting point is most appropriate
+    for a typical training run?
+  options:
+  - Train a randomly initialized model and use the new dataset only for validation
+  - Load a pretrained detection model and train it using the new dataset
+  - Load a pretrained classifier and evaluate it without changing its task
+  - Run inference on the new dataset and treat its predictions as labels
+  answer: 1
+  explanation: Starting from pretrained detection weights lets the model reuse learned visual features while adapting
+    to the new classes. The labeled dataset is used to train that adaptation.
+- id: q59
+  topic: Practical Object Detection (YOLOv11)
+  text: You have trained a model and want to detect objects in `street.jpg`, keeping only predictions above a confidence
+    threshold of 0.4. Which call fits this task?
+  options:
+  - '`model.train(data="street.jpg", conf=0.4)`'
+  - '`model.val(data="street.jpg", conf=0.4)`'
+  - '`model.predict(source="street.jpg", conf=0.4)`'
+  - '`model.export(source="street.jpg", conf=0.4)`'
+  answer: 2
+  explanation: '`predict` runs inference on the supplied image, and `conf` sets the minimum confidence for returned
+    detections. Training, validation, and export serve different purposes.'
+- id: q60
+  topic: Practical Object Detection (YOLOv11)
+  text: After training, you need to estimate how well the detector performs on images it did not train on. Which
+    evaluation setup is best?
+  options:
+  - Run validation on a held-out validation split and review its detection metrics
+  - Run training again on the training split and record the final training loss
+  - Run inference on one training image and count its predicted boxes
+  - Compare the model's output file size with the size of its label files
+  answer: 0
+  explanation: A held-out validation split provides an evaluation on data not used for fitting the model. Detection
+    metrics from that split are more informative than training loss or a single training image.
+- id: q61
+  topic: Practical Object Detection (YOLOv11)
+  text: A trained detector rarely finds one of the target classes, even though its confidence threshold is low.
+    You discover that several images show this class but their label files assign those boxes to a different class.
+    What should you do first?
+  options:
+  - Increase the confidence threshold so the class predictions become more consistent
+  - Correct the mislabeled boxes and retrain or fine-tune the model
+  - Remove the class from the names list but keep its annotations unchanged
+  - Use the validation images as training images without checking their labels
+  answer: 1
+  explanation: Inconsistent labels teach the model incorrect class associations. Correcting the annotations and
+    training again addresses the underlying data problem.
+- id: q62
+  topic: Practical Object Detection (YOLOv11)
+  text: A detector must run on a small edge device with a strict response-time limit. How should you choose a model
+    for deployment?
+  options:
+  - Choose the largest model because it always has the shortest inference time
+  - Choose the model with the highest training accuracy and skip device testing
+  - Choose a small model and assume its speed will match desktop performance
+  - Benchmark candidate models on the target device and balance speed with detection quality
+  answer: 3
+  explanation: Inference speed and resource use depend on both the model and the deployment hardware. Benchmarking
+    on the target device helps find a practical speed–quality trade-off.
+- id: q63
+  topic: Practical Object Detection (YOLOv11)
+  text: A web service handles many image requests, but each request spends time loading the same trained checkpoint.
+    What change would improve the inference pipeline?
+  options:
+  - Load the checkpoint once when the service starts and reuse the model
+  - Load a separate checkpoint for every image to avoid shared state
+  - Run a training epoch before processing each request
+  - Save each input image as a label file before loading the checkpoint
+  answer: 0
+  explanation: Loading the model once and reusing it avoids repeated checkpoint-loading overhead for each request.
+    The service can then run inference on incoming images with the already-loaded model.
+- id: q64
+  topic: Evaluation Metrics for Object Detection
+  text: A predicted box has an intersection area of 30 pixels with a ground-truth box, and their union is 50 pixels.
+    At an IoU threshold of 0.5, does the prediction meet the overlap requirement?
+  options:
+  - Yes; its IoU is 0.6
+  - No; its IoU is 0.4
+  - Yes; its IoU is 0.8
+  - No; its IoU is 0.5
+  answer: 0
+  explanation: IoU is intersection divided by union, so it is 30/50 = 0.6. This exceeds the 0.5 threshold.
+- id: q65
+  topic: Evaluation Metrics for Object Detection
+  text: A detector produces two boxes for the same object, both above the confidence threshold and with sufficient
+    IoU. The first box is matched to the ground truth. How is the second box usually counted when evaluating detections?
+  options:
+  - As another true positive for the same object
+  - As a false negative for the ground-truth object
+  - As a false positive because the object was already matched
+  - As a true negative because it overlaps the first box
+  answer: 2
+  explanation: A ground-truth object can normally be matched to only one prediction. The duplicate prediction is
+    therefore counted as a false positive.
+- id: q66
+  topic: Evaluation Metrics for Object Detection
+  text: A detector identifies 8 objects correctly and also reports 2 boxes that do not match any object. What is
+    its precision?
+  options:
+  - '0.60'
+  - '0.80'
+  - '0.90'
+  - '0.40'
+  answer: 1
+  explanation: 'Precision is the number of true positives divided by all positive predictions: 8/(8 + 2) = 0.80.'
+- id: q67
+  topic: Evaluation Metrics for Object Detection
+  text: There are 12 ground-truth objects in a test set, and a detector correctly finds 9 of them. What is its recall?
+  options:
+  - '0.25'
+  - '0.75'
+  - '0.80'
+  - '0.90'
+  answer: 1
+  explanation: Recall is true positives divided by the number of ground-truth objects. Here, 9/12 = 0.75.
+- id: q68
+  topic: Evaluation Metrics for Object Detection
+  text: You want to compare two detectors across confidence thresholds for one object class, accounting for how
+    precision changes as recall increases. Which metric is most directly useful for this comparison?
+  options:
+  - The class's average precision
+  - The detector's training loss
+  - The class's image-level accuracy
+  - The mean IoU of all predicted boxes
+  answer: 0
+  explanation: Average precision summarizes the precision-recall curve for a class across confidence thresholds.
+    Training loss and image-level accuracy do not directly capture that detection trade-off.
+- id: q69
+  topic: Evaluation Metrics for Object Detection
+  text: A dataset has two classes with average precisions of 0.9 and 0.3. If mAP is the mean of the classes' average
+    precisions, what is the mAP?
+  options:
+  - '0.30'
+  - '0.45'
+  - '0.60'
+  - '0.90'
+  answer: 2
+  explanation: mAP averages the per-class average precisions, giving (0.9 + 0.3)/2 = 0.6.
+- id: q70
+  topic: Evaluation Metrics for Object Detection
+  text: A detector has precision 0.8 and recall 0.5. Using F1 = 2 × precision × recall / (precision + recall), what
+    is its F1 score, rounded to two decimal places?
+  options:
+  - '0.65'
+  - '0.50'
+  - '0.80'
+  - '0.62'
+  answer: 3
+  explanation: Substituting the values gives 2 × 0.8 × 0.5 / (0.8 + 0.5), which is about 0.62.
+- id: q71
+  topic: Evaluation Metrics for Object Detection
+  text: A predicted box has the correct class but its IoU with the matching ground-truth box is below the evaluation
+    threshold. Under that threshold, how is the prediction generally treated?
+  options:
+  - As a true positive because its class is correct
+  - As a false positive, while the ground truth remains unmatched
+  - As a true negative because the box is too small
+  - As a false negative without counting the prediction
+  answer: 1
+  explanation: A detection must satisfy both the class match and the required localization overlap to count as a
+    true positive. A prediction that fails the IoU threshold is a false positive, and the unmatched ground truth
+    contributes a false negative.
 problem:
   title: Calculate Box IoU
   prompt: 'Write `intersection_over_union(box_a, box_b)` to calculate the Intersection over Union (IoU) of two bounding
-    boxes. Each box is `(x1, y1, x2, y2)`, with the bottom-right coordinate excluded, as in continuous-coordinate
-    geometry. IoU is the intersection area divided by the union area. Treat boxes that only touch at an edge or
-    corner as having zero intersection, and return `0.0` when the union area is zero (for example, when both boxes
-    have zero area). Assume coordinates describe boxes with `x1 <= x2` and `y1 <= y2`.
+    boxes. Each box is a tuple `(x1, y1, x2, y2)`, where `(x1, y1)` is the top-left corner and `(x2, y2)` is the
+    bottom-right corner. Coordinates describe continuous areas, so do not add 1 to widths or heights. Boxes have
+    nonnegative width and height; a box with zero area is allowed.
 
 
-    Example:
+    IoU is the intersection area divided by the union area. Return `0.0` when the union area is zero. Boxes that
+    only touch at an edge or corner have zero intersection area.
+
+
+    For example:
 
     ```python
 
@@ -303,42 +612,212 @@ problem:
     # 0.14285714285714285
 
     ```'
-  starter_code: "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the IoU of two boxes in (x1, y1, x2,\
-    \ y2) format.\"\"\"\n    ..."
-  tests: 'assert intersection_over_union((0, 0, 4, 4), (2, 2, 6, 6)) == 1 / 7, "overlapping boxes"
+  starter_code: "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the continuous-area IoU of two (x1,\
+    \ y1, x2, y2) boxes.\"\"\"\n    ..."
+  tests: 'assert intersection_over_union((0, 0, 4, 4), (0, 0, 4, 4)) == 1.0, "identical boxes have IoU 1"
 
-    assert intersection_over_union((1, 2, 5, 7), (1, 2, 5, 7)) == 1.0, "identical boxes"
+    assert abs(intersection_over_union((0, 0, 4, 4), (2, 2, 6, 6)) - 1 / 7) < 1e-12, "partial overlap uses intersection
+    over union"
 
-    assert intersection_over_union((0, 0, 2, 2), (3, 3, 5, 5)) == 0.0, "disjoint boxes"
+    assert intersection_over_union((0, 0, 2, 2), (3, 3, 5, 5)) == 0.0, "disjoint boxes have zero IoU"
 
-    assert intersection_over_union((0, 0, 2, 2), (2, 0, 4, 2)) == 0.0, "boxes touching at an edge"
+    assert intersection_over_union((0, 0, 2, 2), (2, 0, 4, 2)) == 0.0, "boxes touching at an edge have zero intersection"
 
-    assert intersection_over_union((1, 1, 3, 3), (0, 0, 4, 4)) == 0.25, "contained box"
+    assert intersection_over_union((0, 0, 4, 4), (1, 1, 3, 3)) == 0.25, "a contained box uses the larger union area"
 
-    assert intersection_over_union((1, 1, 1, 3), (0, 0, 2, 2)) == 0.0, "zero-width box"
+    assert intersection_over_union((1, 1, 1, 3), (0, 0, 4, 4)) == 0.0, "a zero-width box has zero intersection"
 
-    assert intersection_over_union((1, 1, 1, 3), (2, 0, 2, 4)) == 0.0, "zero-area union"'
-  solution: "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the IoU of two boxes in (x1, y1, x2, y2)\
-    \ format.\"\"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n\n    intersection_width =\
-    \ max(0, min(ax2, bx2) - max(ax1, bx1))\n    intersection_height = max(0, min(ay2, by2) - max(ay1, by1))\n \
-    \   intersection_area = intersection_width * intersection_height\n\n    area_a = (ax2 - ax1) * (ay2 - ay1)\n\
+    assert intersection_over_union((1, 1, 1, 3), (1, 1, 1, 3)) == 0.0, "two zero-area boxes have zero union"
+
+    assert intersection_over_union((0, 0, 0, 2), (0, 0, 2, 2)) == 0.0, "zero-area intersection does not imply positive
+    IoU"'
+  solution: "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the continuous-area IoU of two (x1, y1,\
+    \ x2, y2) boxes.\"\"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n\n    intersection_width\
+    \ = max(0, min(ax2, bx2) - max(ax1, bx1))\n    intersection_height = max(0, min(ay2, by2) - max(ay1, by1))\n\
+    \    intersection_area = intersection_width * intersection_height\n\n    area_a = (ax2 - ax1) * (ay2 - ay1)\n\
     \    area_b = (bx2 - bx1) * (by2 - by1)\n    union_area = area_a + area_b - intersection_area\n\n    if union_area\
     \ == 0:\n        return 0.0\n    return intersection_area / union_area"
   packages: []
-  topic: Curriculum
+  topic: Object Detection Models & Architectures
   wrong_solutions:
-  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the IoU of two boxes in (x1, y1, x2, y2) format.\"\
-    \"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    width = min(ax2, bx2) - max(ax1, bx1)\n\
-    \    height = min(ay2, by2) - max(ay1, by1)\n    intersection = width * height\n    union = (ax2 - ax1) * (ay2\
-    \ - ay1) + (bx2 - bx1) * (by2 - by1) - intersection\n    return intersection / union if union else 0.0"
-  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the IoU of two boxes in (x1, y1, x2, y2) format.\"\
+  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Incorrectly divides by the smaller box area instead of\
+    \ the union.\"\"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    width = max(0, min(ax2,\
+    \ bx2) - max(ax1, bx1))\n    height = max(0, min(ay2, by2) - max(ay1, by1))\n    intersection = width * height\n\
+    \    area_a = (ax2 - ax1) * (ay2 - ay1)\n    area_b = (bx2 - bx1) * (by2 - by1)\n    denominator = min(area_a,\
+    \ area_b)\n    return intersection / denominator if denominator else 0.0"
+  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Incorrectly treats coordinates as inclusive pixel indices.\"\
     \"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    width = max(0, min(ax2, bx2) - max(ax1,\
     \ bx1) + 1)\n    height = max(0, min(ay2, by2) - max(ay1, by1) + 1)\n    intersection = width * height\n   \
-    \ area_a = (ax2 - ax1 + 1) * (ay2 - ay1 + 1)\n    area_b = (bx2 - bx1 + 1) * (by2 - by1 + 1)\n    return intersection\
-    \ / (area_a + area_b - intersection)"
-  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Return the IoU of two boxes in (x1, y1, x2, y2) format.\"\
-    \"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    width = max(0, min(ax2, bx2) - max(ax1,\
-    \ bx1))\n    height = max(0, min(ay2, by2) - max(ay1, by1))\n    intersection = width * height\n    area_a =\
-    \ (ax2 - ax1) * (ay2 - ay1)\n    area_b = (bx2 - bx1) * (by2 - by1)\n    union = area_a + area_b - intersection\n\
-    \    return intersection / union"
-problems: []
+    \ area_a = (ax2 - ax1 + 1) * (ay2 - ay1 + 1)\n    area_b = (bx2 - bx1 + 1) * (by2 - by1 + 1)\n    union = area_a\
+    \ + area_b - intersection\n    return intersection / union if union else 0.0"
+  - "def intersection_over_union(box_a, box_b):\n    \"\"\"Incorrectly leaves negative intersection dimensions unclamped.\"\
+    \"\"\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    width = min(ax2, bx2) - max(ax1, bx1)\n\
+    \    height = min(ay2, by2) - max(ay1, by1)\n    intersection = width * height\n    area_a = (ax2 - ax1) * (ay2\
+    \ - ay1)\n    area_b = (bx2 - bx1) * (by2 - by1)\n    union = area_a + area_b - intersection\n    return intersection\
+    \ / union if union else 0.0"
+problems:
+- title: Convert YOLO Labels to Pixel Boxes
+  prompt: 'Write `yolo_labels_to_boxes(label_text, image_width, image_height)` to convert YOLO-format annotation
+    text into pixel-coordinate bounding boxes.
+
+
+    Each nonblank line contains `class_id x_center y_center width height`, where the four box values are normalized
+    to the image dimensions. Return a list of tuples in the same order as the input lines, each tuple formatted
+    as `(class_id, x_min, y_min, x_max, y_max)`. Use pixel coordinates, keep coordinates as floats, ignore blank
+    lines, and do not clip boxes to the image boundaries.
+
+
+    For example:
+
+    ```python
+
+    yolo_labels_to_boxes("1 0.5 0.5 0.4 0.2", 200, 100)
+
+    # [(1, 60.0, 40.0, 140.0, 60.0)]
+
+    ```'
+  starter_code: "def yolo_labels_to_boxes(label_text, image_width, image_height):\n    \"\"\"Convert normalized\
+    \ YOLO label lines to pixel-coordinate bounding boxes.\"\"\"\n    ..."
+  tests: 'assert yolo_labels_to_boxes("1 0.5 0.5 0.4 0.2", 200, 100) == [(1, 60.0, 40.0, 140.0, 60.0)], "converts
+    center and size to corners using image dimensions"
+
+    assert yolo_labels_to_boxes("\n2 0.25 0.5 0.5 0.5\n\n4 0.75 0.25 0.25 0.5\n", 80, 40) == [(2, 0.0, 10.0, 40.0,
+    30.0), (4, 50.0, 0.0, 70.0, 20.0)], "preserves row order and ignores blank lines"
+
+    assert yolo_labels_to_boxes("3 0.5 0.5 0 0", 64, 32) == [(3, 32.0, 16.0, 32.0, 16.0)], "handles zero-size boxes"
+
+    assert yolo_labels_to_boxes("0 0.25 0.25 0.5 0.5", 100, 80) == [(0, 0.0, 0.0, 50.0, 40.0)], "handles boxes whose
+    corner is on the image boundary"
+
+    assert yolo_labels_to_boxes("5 0.95 0.5 0.2 0.5", 100, 40) == [(5, 85.0, 10.0, 105.0, 30.0)], "does not clip
+    coordinates beyond the image boundary"
+
+    assert yolo_labels_to_boxes("", 100, 60) == [], "returns an empty list for empty annotation text"'
+  solution: "def yolo_labels_to_boxes(label_text, image_width, image_height):\n    \"\"\"Convert normalized YOLO\
+    \ label lines to pixel-coordinate bounding boxes.\"\"\"\n    boxes = []\n    for line in label_text.splitlines():\n\
+    \        if not line.strip():\n            continue\n        class_id, center_x, center_y, box_width, box_height\
+    \ = line.split()\n        center_x = float(center_x) * image_width\n        center_y = float(center_y) * image_height\n\
+    \        box_width = float(box_width) * image_width\n        box_height = float(box_height) * image_height\n\
+    \        boxes.append((\n            int(class_id),\n            center_x - box_width / 2,\n            center_y\
+    \ - box_height / 2,\n            center_x + box_width / 2,\n            center_y + box_height / 2,\n       \
+    \ ))\n    return boxes"
+  packages: []
+  topic: Practical Object Detection (YOLOv11)
+  wrong_solutions:
+  - "def yolo_labels_to_boxes(label_text, image_width, image_height):\n    \"\"\"Convert normalized YOLO label lines\
+    \ to pixel-coordinate bounding boxes.\"\"\"\n    boxes = []\n    for line in label_text.splitlines():\n    \
+    \    if not line.strip():\n            continue\n        class_id, center_x, center_y, box_width, box_height\
+    \ = line.split()\n        center_x = float(center_x) * image_width\n        center_y = float(center_y) * image_height\n\
+    \        box_width = float(box_width) * image_width\n        box_height = float(box_height) * image_height\n\
+    \        boxes.append((int(class_id), center_x, center_y, box_width, box_height))\n    return boxes"
+  - "def yolo_labels_to_boxes(label_text, image_width, image_height):\n    \"\"\"Convert normalized YOLO label lines\
+    \ to pixel-coordinate bounding boxes.\"\"\"\n    boxes = []\n    for line in label_text.splitlines():\n    \
+    \    if not line.strip():\n            continue\n        class_id, center_x, center_y, box_width, box_height\
+    \ = line.split()\n        center_x = float(center_x) * image_width\n        center_y = float(center_y) * image_width\n\
+    \        box_width = float(box_width) * image_width\n        box_height = float(box_height) * image_width\n\
+    \        boxes.append((int(class_id), center_x - box_width / 2, center_y - box_height / 2,\n               \
+    \       center_x + box_width / 2, center_y + box_height / 2))\n    return boxes"
+  - "def yolo_labels_to_boxes(label_text, image_width, image_height):\n    \"\"\"Convert normalized YOLO label lines\
+    \ to pixel-coordinate bounding boxes.\"\"\"\n    for line in label_text.splitlines():\n        if line.strip():\n\
+    \            class_id, center_x, center_y, box_width, box_height = line.split()\n            center_x = float(center_x)\
+    \ * image_width\n            center_y = float(center_y) * image_height\n            box_width = float(box_width)\
+    \ * image_width\n            box_height = float(box_height) * image_height\n            return [(int(class_id),\
+    \ center_x - box_width / 2, center_y - box_height / 2,\n                     center_x + box_width / 2, center_y\
+    \ + box_height / 2)]\n    return []"
+- title: Compute Detection Metrics
+  prompt: 'Write `detection_metrics(is_true_positive, ground_truth_count)` to calculate precision, recall, F1, and
+    average precision (AP) for detections of one class.
+
+
+    `is_true_positive` contains one Boolean per detection, in **descending confidence order**. Each value is already
+    marked as a true positive or false positive (for example, after matching detections to ground-truth boxes at
+    a chosen IoU threshold). `ground_truth_count` is the number of ground-truth objects for the class.
+
+
+    Return a dictionary with the keys `precision`, `recall`, `f1`, and `ap`. Calculate precision and recall from
+    all detections, and calculate F1 from those final precision and recall values. For AP, use the all-point interpolated
+    precision-recall area: at each recall increase, use the maximum precision observed at that recall or any higher
+    recall. If there are no detections or no ground-truth objects, AP is `0`; when precision, recall, or F1 has
+    a zero denominator, define that metric as `0`.
+
+
+    Example:
+
+
+    ```python
+
+    detection_metrics([True, False, True], 3)
+
+    # {''precision'': 0.6666666666666666, ''recall'': 0.6666666666666666,
+
+    #  ''f1'': 0.6666666666666666, ''ap'': 0.5555555555555556}
+
+    ```'
+  starter_code: "def detection_metrics(is_true_positive, ground_truth_count):\n    \"\"\"Return precision, recall,\
+    \ F1, and all-point interpolated AP.\"\"\"\n    ..."
+  tests: 'result = detection_metrics([True, False, True], 3)
+
+    assert abs(result["precision"] - 2 / 3) < 1e-9, "final precision"
+
+    assert abs(result["recall"] - 2 / 3) < 1e-9, "final recall"
+
+    assert abs(result["f1"] - 2 / 3) < 1e-9, "final F1"
+
+    assert abs(result["ap"] - 5 / 9) < 1e-9, "interpolated AP"
+
+
+    result = detection_metrics([False, True, True], 3)
+
+    assert abs(result["ap"] - 4 / 9) < 1e-9, "later precision must interpolate earlier recall"
+
+
+    result = detection_metrics([True, True], 2)
+
+    assert abs(result["ap"] - 1.0) < 1e-9, "perfect detections have AP one"
+
+
+    result = detection_metrics([], 2)
+
+    assert result == {"precision": 0.0, "recall": 0.0, "f1": 0.0, "ap": 0.0}, "no detections"
+
+
+    result = detection_metrics([False, False], 2)
+
+    assert result == {"precision": 0.0, "recall": 0.0, "f1": 0.0, "ap": 0.0}, "all detections are false positives"
+
+
+    result = detection_metrics([], 0)
+
+    assert result == {"precision": 0.0, "recall": 0.0, "f1": 0.0, "ap": 0.0}, "no ground-truth objects"'
+  solution: "def detection_metrics(is_true_positive, ground_truth_count):\n    \"\"\"Return precision, recall, F1,\
+    \ and all-point interpolated AP.\"\"\"\n    detection_count = len(is_true_positive)\n    true_positive_count\
+    \ = sum(is_true_positive)\n\n    precision = true_positive_count / detection_count if detection_count else 0.0\n\
+    \    recall = true_positive_count / ground_truth_count if ground_truth_count else 0.0\n    f1 = (2 * precision\
+    \ * recall / (precision + recall)\n          if precision + recall else 0.0)\n\n    if not detection_count or\
+    \ not ground_truth_count:\n        ap = 0.0\n    else:\n        cumulative_tp = 0\n        cumulative_fp = 0\n\
+    \        precisions = []\n        recalls = []\n        for is_tp in is_true_positive:\n            if is_tp:\n\
+    \                cumulative_tp += 1\n            else:\n                cumulative_fp += 1\n            precisions.append(cumulative_tp\
+    \ / (cumulative_tp + cumulative_fp))\n            recalls.append(cumulative_tp / ground_truth_count)\n\n   \
+    \     # Add boundary points, then make precision non-increasing as recall grows.\n        recall_points = [0.0]\
+    \ + recalls + [1.0]\n        precision_points = [0.0] + precisions + [0.0]\n        for index in range(len(precision_points)\
+    \ - 2, -1, -1):\n            precision_points[index] = max(precision_points[index], precision_points[index +\
+    \ 1])\n\n        ap = 0.0\n        for index in range(1, len(recall_points)):\n            if recall_points[index]\
+    \ != recall_points[index - 1]:\n                ap += (recall_points[index] - recall_points[index - 1]) * precision_points[index]\n\
+    \n    return {\"precision\": precision, \"recall\": recall, \"f1\": f1, \"ap\": ap}"
+  packages: []
+  topic: Evaluation Metrics for Object Detection
+  wrong_solutions:
+  - "def detection_metrics(is_true_positive, ground_truth_count):\n    \"\"\"Return metrics, using precision at\
+    \ each true positive for AP.\"\"\"\n    count = len(is_true_positive)\n    tp = sum(is_true_positive)\n    precision\
+    \ = tp / count if count else 0.0\n    recall = tp / ground_truth_count if ground_truth_count else 0.0\n    f1\
+    \ = 2 * precision * recall / (precision + recall) if precision + recall else 0.0\n    tp_so_far = 0\n    ranked_precision_sum\
+    \ = 0.0\n    for rank, is_tp in enumerate(is_true_positive, start=1):\n        if is_tp:\n            tp_so_far\
+    \ += 1\n            ranked_precision_sum += tp_so_far / rank\n    ap = ranked_precision_sum / ground_truth_count\
+    \ if ground_truth_count else 0.0\n    return {\"precision\": precision, \"recall\": recall, \"f1\": f1, \"ap\"\
+    : ap}"
+  - "def detection_metrics(is_true_positive, ground_truth_count):\n    \"\"\"Return metrics, approximating AP as\
+    \ final precision times recall.\"\"\"\n    count = len(is_true_positive)\n    tp = sum(is_true_positive)\n \
+    \   precision = tp / count if count else 0.0\n    recall = tp / ground_truth_count if ground_truth_count else\
+    \ 0.0\n    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0\n    ap = precision\
+    \ * recall if ground_truth_count else 0.0\n    return {\"precision\": precision, \"recall\": recall, \"f1\"\
+    : f1, \"ap\": ap}"

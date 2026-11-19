@@ -359,3 +359,27 @@ def test_a_question_that_speaks_of_code_must_show_it():
     assert not missing_code("What does this code print? `values = [1, 2]`")
     assert not missing_code("What does this code print?\n```python\nprint(1)\n```")
     assert not missing_code("Which line of a script reads the file?")
+
+
+def test_a_curriculum_split_into_subheadings_gives_them_as_topics():
+    from roadmap.docusaurus import _topics
+
+    body = """## Goal
+Learn vision.
+
+## Curriculum
+
+### Core Vision {#core}
+- Convolutions
+
+### Detection
+- YOLO
+
+## Capstone
+Build a detector.
+"""
+    topics = _topics(body)
+
+    assert [topic.title for topic in topics] == ["Core Vision", "Detection"]
+    assert topics[0].anchor == "core" and topics[0].outcomes == ["Convolutions"]
+    assert topics[1].outcomes == ["YOLO"]
