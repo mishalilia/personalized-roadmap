@@ -63,6 +63,7 @@ class SkimTopic(BaseModel):
 
     topic: str  # one of the module's topic titles
     reason: Reason
+    chosen: bool = False  # the learner marked it, rather than the planner
 
 
 class PathItem(BaseModel):
@@ -189,6 +190,22 @@ class LearningPath(BaseModel):
         return self.model_copy(
             update={"items": items, "confirmed_at": None, "proposals": proposals}
         )
+
+    def with_skim(self, module_id: str, topic: str, skim: bool) -> "LearningPath":
+        """The learner marks a topic of a module they study to skim, or to study in full again. Only how they
+        read the module changes: its checkpoint still asks about every topic, so the path stays confirmed."""
+        item = self.item(module_id)
+        if topic not in {candidate.title for candidate in item.module.topics}:
+            raise KeyError(f"'{module_id}' has no topic '{topic}'")
+        if item.choice is not Choice.STUDY:
+            raise PathStateError("Only a module you study has topics to skim")
+        kept = [marked for marked in item.skim if marked.topic != topic]
+        if skim:
+            already = next((marked for marked in item.skim if marked.topic == topic), None)
+            kept.append(already or SkimTopic(topic=topic, reason="You chose to skim it.", chosen=True))
+        order = [candidate.title for candidate in item.module.topics]
+        kept.sort(key=lambda marked: order.index(marked.topic))
+        return self._replace(item.model_copy(update={"skim": kept}))
 
     def confirm(self) -> "LearningPath":
         return self.model_copy(update={"confirmed_at": datetime.now(UTC)})

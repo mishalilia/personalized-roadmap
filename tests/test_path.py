@@ -278,3 +278,36 @@ def test_the_time_estimate_counts_studied_modules_fully_and_proved_ones_in_part(
     assert (estimate.path_low, estimate.path_high) == (12, 24)
     assert (estimate.course_low, estimate.course_high) == (20, 40)
     assert estimate.modules_without_estimate == 1  # vision is included and has none
+
+
+def test_the_learner_marks_topics_to_skim_and_back_without_a_new_confirmation(curriculum):
+    from roadmap.curriculum import Topic
+    from roadmap.path import PathStateError, SkimTopic
+
+    first, second = "1. Shell Basics", "2. Files"
+    module = curriculum.modules[0].model_copy(
+        update={"topics": [Topic(title=first), Topic(title=second)]}
+    )
+    items = [
+        PathItem.suggestion(
+            module if i == 0 else m, Choice.STUDY, "Study it.",
+            skim=[SkimTopic(topic=second, reason="You use it daily.")] if i == 0 else None,
+        )
+        for i, m in enumerate(curriculum.modules)
+    ]
+    path = path_with(curriculum, {}).model_copy(update={"items": items}).confirm()
+
+    marked = path.with_skim(module.id, first, True)
+    item = marked.item(module.id)
+    assert [s.topic for s in item.skim] == [first, second]  # in the module's order
+    assert item.skim[0].chosen and not item.skim[1].chosen
+    assert marked.confirmed  # the checkpoint still asks about every topic
+
+    back = marked.with_skim(module.id, second, False)
+    assert [s.topic for s in back.item(module.id).skim] == [first]
+
+    with pytest.raises(KeyError):
+        path.with_skim(module.id, "No such topic", True)
+    proved = path.with_choice(module.id, Choice.PROVE)
+    with pytest.raises(PathStateError):
+        proved.with_skim(module.id, first, True)

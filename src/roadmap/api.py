@@ -227,6 +227,12 @@ class ChoiceRequest(BaseModel):
     choice: Choice
 
 
+class SkimRequest(BaseModel):
+    module_id: str
+    topic: str
+    skim: bool
+
+
 class ShareRequest(BaseModel):
     share: bool
 
@@ -711,6 +717,14 @@ def create_app(
         return change(
             signed_in(request),
             lambda path: path.with_choice(body.module_id, body.choice),
+        )
+
+    @app.post("/me/path/skim")
+    def skim_topic(body: SkimRequest, request: Request) -> LearningPath:
+        """The learner marks a topic of a module they study to skim, or to study in full."""
+        return change(
+            signed_in(request),
+            lambda path: path.with_skim(body.module_id, body.topic, body.skim),
         )
 
     @app.post("/me/path/confirm")
