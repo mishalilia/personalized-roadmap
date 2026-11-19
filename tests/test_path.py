@@ -361,13 +361,15 @@ def test_after_a_failure_only_heavier_suggestions_are_kept_even_for_locked_modul
     from roadmap.path import TopicChoice
 
     path = _with_topics(curriculum, NOTES, ["Intro", "Practice"], ["Intro"])
-    path = path.with_choice(VISION, Choice.SKIP).confirm()
+    path = path.with_choice(VISION, Choice.STUDY).with_choice(
+        "tracks/speech/resources", Choice.SKIP
+    ).confirm()
     failed = path.with_checkpoint_result(TERMINAL, 1, 5, passed=False, missed_topics=["Shell Basics"])
     assert NOTES in failed.locked_module_ids
 
     suggested = failed.with_proposals(
         [
-            Proposal(module_id=VISION, choice=Choice.STUDY, reason="Needs the shell.", after_failure=True),
+            Proposal(module_id="tracks/speech/resources", choice=Choice.STUDY, reason="Skipped.", after_failure=True),
             Proposal(module_id=ALGEBRA, choice=Choice.SKIP, reason="Lighter.", after_failure=True),
             Proposal(
                 module_id=NOTES, topic="Intro", topic_choice=TopicChoice.STUDY, reason="Uses the shell.",
@@ -380,7 +382,8 @@ def test_after_a_failure_only_heavier_suggestions_are_kept_even_for_locked_modul
         ]
     )
 
-    assert [(p.module_id, p.topic) for p in suggested.proposals] == [(VISION, None), (NOTES, "Intro")]
+    # The skipped module stays skipped, the lighter one is dropped; the topic of a kept module gets heavier.
+    assert [(p.module_id, p.topic) for p in suggested.proposals] == [(NOTES, "Intro")]
 
 
 def test_the_learner_accepts_or_declines_a_suggestion_about_one_topic(curriculum):
@@ -411,11 +414,11 @@ def test_a_proposal_changes_a_module_or_a_topic_not_both(curriculum):
 
 
 def test_suggestions_for_a_checkpoint_taken_again_meanwhile_are_dropped(curriculum):
-    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, VISION: Choice.SKIP}).model_copy(
+    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, NOTES: Choice.PROVE}).model_copy(
         update={"suggestions_pending": f"{TERMINAL}:2"}
     )
-    late = [Proposal(module_id=VISION, choice=Choice.STUDY, reason="Needed.", after_failure=True)]
+    late = [Proposal(module_id=NOTES, choice=Choice.STUDY, reason="Needed.", after_failure=True)]
 
     assert path.with_suggestions(f"{TERMINAL}:1", late).proposals == []
     landed = path.with_suggestions(f"{TERMINAL}:2", late)
-    assert [p.module_id for p in landed.proposals] == [VISION] and landed.suggestions_pending is None
+    assert [p.module_id for p in landed.proposals] == [NOTES] and landed.suggestions_pending is None

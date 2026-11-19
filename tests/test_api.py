@@ -1133,9 +1133,9 @@ def test_deleting_the_account_ends_its_public_link(curriculum, questions):
 
 
 def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions):
-    # The algebra module is skipped at first; after the terminal checkpoint fails, the model would study it.
-    first = study_all(curriculum, except_for={ALGEBRA: (Choice.SKIP, "Not needed yet.")})
-    again = study_all(curriculum, except_for={ALGEBRA: (Choice.STUDY, "It builds on the shell.")})
+    # Notes is to prove at first; after the terminal checkpoint fails, the model would study it.
+    first = study_all(curriculum, except_for={"tracks/notes": (Choice.PROVE, "You have used it.")})
+    again = study_all(curriculum)
     client = site_for(Roadmap(curriculum, questions, FakeLLM(first, again))).signed_in()
     confirmed_path(client)
 
@@ -1146,5 +1146,5 @@ def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions
     stored = client.get("/me/path").json()
     assert stored["suggestions_pending"] is None
     assert [(p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]] == [
-        (ALGEBRA, "study", True)
+        ("tracks/notes", "study", True)
     ]

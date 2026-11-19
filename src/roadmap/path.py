@@ -494,7 +494,7 @@ class LearningPath(BaseModel):
 
     def with_proposals(self, proposals: list["Proposal"]) -> "LearningPath":
         """Keeps only proposals for modules the learner has not started that go the proposal's way: lighter
-        after an easy pass, heavier after a failure. A lighter one never touches a locked module; a heavier one
+        after an easy pass, heavier after a failure, and never bringing back a module the path skips. A lighter one never touches a locked module; a heavier one
         may, since it is locked by the failure that brought the proposal. A topic proposal is kept only for a
         module to study, and not when the same module's choice is proposed to change."""
         kept: list[Proposal] = []
@@ -512,6 +512,10 @@ class LearningPath(BaseModel):
                 assert proposal.choice is not None  # nosec B101: checked by the model
                 old, new = WEIGHT[item.choice], WEIGHT[proposal.choice]
                 if proposal.choice is Choice.PROVE and not item.module.can_be_proved:
+                    continue
+                # A module the path skips stays skipped after a failure: it was left out for the learner's
+                # goal, and a gap elsewhere does not change the goal. Only what the path keeps gets heavier.
+                if proposal.after_failure and item.choice is Choice.SKIP:
                     continue
             else:
                 assert proposal.topic_choice is not None  # nosec B101: checked by the model

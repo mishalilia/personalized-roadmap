@@ -139,8 +139,8 @@ class Roadmap:
                 f"the learner failed the checkpoint of '{title}', getting wrong the questions on: "
                 f"{'; '.join(topics)}. Their current decisions are: {current}. Return these decisions "
                 "unchanged, except for a later module or topic that builds directly on these topics, which "
-                "may now need more: to study instead of prove or skip, or a topic studied in full instead of "
-                "skimmed or skipped. Keep everything else exactly as it is."
+                "may now need more: to study instead of prove, or a topic studied in full instead of skimmed "
+                "or skipped. A module that is skipped stays skipped. Keep everything else exactly as it is."
             )
         else:
             note = (
