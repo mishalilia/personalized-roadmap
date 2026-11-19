@@ -1079,3 +1079,52 @@ def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, quest
     # The problem on the skipped topic gives way to one on a topic the learner studies.
     assert client.get(f"/problems/{TERMINAL}").json()["title"] == "On topic 0"
     assert site.learner().get(f"/problems/{TERMINAL}").json()["title"] == "On topic 1"
+
+
+# A public link to the learner's progress
+
+
+def test_a_public_link_shows_what_the_learner_finished_and_nothing_private(curriculum, questions):
+    site = site_for(Roadmap(curriculum, questions, llm=None))
+    client = site.signed_in("private@example.com")
+    confirmed_path(client)
+    assert answer(client, attempt=0, right=5)["grade"]["passed"]
+    assert client.post("/me/path/done", json={"module_id": ALGEBRA}).status_code == 200
+    assert client.get("/me/public-link").json() == {"token": None}
+
+    token = client.post("/me/public-link").json()["token"]
+    page = site.learner().get(f"/public/{token}")
+
+    assert page.status_code == 200, page.text
+    shown = {m["title"].split(" › ")[-1]: m for m in page.json()["finished"]}
+    terminal, algebra = (
+        next(m for m in curriculum.modules if m.id == module_id).title for module_id in (TERMINAL, ALGEBRA)
+    )
+    assert shown[terminal]["how"] == "checkpoint" and shown[terminal]["score"] == "5/5"
+    assert shown[algebra]["how"] == "marked_done" and shown[algebra]["score"] is None
+    assert "private@example.com" not in page.text and "Computer vision" not in page.text
+    assert client.get("/me/public-link").json() == {"token": token}
+
+
+def test_a_new_or_removed_public_link_stops_the_old_one(curriculum, questions):
+    site = site_for(Roadmap(curriculum, questions, llm=None))
+    client = site.signed_in()
+    confirmed_path(client)
+    first = client.post("/me/public-link").json()["token"]
+    second = client.post("/me/public-link").json()["token"]
+
+    assert site.learner().get(f"/public/{first}").status_code == 404
+    assert site.learner().get(f"/public/{second}").status_code == 200
+    client.post("/me/public-link/remove")
+    assert site.learner().get(f"/public/{second}").status_code == 404
+    assert site.learner().post("/me/public-link").status_code == 401
+
+
+def test_deleting_the_account_ends_its_public_link(curriculum, questions):
+    site = site_for(Roadmap(curriculum, questions, llm=None))
+    client = site.signed_in()
+    confirmed_path(client)
+    token = client.post("/me/public-link").json()["token"]
+
+    assert client.post("/auth/delete", json={"confirmation": PASSWORD}).status_code == 200
+    assert site.learner().get(f"/public/{token}").status_code == 404

@@ -24,7 +24,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import httpx
 from fastapi import (
@@ -275,6 +275,35 @@ class Providers(BaseModel):
 class SessionResponse(BaseModel):
     account: AccountOut | None
     path: LearningPath | None = None
+
+
+class PublicLink(BaseModel):
+    token: str | None  # None while the learner has no public link
+
+
+class ProvenModule(BaseModel):
+    """A module on a learner's public page, and how it was finished."""
+
+    title: str
+    url: str
+    # checkpoint: questions graded by the server, and the coding problem where there is one;
+    # questions: the questions passed, the coding problem not yet; project: accepted by a reviewer;
+    # marked_done: a module without a checkpoint, on the learner's own word.
+    how: Literal["checkpoint", "questions", "project", "marked_done"]
+    score: str | None = None  # the passing attempt's score, such as "4/5"
+    attempts: int = 0
+
+
+class PublicProgress(BaseModel):
+    """What a learner's public link shows: their path's goal and level and what they finished. Never their
+    email, their answers or their reasons."""
+
+    title: str | None
+    level: Level | None
+    modules_in_path: int
+    finished: list[ProvenModule]
+    curriculum: CurriculumInfo
+    attribution_url: str
 
 
 class PlannedPath(BaseModel):
@@ -759,6 +788,58 @@ def create_app(
         if body.share and result.confirmed and events is not None:
             events.record_included(result)
         return result
+
+    # A public link to the learner's progress
+
+    @app.get("/me/public-link")
+    def my_public_link(request: Request) -> PublicLink:
+        return PublicLink(token=store.public_link_of(signed_in(request)))
+
+    @app.post("/me/public-link")
+    def new_public_link(request: Request) -> PublicLink:
+        """A new link; an earlier one stops working."""
+        return PublicLink(token=store.make_public_link(signed_in(request)))
+
+    @app.post("/me/public-link/remove")
+    def remove_public_link(request: Request) -> PublicLink:
+        store.remove_public_link(signed_in(request))
+        return PublicLink(token=None)
+
+    @app.get("/public/{token}")
+    def public_progress(token: str) -> PublicProgress:
+        """The read-only page behind a learner's public link."""
+        account = store.account_by_public_link(token) if len(token) <= 64 else None
+        path = store.path_of(account) if account else None
+        if path is None:
+            raise HTTPException(404, "This link does not exist or its owner removed it.")
+        edition = edition_of(path)
+        finished = []
+        for item in path.items:
+            if item.progress == Progress.DONE:
+                how = "marked_done"
+            elif item.progress == Progress.PRACTICE:
+                how = "questions"
+            elif item.progress == Progress.PASSED:
+                how = "project" if item.module.is_project else "checkpoint"
+            else:
+                continue
+            finished.append(
+                ProvenModule(
+                    title=item.module.full_title,
+                    url=item.module.url,
+                    how=how,
+                    score=None if how in ("project", "marked_done") else item.last_score,
+                    attempts=item.attempts,
+                )
+            )
+        return PublicProgress(
+            title=path.title,
+            level=path.level,
+            modules_in_path=len(path.included),
+            finished=finished,
+            curriculum=info(edition),
+            attribution_url=path.attribution.url,
+        )
 
     @app.post("/me/path/goal", dependencies=[Depends(within_quota)])
     def goal(body: GoalRequest, request: Request) -> LearningPath:

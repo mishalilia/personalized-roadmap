@@ -107,6 +107,10 @@ class AccountStore:
                     path TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS drafts (
                     id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS public_links (
+                    token TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL);
                 """)
             columns = {
                 row[1] for row in self._db.execute("PRAGMA table_info(accounts)")
@@ -242,6 +246,7 @@ class AccountStore:
             for table, column in (
                 ("sessions", "account_id"),
                 ("paths", "account_id"),
+                ("public_links", "account_id"),
                 ("accounts", "id"),
             ):
                 self._db.execute(
@@ -317,6 +322,38 @@ class AccountStore:
             changed = change(path)
             self.save_path(account, changed)
             return changed
+
+    # A public link to the learner's progress, which they can show, for example on a CV
+
+    def public_link_of(self, account: Account) -> str | None:
+        with self._lock:
+            row = self._db.execute(
+                "SELECT token FROM public_links WHERE account_id = ?", (account.id,)
+            ).fetchone()
+        return row[0] if row else None
+
+    def make_public_link(self, account: Account) -> str:
+        """A new link token for the account; a link it had before stops working. The token is kept as it
+        is, not hashed: it opens nothing but a read-only page, and the learner may want to copy it again."""
+        token = secrets.token_urlsafe(16)
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
+            self._db.execute(
+                "INSERT INTO public_links (token, account_id, created_at) VALUES (?, ?, ?)",
+                (token, account.id, _now().isoformat()),
+            )
+        return token
+
+    def remove_public_link(self, account: Account) -> None:
+        with self._lock, self._db:
+            self._db.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
+
+    def account_by_public_link(self, token: str) -> Account | None:
+        with self._lock:
+            row = self._db.execute(
+                "SELECT account_id FROM public_links WHERE token = ?", (token,)
+            ).fetchone()
+        return self._account(row[0]) if row else None
 
     # Drafts: paths planned before signing in
 
