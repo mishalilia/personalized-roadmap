@@ -1130,3 +1130,21 @@ def test_deleting_the_account_ends_its_public_link(curriculum, questions):
 
     assert client.post("/auth/delete", json={"confirmation": PASSWORD}).status_code == 200
     assert site.learner().get(f"/public/{token}").status_code == 404
+
+
+def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions):
+    # The algebra module is skipped at first; after the terminal checkpoint fails, the model would study it.
+    first = study_all(curriculum, except_for={ALGEBRA: (Choice.SKIP, "Not needed yet.")})
+    again = study_all(curriculum, except_for={ALGEBRA: (Choice.STUDY, "It builds on the shell.")})
+    client = site_for(Roadmap(curriculum, questions, FakeLLM(first, again))).signed_in()
+    confirmed_path(client)
+
+    graded = answer(client, attempt=0, right=1)
+
+    # The answer says suggestions are coming; the test client runs the background work before returning.
+    assert graded["path"]["suggestions_pending"] == f"{TERMINAL}:1"
+    stored = client.get("/me/path").json()
+    assert stored["suggestions_pending"] is None
+    assert [(p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]] == [
+        (ALGEBRA, "study", True)
+    ]

@@ -89,16 +89,23 @@ class Roadmap:
             grade.problem_pending,
             missed_topics=grade.review_topics,
         )
-        if not suggest:
+        if not suggest or not self.wants_suggestions(grade):
             return path
+        return path.with_proposals(self.suggestions_after(path, module_id, grade))
+
+    def wants_suggestions(self, grade: Grade) -> bool:
+        """Whether a checkpoint result asks the model for changes to the rest of the path."""
+        return self._planner is not None and (
+            grade.effortless or (not grade.passed and bool(grade.review_topics))
+        )
+
+    def suggestions_after(self, path: LearningPath, module_id: str, grade: Grade) -> list[Proposal]:
+        """Lighter modules and topics after an easy pass, heavier after a failure. Slow: one model call over
+        the whole course, so the API runs it after answering."""
         if grade.effortless:
             topics = list(dict.fromkeys(feedback.topic for feedback in grade.feedback))
-            return path.with_proposals(self._proposals_after(path, module_id, topics, failed=False))
-        if not grade.passed and grade.review_topics:
-            return path.with_proposals(
-                self._proposals_after(path, module_id, grade.review_topics, failed=True)
-            )
-        return path
+            return self._proposals_after(path, module_id, topics, failed=False)
+        return self._proposals_after(path, module_id, grade.review_topics, failed=True)
 
     def change_goal(self, path: LearningPath, goal: str) -> LearningPath:
         """The path replanned for a new goal, keeping what the learner has started. Raises

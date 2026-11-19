@@ -227,6 +227,9 @@ class LearningPath(BaseModel):
     # A short name for the path, after the learner's goal, written by the planner; None without a model.
     title: str | None = None
     proposals: list[Proposal] = []
+    # Set while the model works out suggestions after a checkpoint, as "module id:attempts", so that they land
+    # only if the learner has not taken that checkpoint again meanwhile.
+    suggestions_pending: str | None = None
     # Anonymous progress events (see roadmap.events) count this path; on unless the learner turns it off.
     share_progress: bool = True
 
@@ -525,6 +528,12 @@ class LearningPath(BaseModel):
             if (new > old) if proposal.after_failure else (new < old):
                 kept.append(proposal)
         return self.model_copy(update={"proposals": kept})
+
+    def with_suggestions(self, key: str, proposals: list["Proposal"]) -> "LearningPath":
+        """The suggestions worked out after the checkpoint `key` names; ignored if the path has moved on."""
+        if self.suggestions_pending != key:
+            return self
+        return self.with_proposals(proposals).model_copy(update={"suggestions_pending": None})
 
     def _proposal(self, module_id: str, topic: str | None) -> "Proposal":
         proposal = next((p for p in self.proposals if p.concerns(module_id, topic)), None)

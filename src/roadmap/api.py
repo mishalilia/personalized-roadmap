@@ -862,11 +862,14 @@ def create_app(
 
     @app.post("/me/attempts/{module_id:path}")
     def attempt(
-        module_id: str, body: AttemptRequest, request: Request
+        module_id: str, body: AttemptRequest, request: Request, background: BackgroundTasks
     ) -> AttemptResponse:
-        """Grades an attempt against the stored path: locked modules, a "prove" turned into "study", or
-        suggestions after a checkpoint passed without a mistake."""
+        """Grades an attempt against the stored path: locked modules, a "prove" turned into "study", skimmed
+        topics answered wrong turned into study. Suggestions for the rest of the path, after an easy pass or a
+        failure, take a model call over the whole course, so they are worked out after the answer: the path
+        says so meanwhile, and the page asks for it again."""
         grades: list[Grade] = []
+        later: list[tuple[Roadmap, LearningPath, str]] = []
 
         def graded(path: LearningPath) -> LearningPath:
             edition = edition_of(path)
@@ -891,9 +894,17 @@ def create_app(
                 except HTTPException:
                     suggest = False
             grades.append(grade)
-            return edition.roadmap.after_checkpoint(path, module_id, grade, suggest=suggest)
+            result = edition.roadmap.after_checkpoint(path, module_id, grade, suggest=False)
+            if suggest and edition.roadmap.wants_suggestions(grade):
+                key = f"{module_id}:{result.item(module_id).attempts}"
+                result = result.model_copy(update={"suggestions_pending": key})
+                later.append((edition.roadmap, result, key))
+            return result
 
-        updated = change(signed_in(request), graded)
+        account = signed_in(request)
+        updated = change(account, graded)
+        for roadmap, snapshot, key in later:
+            background.add_task(suggest_later, account, roadmap, snapshot, module_id, grades[0], key)
         record(
             updated,
             {
@@ -904,6 +915,19 @@ def create_app(
             module_id,
         )
         return AttemptResponse(grade=grades[0], path=updated)
+
+    def suggest_later(
+        account: Account, roadmap: Roadmap, snapshot: LearningPath, module_id: str, grade: Grade, key: str
+    ) -> None:
+        try:
+            proposals = roadmap.suggestions_after(snapshot, module_id, grade)
+        except Exception:  # the result is already saved; without suggestions the path stays as it is
+            logger.exception("Suggestions after the checkpoint of %s failed", module_id)
+            proposals = []
+        try:
+            store.change_path(account, lambda path: path.with_suggestions(key, proposals))
+        except LookupError:
+            pass  # the learner started over meanwhile
 
     @app.post("/me/problems/{module_id:path}/solved")
     def solved(module_id: str, request: Request) -> LearningPath:

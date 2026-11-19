@@ -408,3 +408,14 @@ def test_a_proposal_changes_a_module_or_a_topic_not_both(curriculum):
         Proposal(module_id=NOTES, choice=Choice.STUDY, topic="Intro", topic_choice=TopicChoice.STUDY, reason="x")
     with pytest.raises(ValidationError):
         Proposal(module_id=NOTES, reason="Nothing to change.")
+
+
+def test_suggestions_for_a_checkpoint_taken_again_meanwhile_are_dropped(curriculum):
+    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, VISION: Choice.SKIP}).model_copy(
+        update={"suggestions_pending": f"{TERMINAL}:2"}
+    )
+    late = [Proposal(module_id=VISION, choice=Choice.STUDY, reason="Needed.", after_failure=True)]
+
+    assert path.with_suggestions(f"{TERMINAL}:1", late).proposals == []
+    landed = path.with_suggestions(f"{TERMINAL}:2", late)
+    assert [p.module_id for p in landed.proposals] == [VISION] and landed.suggestions_pending is None
