@@ -68,7 +68,7 @@ from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
 from .path import Choice, LearningPath, PathItem, PathStateError, Progress
-from .path_chat import ChatReply, ChatRequest, PathAssistant
+from .path_chat import CHATS_PER_DAY, ChatReply, ChatRequest, PathAssistant
 from .project_files import (
     ProjectError,
     ProjectFiles,
@@ -88,6 +88,7 @@ from .submissions import (
     SubmissionStore,
     check_link,
     safe_file_name,
+    REVIEWS_PER_DAY,
 )
 from .source import CurriculumSource
 
@@ -809,7 +810,7 @@ def create_app(
     # The assistant in the path panel
 
     # A question sends the path and a module's outline, a few thousand tokens, so each learner gets a share.
-    chats = RateLimiter(40, 24 * 3600)
+    chats = RateLimiter(CHATS_PER_DAY, 24 * 3600)
 
     @app.post("/me/chat")
     def chat(body: ChatRequest, request: Request) -> ChatReply:
@@ -823,15 +824,26 @@ def create_app(
             raise HTTPException(503, "The assistant is not available right now.")
         if not chats.allow(account.id):
             raise HTTPException(
-                429, "You have asked 40 questions today. Ask again tomorrow."
+                429, f"You have asked {CHATS_PER_DAY} questions today. Ask again tomorrow."
             )
         # Code for the page's coding problem: the problem goes with it, never its reference solution.
         problem = None
         if body.code is not None and body.module_id is not None:
             checkpoint = edition_of(path).checkpoints.get(body.module_id)
             problem = checkpoint.problem if checkpoint else None
+        # Their projects as the review left them, so the assistant can say why one came back.
+        handed_in = []
+        if submissions is not None:
+            for item in path.items:
+                if item.module.is_project and (
+                    item.module.id == body.module_id
+                    or item.progress in (Progress.SUBMITTED, Progress.RETURNED)
+                ):
+                    found = submissions.for_module(account.id, item.module.id)
+                    if found is not None:
+                        handed_in.append(found)
         try:
-            return PathAssistant(llm).answer(path, body, problem)
+            return PathAssistant(llm).answer(path, body, problem, handed_in)
         except LLMUnavailable as error:
             logger.warning("No answer for a question: %s", error)
             raise HTTPException(
@@ -842,7 +854,7 @@ def create_app(
 
     uploads = RateLimiter(20, 3600)
     # A review reads up to about 30 000 tokens of the project, so each learner gets a few a day.
-    ai_reviews = RateLimiter(5, 24 * 3600)
+    ai_reviews = RateLimiter(REVIEWS_PER_DAY, 24 * 3600)
     github_client = github or httpx.Client(timeout=30)
 
     def submission_store() -> SubmissionStore:
@@ -924,7 +936,7 @@ def create_app(
         account = signed_in(request)
         if not uploads.allow(account.id) or not ai_reviews.allow(account.id):
             raise HTTPException(
-                429, "You can submit a project 5 times a day. Try again tomorrow."
+                429, f"You can submit a project {REVIEWS_PER_DAY} times a day. Try again tomorrow."
             )
         try:
             checked_link = check_link(link)

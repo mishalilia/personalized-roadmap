@@ -13,16 +13,19 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints
 
 from . import prompts
-from .checkpoints import CodingProblem
+from .checkpoints import PASS_MARK, QUESTIONS_PER_ATTEMPT, CodingProblem
 from .curriculum import Module
 from .llm import LLMClient, UnusableAnswer
 from .path import Choice, LearningPath, PathItem
+from .submissions import MAX_ARCHIVE_BYTES, REVIEWS_PER_DAY, Submission
 
 MAX_QUESTION = 1000
 MAX_TURN = 2000
 MAX_TURNS = 8  # earlier turns sent with a question
 MAX_CODE = 6000
 MAX_ERROR = 1000
+MAX_PAGE_ERROR = 500
+CHATS_PER_DAY = 40  # a question sends the path and a module's outline, a few thousand tokens
 
 Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUESTION)
@@ -49,6 +52,8 @@ class ChatRequest(BaseModel):
     # The learner's code for the module's coding problem and the error its tests gave, when they ask about it.
     code: Annotated[str, StringConstraints(max_length=MAX_CODE)] | None = None
     error: Annotated[str, StringConstraints(max_length=MAX_ERROR)] | None = None
+    # The last error message the site showed the learner, in the last minutes, such as a refused upload.
+    page_error: Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_PAGE_ERROR)] | None = None
 
 
 class ModelAnswer(BaseModel):
@@ -80,8 +85,10 @@ class PathAssistant:
         path: LearningPath,
         request: ChatRequest,
         problem: CodingProblem | None = None,
+        submissions: list[Submission] | None = None,
     ) -> ChatReply:
-        """`problem` is the coding problem of the page's module, when the learner sends their code for it."""
+        """`problem` is the coding problem of the page's module, when the learner sends their code for it;
+        `submissions`, the learner's projects as their reviews left them."""
         items = {item.module.id: item for item in path.items}
         page = items.get(request.module_id) if request.module_id else None
 
@@ -95,8 +102,8 @@ class PathAssistant:
                 )
 
         answer = self._llm.ask(
-            prompts.load("chat"),
-            prompt(path, request, page, problem),
+            f"{prompts.load('chat')}\n\n{platform_guide()}",
+            prompt(path, request, page, problem, submissions),
             ModelAnswer,
             check=check,
         )
@@ -122,6 +129,7 @@ def prompt(
     request: ChatRequest,
     page: PathItem | None,
     problem: CodingProblem | None = None,
+    submissions: list[Submission] | None = None,
 ) -> str:
     parts = [
         "# The learner",
@@ -146,6 +154,10 @@ def prompt(
             request.code,
             f"Their last run of the tests: {request.error or 'not run yet'}",
         ]
+    for submission in submissions or []:
+        parts += ["", *_submission(submission)]
+    if request.page_error:
+        parts += ["", "# An error message the site showed them in the last minutes", request.page_error]
     if request.history:
         parts += ["", "# The conversation so far"]
         parts += [
@@ -208,3 +220,97 @@ def _outline(module: Module) -> list[str]:
             for resource in module.resources
         ]
     return lines
+
+
+def _submission(submission: Submission) -> list[str]:
+    """A handed-in project as the learner sees it: its state, and for a review, what the passing level is missing."""
+    handed = ", ".join(
+        part
+        for part in (
+            f"link {submission.link}" if submission.link else "",
+            f"archive {submission.file_name}" if submission.file_name else "",
+        )
+        if part
+    )
+    lines = [
+        f"# Their project for {submission.module_title}",
+        f"Handed in {submission.submitted_at:%Y-%m-%d}: {handed or 'nothing attached'}",
+        f"State: {_STATE[submission.status.value]}",
+    ]
+    if submission.reviewed_by and submission.reviewed_by != "model":
+        lines.append("Decided by a course reviewer, not the model.")
+    if submission.review_comment:
+        lines.append(f"Feedback: {submission.review_comment}")
+    review = submission.ai_review
+    if review is not None:
+        lines.append(f"The review read {review.files_read} of the {review.files_listed} files in the project.")
+        passing = next((level for level in review.levels if level.passing), None)
+        for criterion in passing.criteria if passing else []:
+            if criterion.counts:
+                continue
+            if criterion.evidence_missing:
+                why = "not counted: the quoted evidence is not in their files"
+            elif criterion.output_missing:
+                why = "not counted: only their own words show it, no output of their program"
+            else:
+                why = {"not_met": "not met", "unverified": "not shown by any program output"}.get(
+                    criterion.verdict.value, criterion.verdict.value
+                )
+            lines.append(f"- Missing to pass: {criterion.name} ({why}): {criterion.comment}")
+    return lines
+
+
+_STATE = {
+    "reviewing": "the model is reviewing it now; it takes up to a minute",
+    "submitted": "waiting for a person: the automatic review was unavailable",
+    "accepted": "accepted; the module is finished",
+    "returned": "sent back: the passing level is not reached yet",
+}
+
+
+def platform_guide() -> str:
+    """How the site works, for questions about the site itself, from the same numbers the site uses."""
+    return f"""# How the site works (answer questions about the site from this; it is all you know about it)
+
+Signing in: with an email and a password, or with Google where the site offers it. The site has no password
+reset yet. "Too many attempts. Try again in a few minutes." means too many sign-ins in a short time: wait.
+The account menu has Sign out and Delete account (deletes the path, progress and handed-in projects).
+
+The path panel: the "My path" button opens it, on any page. Its tabs are Path and Ask (this assistant). Under
+the path are its settings: Change your goal (plans the modules not started again; confirm the path again),
+"Count my progress in course statistics" (on by default; anonymous), and Start over (deletes the path and its
+progress). "This draft has expired. Plan your path again." means a path planned before signing in was not
+kept: plan it again.
+
+Checkpoints: {QUESTIONS_PER_ATTEMPT} questions; {PASS_MARK} right answers pass. Each new attempt has other
+questions. Any question can be reported with "Report this question" and a reason; a course reviewer reads the
+reports. After a pass, "Review the checkpoint questions" shows them with the right answers. A module without a
+checkpoint is finished with "Mark as done".
+
+Coding problems: after the checkpoint's questions, where the module has one. The code runs in the learner's
+browser and is not sent anywhere. Python loads from the internet the first time, which takes a few seconds;
+"Python could not be loaded in this browser." means it could not be downloaded: check the connection, reload
+the page, or try another browser. Each test shows a check mark or a cross after a run. The module counts as
+finished when every test passes.
+
+Capstone projects: hand in a link, a .zip or .tar.gz archive of at most {MAX_ARCHIVE_BYTES // (1024 * 1024)} MB,
+or both, with an optional note. A new submission replaces the last; up to {REVIEWS_PER_DAY} a day.
+- The review reads an attached archive, or else a public GitHub repository from its main link, such as
+  https://github.com/name/project (not a link to a folder or a file in it). Other links are kept for a person
+  but cannot be reviewed: the project comes back at once asking for an archive or a GitHub link. A private
+  repository cannot be read: make it public or attach an archive.
+- Leave out data, models, virtual environments and node_modules: they are not read, and they make the archive
+  too big. A repository over 20 MB cannot be read: attach an archive of the code instead.
+- The review takes up to a minute; the learner can leave the page. It grades the project against the
+  capstone's rubric, criterion by criterion: Met, Not met, or Not shown.
+- It does not run the code. How the project works counts only with what the code produced: a notebook with its
+  outputs kept, or logs and results files the code wrote. Numbers written by hand in a README do not count
+  ("only your own words show it"). "The evidence is not in your files" means a quote could not be found.
+- A course reviewer can decide otherwise than the model. When the automatic review is unavailable, the
+  project waits for a person. A project sent back can be fixed and handed in again.
+
+The assistant answers {CHATS_PER_DAY} questions a day.
+
+"The personal path service cannot be reached right now." means the site's server or the connection is down:
+try again later. For a problem this guide does not cover, say plainly that you do not know the cause, suggest
+reloading the page or signing in again, and do not invent settings, buttons or contacts."""

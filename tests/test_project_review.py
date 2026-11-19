@@ -433,3 +433,27 @@ def test_behaviour_counts_only_with_what_the_code_produced():
 
     assert not claimed.passed and claimed.levels[0].criteria[0].output_missing
     assert shown.passed and shown.outputs == ["logs/run.log"]
+
+
+def test_the_assistant_sees_why_a_project_came_back(site):
+    client, llm = site(
+        LLMUnavailable("no planning in this test"),
+        model_review(
+            met("Testing", "tests/test_app.py", "def test_detect"),
+            feedback="Add tests.",
+        ),
+        {"reply": "Add a tests folder with a test for /detect.", "modules": []},
+    )
+    planned(client)
+    client.post(
+        f"/me/submissions/{PROJECT}",
+        files={"archive": ("detector.tar.gz", project(), "application/gzip")},
+    )
+
+    reply = client.post("/me/chat", json={"question": "Why was my project returned?"})
+
+    assert reply.status_code == 200, reply.text
+    sent = llm.prompts[-1]
+    assert "State: sent back" in sent and "Feedback: Add tests." in sent
+    assert "Missing to pass: Testing (not counted: the quoted evidence is not in their files)" in sent
+    assert "archive detector.tar.gz" in sent

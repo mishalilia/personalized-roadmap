@@ -1012,3 +1012,29 @@ def test_the_assistant_sees_only_the_prerequisites_the_course_states(
         "Familiarity with NumPy arrays; OpenCV basics"
     ) in prompt
     assert prompt.count("Prerequisites, as the course states them") == 1
+
+
+def test_the_assistant_hears_the_error_the_site_showed(curriculum, questions):
+    llm = FakeLLM(study_all(curriculum), {"reply": "Attach a .zip instead.", "modules": []})
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+    confirmed_path(client)
+
+    client.post(
+        "/me/chat",
+        json={"question": "Why can't I upload?", "page_error": "Attach a .zip or a .tar.gz archive."},
+    )
+    too_long = client.post("/me/chat", json={"question": "Why?", "page_error": "x" * 501})
+
+    assert "Attach a .zip or a .tar.gz archive." in llm.prompts[-1]
+    assert too_long.status_code == 422
+
+
+def test_the_site_guide_quotes_the_limits_the_site_uses():
+    from roadmap.path_chat import CHATS_PER_DAY, platform_guide
+    from roadmap.submissions import REVIEWS_PER_DAY
+
+    guide = platform_guide()
+
+    assert "5 questions; 4 right answers pass" in guide
+    assert "at most 20 MB" in guide
+    assert f"up to {REVIEWS_PER_DAY} a day" in guide and f"{CHATS_PER_DAY} questions a day" in guide
