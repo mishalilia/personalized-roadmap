@@ -32,7 +32,7 @@ PROBLEM = CodingProblem(
 
 
 def terminal_checkpoint(
-    version: str, problem: CodingProblem | None = None
+    version: str, problem: CodingProblem | None = None, problems: list[CodingProblem] = ()
 ) -> Checkpoint:
     """Ten questions whose right answer is always the second option as written."""
     return Checkpoint(
@@ -51,6 +51,7 @@ def terminal_checkpoint(
             for n in range(1, 11)
         ],
         problem=problem,
+        problems=list(problems),
     )
 
 
@@ -62,6 +63,7 @@ class Site:
         *roadmaps: Roadmap,
         limit: int = 100,
         problem: CodingProblem | None = None,
+        problems: list[CodingProblem] = (),
         events: EventLog | None = None,
         token: str | None = None,
         reviewers: set[str] | None = None,
@@ -69,7 +71,7 @@ class Site:
         editions = [
             Edition(
                 roadmap,
-                {TERMINAL: terminal_checkpoint(roadmap.curriculum.version, problem)},
+                {TERMINAL: terminal_checkpoint(roadmap.curriculum.version, problem, problems)},
             )
             for roadmap in roadmaps
         ]
@@ -1038,3 +1040,42 @@ def test_the_site_guide_quotes_the_limits_the_site_uses():
     assert "5 questions; 4 right answers pass" in guide
     assert "at most 20 MB" in guide
     assert f"up to {REVIEWS_PER_DAY} a day" in guide and f"{CHATS_PER_DAY} questions a day" in guide
+
+
+def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, questions):
+    from roadmap.curriculum import Topic
+
+    with_topics = curriculum.model_copy(
+        update={
+            "modules": [
+                m.model_copy(update={"topics": [Topic(title="Topic 0"), Topic(title="Topic 1")]})
+                if m.id == TERMINAL
+                else m
+                for m in curriculum.modules
+            ]
+        }
+    )
+    on_one = PROBLEM.model_copy(update={"title": "On topic 1", "topic": "Topic 1"})
+    on_zero = PROBLEM.model_copy(update={"title": "On topic 0", "topic": "Topic 0"})
+    site = site_for(Roadmap(with_topics, questions, llm=None), problem=on_one, problems=[on_zero])
+    client = site.signed_in()
+    confirmed_path(client)
+    assert client.get(f"/problems/{TERMINAL}").json()["title"] == "On topic 1"
+
+    chosen = client.post(
+        "/me/path/topic", json={"module_id": TERMINAL, "topic": "Topic 1", "choice": "skip"}
+    )
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["confirmed_at"] is not None
+
+    asked = client.get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()["questions"]
+    assert {q["topic"] for q in asked} == {"Topic 0"}
+    stranger = site.learner().get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()["questions"]
+    assert {q["topic"] for q in stranger} == {"Topic 0", "Topic 1"}  # without a path: every topic
+
+    graded = answer(client, attempt=0, right=5)
+    assert graded["grade"]["passed"] and graded["grade"]["total"] == 5
+    assert graded["grade"]["problem_pending"]
+    # The problem on the skipped topic gives way to one on a topic the learner studies.
+    assert client.get(f"/problems/{TERMINAL}").json()["title"] == "On topic 0"
+    assert site.learner().get(f"/problems/{TERMINAL}").json()["title"] == "On topic 1"

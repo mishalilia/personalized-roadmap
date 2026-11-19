@@ -35,32 +35,45 @@ class ModuleDecision(BaseModel):
     )
     skim: list[SkimSuggestion] = Field(
         default=[],
-        description="For a module to study only: at most two of its topics the learner's answers show "
-        "they already know well. Empty otherwise.",
+        description="For a module to study only: topics the learner knows but should refresh. Empty otherwise.",
+    )
+    skip_topics: list[SkimSuggestion] = Field(
+        default=[],
+        description="For a module to study only: topics the learner's answers show they already know, which "
+        "the checkpoint then leaves out. Empty otherwise.",
     )
 
 
-MAX_SKIM = 2
-
-
-def _skim_for(module: Module, decision: ModuleDecision) -> list[SkimTopic]:
-    """The topics the model says the learner can skim, as the module's own titles; only for a module to
-    study, at most two, and never a topic the module does not have."""
+def _topics_for(module: Module, decision: ModuleDecision) -> tuple[list[SkimTopic], list[SkimTopic]]:
+    """The topics to skim and to skip, as the module's own titles: only for a module to study, never a topic
+    the module does not have, and at least one topic left to study in full; else the module would be one to
+    prove or skip."""
     if decision.choice is not Choice.STUDY:
-        return []
+        return [], []
 
     def key(title: str) -> str:
         return re.sub(r"^\d+\.\s*", "", title).strip().casefold()
 
     titles = {key(topic.title): topic.title for topic in module.topics}
-    found: list[SkimTopic] = []
-    for suggestion in decision.skim:
-        title = titles.get(key(suggestion.topic))
-        if title and all(item.topic != title for item in found):
-            found.append(SkimTopic(topic=title, reason=suggestion.reason))
-    if len(found) >= len(titles):
-        return []  # every topic: then the module is to prove or skip, not to skim through
-    return found[:MAX_SKIM]
+    marked: set[str] = set()
+
+    def found(suggestions: list[SkimSuggestion]) -> list[SkimTopic]:
+        kept = []
+        for suggestion in suggestions:
+            title = titles.get(key(suggestion.topic))
+            if title and title not in marked:
+                marked.add(title)
+                kept.append(SkimTopic(topic=title, reason=suggestion.reason))
+        return kept
+
+    skip = found(decision.skip_topics)
+    if len(skip) >= len(titles):
+        skip = []
+        marked.clear()
+    skim = found(decision.skim)
+    if len(marked) >= len(titles):
+        skim = []  # leaves nothing to study in full: keep only what is skipped
+    return skim, skip
 
 
 class PlanDecisions(BaseModel):
@@ -151,9 +164,8 @@ class LLMPlanner:
                 "The model suggested proving %s, which has no checklist", module.id
             )
             return PathItem.suggestion(module, Choice.STUDY, self.NO_CHECKLIST)
-        return PathItem.suggestion(
-            module, decision.choice, decision.reason, _skim_for(module, decision)
-        )
+        skim, skip = _topics_for(module, decision)
+        return PathItem.suggestion(module, decision.choice, decision.reason, skim, skip)
 
     def _prompt(
         self, answers: Answers, level: Level | None, progress: str | None = None

@@ -280,13 +280,13 @@ def test_the_time_estimate_counts_studied_modules_fully_and_proved_ones_in_part(
     assert estimate.modules_without_estimate == 1  # vision is included and has none
 
 
-def test_the_learner_marks_topics_to_skim_and_back_without_a_new_confirmation(curriculum):
+def test_the_learner_studies_skims_or_skips_a_topic_without_a_new_confirmation(curriculum):
     from roadmap.curriculum import Topic
-    from roadmap.path import PathStateError, SkimTopic
+    from roadmap.path import PathStateError, SkimTopic, TopicChoice
 
-    first, second = "1. Shell Basics", "2. Files"
+    first, second, third = "1. Shell Basics", "2. Files", "3. Git"
     module = curriculum.modules[0].model_copy(
-        update={"topics": [Topic(title=first), Topic(title=second)]}
+        update={"topics": [Topic(title=first), Topic(title=second), Topic(title=third)]}
     )
     items = [
         PathItem.suggestion(
@@ -297,17 +297,23 @@ def test_the_learner_marks_topics_to_skim_and_back_without_a_new_confirmation(cu
     ]
     path = path_with(curriculum, {}).model_copy(update={"items": items}).confirm()
 
-    marked = path.with_skim(module.id, first, True)
+    marked = path.with_topic(module.id, first, TopicChoice.SKIM).with_topic(module.id, third, TopicChoice.SKIP)
     item = marked.item(module.id)
     assert [s.topic for s in item.skim] == [first, second]  # in the module's order
     assert item.skim[0].chosen and not item.skim[1].chosen
-    assert marked.confirmed  # the checkpoint still asks about every topic
+    assert item.skipped_topics == {third} and marked.confirmed
 
-    back = marked.with_skim(module.id, second, False)
-    assert [s.topic for s in back.item(module.id).skim] == [first]
+    moved = marked.with_topic(module.id, second, TopicChoice.SKIP)  # from skim to skip
+    assert moved.item(module.id).skipped_topics == {second, third}
+    assert [s.topic for s in moved.item(module.id).skim] == [first]
+    back = moved.with_topic(module.id, second, TopicChoice.STUDY)
+    assert back.item(module.id).skipped_topics == {third} and second not in back.item(module.id).skimmed_topics
 
+    with pytest.raises(PathStateError):  # every topic left out: that is skipping the module
+        moved.with_topic(module.id, first, TopicChoice.SKIP)
     with pytest.raises(KeyError):
-        path.with_skim(module.id, "No such topic", True)
-    proved = path.with_choice(module.id, Choice.PROVE)
+        path.with_topic(module.id, "No such topic", TopicChoice.SKIP)
+    proved = marked.with_choice(module.id, Choice.PROVE)
+    assert proved.item(module.id).skipped_topics == frozenset()  # a module proved is checked whole
     with pytest.raises(PathStateError):
-        proved.with_skim(module.id, first, True)
+        proved.with_topic(module.id, first, TopicChoice.SKIP)

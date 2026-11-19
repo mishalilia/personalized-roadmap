@@ -313,3 +313,40 @@ def test_a_new_problem_keeps_the_questions_and_is_asked_again_while_its_tests_ar
     assert found.questions == existing.questions
     assert found.problem is not None and "[1, 2, 3, 1, 2]" in found.problem.tests
     assert len(llm.prompts) == 2  # the weak one was refused
+
+
+def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
+    from roadmap.checkpoints import Checkpoint, CheckpointQuestion, CodingProblem
+
+    def q(n, topic):
+        return CheckpointQuestion(
+            id=f"q{n}", topic=topic, text=f"Question {n}?", options=["a", "b", "c", "d"], answer=1,
+            explanation="Because.",
+        )
+
+    questions = [q(n, "A") for n in range(1, 9)] + [q(n, "B") for n in range(9, 17)] + [q(17, "C")]
+    problem = CodingProblem(
+        title="On A", prompt="Do A.", starter_code="def f(): ...", tests="assert f() == 1",
+        solution="def f(): return 1", topic="A",
+    )
+    on_b = problem.model_copy(update={"title": "On B", "topic": "B"})
+    checkpoint = Checkpoint(
+        module_id="m", curriculum_version="v", generated_by="test", questions=questions,
+        problem=problem, problems=[on_b],
+    )
+
+    first = checkpoint.questions_for_attempt(0)
+    assert [x.topic for x in first] == ["A", "B", "C", "A", "B"]  # topics in turn
+    only_b = checkpoint.questions_for_attempt(0, frozenset({"A", "C"}))
+    assert {x.topic for x in only_b} == {"B"}
+    retake = {x.id for x in checkpoint.questions_for_attempt(1, frozenset({"A", "C"}))}
+    assert len(retake - {x.id for x in only_b}) >= 3  # a topic's pool of 8 gives a retake mostly new questions
+    # Too few questions left for an attempt: the whole checkpoint.
+    assert len(checkpoint.questions_for_attempt(0, frozenset({"A", "B"}))) == 5
+
+    assert checkpoint.problem_for().title == "On A"
+    assert checkpoint.problem_for(frozenset({"A"})).title == "On B"
+    assert checkpoint.problem_for(skimmed=frozenset({"A"})).title == "On B"  # studied in full comes first
+    assert checkpoint.problem_for(frozenset({"A", "B"})) is None
+    grade = checkpoint.grade(0, {x.id: 0 for x in only_b}, frozenset({"A", "C"}))
+    assert grade.total == 5

@@ -57,6 +57,14 @@ class Progress(StrEnum):
     RETURNED = "returned"  # a project the reviewer sent back with a comment; does not lock what follows
 
 
+class TopicChoice(StrEnum):
+    """How the learner takes a topic of a module they study."""
+
+    STUDY = "study"
+    SKIM = "skim"  # go through it quickly; the checkpoint still asks about it
+    SKIP = "skip"  # leave it out; the checkpoint does not ask about it
+
+
 class SkimTopic(BaseModel):
     """A topic of a module to study that the learner's answers show they know: they can go through it quickly.
     The module's checkpoint still asks about it."""
@@ -82,6 +90,8 @@ class PathItem(BaseModel):
     adjustment: str | None = None
     # For a module to study: topics the learner can skim, by the planner.
     skim: list[SkimTopic] = []
+    # For a module to study: topics the learner leaves out, so its checkpoint does not ask about them.
+    skip_topics: list[SkimTopic] = []
 
     @model_validator(mode="after")
     def _prove_only_with_a_checklist(self) -> "PathItem":
@@ -97,10 +107,29 @@ class PathItem(BaseModel):
         choice: Choice,
         reason: str,
         skim: list[SkimTopic] | None = None,
+        skip_topics: list[SkimTopic] | None = None,
     ) -> "PathItem":
         return cls(
-            module=module, suggested=choice, reason=reason, choice=choice, skim=skim or []
+            module=module,
+            suggested=choice,
+            reason=reason,
+            choice=choice,
+            skim=skim or [],
+            skip_topics=skip_topics or [],
         )
+
+    @property
+    def skipped_topics(self) -> frozenset[str]:
+        """The topics the checkpoint leaves out: only for a module studied; a module proved is checked whole."""
+        if self.choice is not Choice.STUDY:
+            return frozenset()
+        return frozenset(marked.topic for marked in self.skip_topics)
+
+    @property
+    def skimmed_topics(self) -> frozenset[str]:
+        if self.choice is not Choice.STUDY:
+            return frozenset()
+        return frozenset(marked.topic for marked in self.skim)
 
     @property
     def included(self) -> bool:
@@ -191,21 +220,38 @@ class LearningPath(BaseModel):
             update={"items": items, "confirmed_at": None, "proposals": proposals}
         )
 
-    def with_skim(self, module_id: str, topic: str, skim: bool) -> "LearningPath":
-        """The learner marks a topic of a module they study to skim, or to study in full again. Only how they
-        read the module changes: its checkpoint still asks about every topic, so the path stays confirmed."""
+    def with_topic(self, module_id: str, topic: str, choice: TopicChoice) -> "LearningPath":
+        """The learner's own decision for a topic of a module they study: study it in full, skim it, or skip
+        it, which leaves it out of the checkpoint. The path stays confirmed: the learner decided it."""
         item = self.item(module_id)
-        if topic not in {candidate.title for candidate in item.module.topics}:
+        order = [candidate.title for candidate in item.module.topics]
+        if topic not in order:
             raise KeyError(f"'{module_id}' has no topic '{topic}'")
         if item.choice is not Choice.STUDY:
-            raise PathStateError("Only a module you study has topics to skim")
-        kept = [marked for marked in item.skim if marked.topic != topic]
-        if skim:
-            already = next((marked for marked in item.skim if marked.topic == topic), None)
-            kept.append(already or SkimTopic(topic=topic, reason="You chose to skim it.", chosen=True))
-        order = [candidate.title for candidate in item.module.topics]
-        kept.sort(key=lambda marked: order.index(marked.topic))
-        return self._replace(item.model_copy(update={"skim": kept}))
+            raise PathStateError("Only a module you study has topics to skim or skip")
+        if item.progress in (Progress.PASSED, Progress.DONE):
+            raise PathStateError("This module is finished")
+        skipped = {marked.topic for marked in item.skip_topics} - {topic}
+        if choice is TopicChoice.SKIP and len(skipped) + 1 >= len(order):
+            raise PathStateError("To leave out every topic, skip the module instead")
+
+        def kept(marks: list[SkimTopic], wanted: bool, reason: str) -> list[SkimTopic]:
+            others = [marked for marked in marks if marked.topic != topic]
+            if wanted:
+                already = next((marked for marked in marks if marked.topic == topic), None)
+                others.append(already or SkimTopic(topic=topic, reason=reason, chosen=True))
+            return sorted(others, key=lambda marked: order.index(marked.topic))
+
+        return self._replace(
+            item.model_copy(
+                update={
+                    "skim": kept(item.skim, choice is TopicChoice.SKIM, "You chose to skim it."),
+                    "skip_topics": kept(
+                        item.skip_topics, choice is TopicChoice.SKIP, "You chose to skip it."
+                    ),
+                }
+            )
+        )
 
     def confirm(self) -> "LearningPath":
         return self.model_copy(update={"confirmed_at": datetime.now(UTC)})
@@ -224,8 +270,13 @@ class LearningPath(BaseModel):
                 continue
             course_low += hours.low
             course_high += hours.high
-            path_low += hours.low * share[item.choice]
-            path_high += hours.high * share[item.choice]
+            part = share[item.choice]
+            if item.choice is Choice.STUDY and item.module.topics:
+                # A skipped topic takes no time, a skimmed one about half.
+                left_out = len(item.skipped_topics) + 0.5 * len(item.skimmed_topics - item.skipped_topics)
+                part *= 1 - left_out / len(item.module.topics)
+            path_low += hours.low * part
+            path_high += hours.high * part
         return TimeEstimate(
             path_low=round(path_low),
             path_high=round(path_high),

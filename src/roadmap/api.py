@@ -67,7 +67,7 @@ from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
 from .onboarding import LearnerProfile, load_profiles
-from .path import Choice, LearningPath, PathItem, PathStateError, Progress
+from .path import Choice, LearningPath, PathItem, PathStateError, Progress, TopicChoice
 from .path_chat import CHATS_PER_DAY, ChatReply, ChatRequest, PathAssistant
 from .project_files import (
     ProjectError,
@@ -227,10 +227,10 @@ class ChoiceRequest(BaseModel):
     choice: Choice
 
 
-class SkimRequest(BaseModel):
+class TopicRequest(BaseModel):
     module_id: str
     topic: str
-    skim: bool
+    choice: TopicChoice
 
 
 class ShareRequest(BaseModel):
@@ -719,13 +719,22 @@ def create_app(
             lambda path: path.with_choice(body.module_id, body.choice),
         )
 
-    @app.post("/me/path/skim")
-    def skim_topic(body: SkimRequest, request: Request) -> LearningPath:
-        """The learner marks a topic of a module they study to skim, or to study in full."""
+    @app.post("/me/path/topic")
+    def choose_topic(body: TopicRequest, request: Request) -> LearningPath:
+        """The learner studies a topic of a module in full, skims it, or skips it out of the checkpoint."""
         return change(
             signed_in(request),
-            lambda path: path.with_skim(body.module_id, body.topic, body.skim),
+            lambda path: path.with_topic(body.module_id, body.topic, body.choice),
         )
+
+    def topics_of(request: Request, module_id: str) -> tuple[frozenset[str], frozenset[str]]:
+        """The topics the signed-in learner skips and skims in a module; none for anyone else."""
+        account = account_of(request)
+        path = store.path_of(account) if account else None
+        item = next((i for i in path.items if i.module.id == module_id), None) if path else None
+        if item is None:
+            return frozenset(), frozenset()
+        return item.skipped_topics, item.skimmed_topics
 
     @app.post("/me/path/confirm")
     def confirm(request: Request) -> LearningPath:
@@ -786,7 +795,9 @@ def create_app(
                     409, "This attempt does not follow your last one. Reload the page."
                 )
             try:
-                grade = found.grade(body.attempt, body.answers)
+                grade = found.grade(
+                    body.attempt, body.answers, path.item(module_id).skipped_topics
+                )
             except ValueError as error:
                 raise HTTPException(422, str(error)) from error
             if grade.effortless:
@@ -813,7 +824,8 @@ def create_app(
         are graded here."""
 
         def solved_in(path: LearningPath) -> LearningPath:
-            if checkpoint_of(edition_of(path), module_id).problem is None:
+            item = path.item(module_id)
+            if checkpoint_of(edition_of(path), module_id).problem_for(item.skipped_topics) is None:
                 raise HTTPException(404, f"No coding problem for '{module_id}'")
             return path.with_problem_solved(module_id)
 
@@ -844,7 +856,12 @@ def create_app(
         problem = None
         if body.code is not None and body.module_id is not None:
             checkpoint = edition_of(path).checkpoints.get(body.module_id)
-            problem = checkpoint.problem if checkpoint else None
+            item = next((i for i in path.items if i.module.id == body.module_id), None)
+            problem = (
+                checkpoint.problem_for(item.skipped_topics, item.skimmed_topics)
+                if checkpoint and item
+                else None
+            )
         # Their projects as the review left them, so the assistant can say why one came back.
         handed_in = []
         if submissions is not None:
@@ -1159,7 +1176,7 @@ def create_app(
         checkpoint = checkpoint_of(edition_of(path), module_id)
         attempt = item.attempts - 1
         reviewed = []
-        for question in checkpoint.questions_for_attempt(attempt):
+        for question in checkpoint.questions_for_attempt(attempt, item.skipped_topics):
             order = checkpoint.order_of(attempt, question.id)
             reviewed.append(
                 ReviewedQuestion(
@@ -1175,21 +1192,24 @@ def create_app(
 
     @app.get("/checkpoints/{module_id:path}")
     def checkpoint(
-        module_id: str, attempt: int = 0, version: str | None = None
+        module_id: str, request: Request, attempt: int = 0, version: str | None = None
     ) -> CheckpointOut:
+        """The attempt's questions; for a signed-in learner, from the topics they do not skip."""
         found = checkpoint_of(edition_named(version), module_id)
+        skipped, _ = topics_of(request, module_id)
         return CheckpointOut(
             module_id=module_id,
             status=found.status,
             attempt=attempt,
             pass_mark=PASS_MARK,
-            questions=found.asked(attempt),
+            questions=found.asked(attempt, skipped),
         )
 
     @app.get("/problems/{module_id:path}")
-    def problem(module_id: str, version: str | None = None) -> ProblemOut:
+    def problem(module_id: str, request: Request, version: str | None = None) -> ProblemOut:
+        """The coding problem; for a signed-in learner, on a topic they study."""
         edition = edition_named(version)
-        found = checkpoint_of(edition, module_id).problem
+        found = checkpoint_of(edition, module_id).problem_for(*topics_of(request, module_id))
         if found is None:
             raise HTTPException(404, f"No coding problem for '{module_id}'")
         module = next(

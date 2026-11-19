@@ -34,6 +34,8 @@ PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
 # Three attempts' worth, so a retake shows other questions. Correct answers are shown only after a pass, and
 # the options are shuffled for each attempt, so a learner cannot pass by remembering earlier attempts.
 GENERATED_QUESTIONS = 15
+# Each topic's own pool: a learner who skips the module's other topics still gets other questions at a retake.
+QUESTIONS_PER_TOPIC = 8
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _NUMBERING = re.compile(r"^\s*\d+[.)]\s*")
@@ -121,6 +123,9 @@ class Checkpoint(BaseModel):
     questions: list[CheckpointQuestion]
     # For modules that teach programming: solved after the questions, before the module counts as passed.
     problem: CodingProblem | None = None
+    # More problems, each for another topic, so a learner who skips the first problem's topic gets one on a
+    # topic they study.
+    problems: list[CodingProblem] = []
 
     @model_validator(mode="after")
     def _enough_distinct_questions(self) -> Checkpoint:
@@ -132,11 +137,49 @@ class Checkpoint(BaseModel):
             raise ValueError("Question ids repeat")
         return self
 
-    def questions_for_attempt(self, attempt: int) -> list[CheckpointQuestion]:
-        """Five questions per attempt; the next attempt takes the next five, round the list."""
-        start = (attempt * QUESTIONS_PER_ATTEMPT) % len(self.questions)
-        rotated = self.questions[start:] + self.questions[:start]
+    def pool(self, skipped: frozenset[str] = frozenset()) -> list[CheckpointQuestion]:
+        """The questions of the topics the learner does not skip, taken topic by topic in turn, so that an
+        attempt spans the topics. With too few left for an attempt, the whole checkpoint."""
+        kept = [question for question in self.questions if question.topic not in skipped]
+        if len(kept) < QUESTIONS_PER_ATTEMPT:
+            kept = list(self.questions)
+        by_topic: dict[str, list[CheckpointQuestion]] = {}
+        for question in kept:
+            by_topic.setdefault(question.topic, []).append(question)
+        longest = max(len(questions) for questions in by_topic.values())
+        return [
+            questions[i] for i in range(longest) for questions in by_topic.values() if i < len(questions)
+        ]
+
+    def questions_for_attempt(
+        self, attempt: int, skipped: frozenset[str] = frozenset()
+    ) -> list[CheckpointQuestion]:
+        """Five questions per attempt; the next attempt takes the next five, round the pool."""
+        pool = self.pool(skipped)
+        start = (attempt * QUESTIONS_PER_ATTEMPT) % len(pool)
+        rotated = pool[start:] + pool[:start]
         return rotated[:QUESTIONS_PER_ATTEMPT]
+
+    def problem_for(
+        self, skipped: frozenset[str] = frozenset(), skimmed: frozenset[str] = frozenset()
+    ) -> CodingProblem | None:
+        """The coding problem for a learner: on a topic they study in full if there is one, else on one they
+        skim; none when every problem is on a topic they skip."""
+        candidates = [
+            problem
+            for problem in (self.problem, *self.problems)
+            if problem is not None and (problem.topic or "") not in skipped
+        ]
+        return next(
+            (problem for problem in candidates if (problem.topic or "") not in skimmed),
+            candidates[0] if candidates else None,
+        )
+
+    def topic_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for question in self.questions:
+            counts[question.topic] = counts.get(question.topic, 0) + 1
+        return counts
 
     def order_of(self, attempt: int, question_id: str) -> list[int]:
         """The order the options of a question are shown in at this attempt: a fixed shuffle, so the
@@ -147,7 +190,7 @@ class Checkpoint(BaseModel):
         random.Random(seed).shuffle(order)  # nosec B311: a display order, not a secret
         return order
 
-    def asked(self, attempt: int) -> list[AskedQuestion]:
+    def asked(self, attempt: int, skipped: frozenset[str] = frozenset()) -> list[AskedQuestion]:
         """The attempt's questions as the learner sees them: shuffled options, no answer."""
         return [
             AskedQuestion(
@@ -158,13 +201,15 @@ class Checkpoint(BaseModel):
                     question.options[i] for i in self.order_of(attempt, question.id)
                 ],
             )
-            for question in self.questions_for_attempt(attempt)
+            for question in self.questions_for_attempt(attempt, skipped)
         ]
 
-    def grade(self, attempt: int, answers: dict[str, int]) -> Grade:
+    def grade(
+        self, attempt: int, answers: dict[str, int], skipped: frozenset[str] = frozenset()
+    ) -> Grade:
         """`answers` holds the position of each chosen option as shown. A failed attempt says which
         answers were wrong and what to review, but not the right answers."""
-        asked = self.questions_for_attempt(attempt)
+        asked = self.questions_for_attempt(attempt, skipped)
         if set(answers) != {question.id for question in asked}:
             raise ValueError("Answer exactly the questions of this attempt")
         if any(not 0 <= shown <= 3 for shown in answers.values()):
@@ -201,7 +246,7 @@ class Checkpoint(BaseModel):
             effortless=attempt == 0 and score == len(asked),
             review_topics=list(dict.fromkeys(review)),
             feedback=feedback,
-            problem_pending=passed and self.problem is not None,
+            problem_pending=passed and self.problem_for(skipped) is not None,
         )
 
 
@@ -332,6 +377,17 @@ class GeneratedProblem(BaseModel):
     problem: CodingProblem
 
 
+class TopicProblem(BaseModel):
+    problem: CodingProblem | None = Field(
+        default=None,
+        description="The problem, or null when the topic cannot be practised by writing a Python function.",
+    )
+
+
+class TopicQuestions(BaseModel):
+    questions: list[CheckpointQuestion]
+
+
 PROBLEM_TRIES = 3  # a problem whose checks fail is asked for again, this many times in all
 
 
@@ -363,6 +419,57 @@ class CheckpointGenerator:
                 }
             )
         raise UnusableAnswer(f"No usable problem for {module.id}: {last}")
+
+    def topic_questions(
+        self, module: Module, topic: str, count: int, existing: Checkpoint
+    ) -> list[CheckpointQuestion]:
+        """`count` new questions on one topic of the module, unlike the checkpoint's questions, with ids
+        that follow theirs. Raises LLMUnavailable without a usable answer."""
+        asked = [q.text for q in existing.questions if q.topic == topic]
+        prompt = (
+            f"{module_brief(module)}\nTopic: {topic}\nWrite {count} new questions on this topic only."
+            + ("\nIts questions so far, not to repeat:\n" + "\n".join(f"- {text}" for text in asked) if asked else "")
+        )
+        known = {q.text.casefold() for q in existing.questions}
+        titles = [t.title for t in module.topics]
+
+        def check(response: TopicQuestions) -> None:
+            if any(_module_topic(q.topic, titles) != topic for q in response.questions):
+                raise UnusableAnswer(f"Every question must be on {topic}")
+
+        response = self._llm.ask(prompts.load("topic_questions"), prompt, TopicQuestions, check=check)
+        # A question that repeats one already there is left out; the caller asks again for what is missing.
+        fresh: list[CheckpointQuestion] = []
+        for question in response.questions:
+            if question.text.casefold() not in known:
+                known.add(question.text.casefold())
+                fresh.append(question)
+        numbers = [int(q.id[1:]) for q in existing.questions if re.fullmatch(r"q\d+", q.id)]
+        start = max(numbers, default=0) + 1
+        return [
+            q.model_copy(update={"id": f"q{start + i}", "topic": topic})
+            for i, q in enumerate(fresh[:count])
+        ]
+
+    def topic_problem(self, module: Module, topic: str) -> CodingProblem | None:
+        """A coding problem on one topic, checked like any other; None when the model says the topic cannot
+        be practised in code. Raises UnusableAnswer when no try passes the checks."""
+        last: Exception | None = None
+        for _ in range(PROBLEM_TRIES):
+            try:
+                response = self._llm.ask(
+                    prompts.load("problem") + "\n\n" + prompts.load("topic_problem"),
+                    f"{module_brief(module)}\nTopic: {topic}",
+                    TopicProblem,
+                    check=lambda found: _check_topic_problem(found.problem, module, topic),
+                )
+            except LLMUnavailable as error:
+                last = error
+                continue
+            if response.problem is None:
+                return None
+            return response.problem.model_copy(update={"topic": topic})
+        raise UnusableAnswer(f"No usable problem on {topic}: {last}")
 
     def generate(self, module: Module, curriculum_version: str) -> Checkpoint:
         response = self._llm.ask(
@@ -421,6 +528,15 @@ def _check_problem(problem: CodingProblem, module: Module) -> None:
     titles = [topic.title for topic in module.topics]
     if titles and problem.topic and _module_topic(problem.topic, titles) is None:
         raise UnusableAnswer(f"The problem's topic is not the module's: {problem.topic}")
+
+
+def _check_topic_problem(problem: CodingProblem | None, module: Module, topic: str) -> None:
+    if problem is None:
+        return
+    _check_problem(problem, module)
+    titles = [t.title for t in module.topics]
+    if _module_topic(problem.topic or "", titles) != topic:
+        raise UnusableAnswer(f"The problem must practise {topic}, not {problem.topic}")
 
 
 def _with_module_topic(problem: CodingProblem, module: Module) -> CodingProblem:

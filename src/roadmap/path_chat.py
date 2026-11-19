@@ -200,6 +200,9 @@ def _item(item: PathItem) -> str:
     if item.skim and item.choice is Choice.STUDY:
         skims = "; ".join(f"{skim.topic} ({skim.reason})" for skim in item.skim)
         line += f"\n  Topics they can skim, though the checkpoint still asks about them: {skims}"
+    if item.skip_topics and item.choice is Choice.STUDY:
+        skips = "; ".join(f"{skip.topic} ({skip.reason})" for skip in item.skip_topics)
+        line += f"\n  Topics they skip; the checkpoint leaves them out: {skips}"
     return line
 
 
