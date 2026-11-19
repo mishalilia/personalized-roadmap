@@ -186,6 +186,18 @@ questions:
   answer: 0
   explanation: A state dict contains learned parameter values, so the inference script must create a compatible
     model and load those values into it. Evaluation mode sets inference behavior for modules such as dropout.
+- id: q16
+  topic: Deep learning and pretrained models
+  text: A small neural network's training loss keeps decreasing, but its validation loss starts increasing after
+    several epochs. What is the most useful next step?
+  options:
+  - Train for more epochs so the model can reduce both losses further.
+  - Use the checkpoint from an earlier epoch when validation loss was lower.
+  - Increase the learning rate so the model can adapt to validation examples.
+  - Choose the checkpoint with the lowest training loss for best generalization.
+  answer: 1
+  explanation: The widening gap suggests overfitting, so an earlier checkpoint with lower validation loss is likely
+    to generalize better. Continuing to optimize training loss alone may make validation performance worse.
 problem:
   title: Binary Classification Metrics
   prompt: "Write `binary_metrics(y_true, y_pred)` to calculate binary classification metrics, treating `1` as the\
@@ -255,3 +267,109 @@ problem:
     \ 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = 2 * precision * recall / (precision + recall) if\
     \ precision + recall else 0\n    return {'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn, 'accuracy': accuracy, 'precision':\
     \ precision, 'recall': recall, 'f1': f1}"
+problems:
+- title: One Step of Logistic Training
+  prompt: 'Write `sigmoid_training_step(features, labels, weights, bias, learning_rate)`, which performs **one full-batch
+    gradient-descent step** for a sigmoid neuron trained with binary cross-entropy.
+
+
+    - `features` is a non-empty list of feature rows; `labels` contains one `0` or `1` per row. `weights` has one
+    value per feature.
+
+    - Compute the mean binary cross-entropy and mean gradients over the batch using the **original** weights and
+    bias. Update all weights and the bias simultaneously.
+
+    - Return `(updated_weights, updated_bias, loss_before_update)`.
+
+    - Use numerically stable calculations for the sigmoid and loss. Assume the input dimensions and labels are valid.
+
+
+    Example:
+
+    ```python
+
+    sigmoid_training_step([[0], [1]], [0, 1], [0], 0, 1)
+
+    # ([0.25], 0.0, 0.6931471805599453)
+
+    ```
+
+
+    A zero learning rate should leave the parameters unchanged while still returning the loss.'
+  starter_code: "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    \"\"\"Perform one\
+    \ full-batch sigmoid-neuron gradient step.\n\n    Return (updated_weights, updated_bias, loss_before_update).\n\
+    \    \"\"\"\n    ..."
+  tests: 'weights, bias, loss = sigmoid_training_step([[0], [1]], [0, 1], [0], 0, 1)
+
+    assert abs(weights[0] - 0.25) < 1e-12 and bias == 0.0, "should average the batch gradients"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "should return the pre-update mean loss"
+
+
+    weights, bias, _ = sigmoid_training_step([[0], [0]], [1, 1], [0], 0, 0.2)
+
+    assert weights == [0.0] and abs(bias - 0.1) < 1e-12, "should update the bias from the batch"
+
+
+    weights, bias, loss = sigmoid_training_step([[1, 2]], [0], [0, 0], 0, 0.4)
+
+    assert all(abs(a - b) < 1e-12 for a, b in zip(weights, [-0.2, -0.4])), "should update every feature weight"
+
+    assert abs(bias + 0.2) < 1e-12 and abs(loss - 0.6931471805599453) < 1e-12, "should handle a single multi-feature
+    example"
+
+
+    weights, bias, loss = sigmoid_training_step([[1]], [1], [0], 0, 0)
+
+    assert weights == [0.0] and bias == 0.0, "zero learning rate should not change parameters"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "zero learning rate should still report loss"
+
+
+    weights, bias, loss = sigmoid_training_step([[1]], [1], [0], 0, 2)
+
+    assert abs(weights[0] - 1.0) < 1e-12 and abs(bias - 1.0) < 1e-12, "should apply the learning rate to the gradients"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "loss must be measured before the update"
+
+
+    _, _, loss = sigmoid_training_step([[1]], [0], [1000], 0, 0)
+
+    assert abs(loss - 1000.0) < 1e-9, "loss calculation should remain stable for a large logit"'
+  solution: "import math\n\n\ndef sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    \"\
+    \"\"Perform one full-batch sigmoid-neuron gradient step.\n\n    Return (updated_weights, updated_bias, loss_before_update).\n\
+    \    \"\"\"\n    count = len(features)\n    weight_gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n\
+    \    loss = 0.0\n\n    for row, label in zip(features, labels):\n        logit = sum(weight * value for weight,\
+    \ value in zip(weights, row)) + bias\n        if logit >= 0:\n            probability = 1.0 / (1.0 + math.exp(-logit))\n\
+    \        else:\n            exp_logit = math.exp(logit)\n            probability = exp_logit / (1.0 + exp_logit)\n\
+    \n        # Stable binary cross-entropy expressed directly in terms of the logit.\n        loss += max(logit,\
+    \ 0.0) - logit * label + math.log1p(math.exp(-abs(logit)))\n        error = probability - label\n        for\
+    \ index, value in enumerate(row):\n            weight_gradients[index] += error * value\n        bias_gradient\
+    \ += error\n\n    mean_loss = loss / count\n    updated_weights = [\n        weight - learning_rate * gradient\
+    \ / count\n        for weight, gradient in zip(weights, weight_gradients)\n    ]\n    updated_bias = bias -\
+    \ learning_rate * bias_gradient / count\n    return updated_weights, updated_bias, mean_loss"
+  packages: []
+  topic: Deep learning and pretrained models
+  wrong_solutions:
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    loss = 0.0\n    for row, label in zip(features,\
+    \ labels):\n        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n\
+    \        loss += -label * math.log(p) - (1 - label) * math.log(1 - p)\n        error = p - label\n        for\
+    \ i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient += error\n    return\
+    \ ([w - learning_rate * g / count for w, g in zip(weights, gradients)],\n            bias - learning_rate *\
+    \ bias_gradient / count, loss / count)"
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    loss = 0.0\n    for row, label in zip(features,\
+    \ labels):\n        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n\
+    \        loss += max(z, 0.0) - z * label + math.log1p(math.exp(-abs(z)))\n        error = p - label\n      \
+    \  for i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient += error\n    return\
+    \ ([w - learning_rate * g for w, g in zip(weights, gradients)],\n            bias - learning_rate * bias_gradient,\
+    \ loss / count)"
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    for row, label in zip(features, labels):\n\
+    \        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n        error\
+    \ = p - label\n        for i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient\
+    \ += error\n    updated_weights = [w - learning_rate * g / count for w, g in zip(weights, gradients)]\n    updated_bias\
+    \ = bias - learning_rate * bias_gradient / count\n    loss = 0.0\n    for row, label in zip(features, labels):\n\
+    \        z = sum(w * x for w, x in zip(updated_weights, row)) + updated_bias\n        loss += max(z, 0.0) -\
+    \ z * label + math.log1p(math.exp(-abs(z)))\n    return updated_weights, updated_bias, loss / count"

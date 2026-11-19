@@ -187,6 +187,105 @@ questions:
   answer: 2
   explanation: A tool call lets the assistant obtain the current status from the authoritative API and use that
     result in its response. Guessing or consulting old conversations cannot reliably provide current order data.
+- id: q16
+  topic: Capstone Project
+  text: You are building a capstone assistant that answers questions about a company’s frequently updated policies.
+    Which design best keeps its answers tied to the current documents?
+  options:
+  - Fine-tune the model on the policy documents and refresh training once a year
+  - Retrieve relevant document chunks for each question and provide them to the model
+  - Add longer instructions asking the model to recall the policy details accurately
+  - Train word embeddings on the documents and use the nearest policy terms as answers
+  answer: 1
+  explanation: Retrieval can supply the latest relevant policy text at answer time, so the model does not have to
+    rely on potentially outdated learned parameters. Fine-tuning is not a practical way to keep frequently changing
+    facts current.
+- id: q17
+  topic: Capstone Project
+  text: Your capstone uses a collection of support conversations to compare two answer-generation approaches. How
+    should you set aside evaluation examples to get a more trustworthy comparison?
+  options:
+  - Use examples from the training set so both approaches see identical questions
+  - Select examples with the clearest answers after reviewing model outputs
+  - Keep a separate set of examples out of development and training until evaluation
+  - Evaluate only on examples the retrieval system successfully finds
+  answer: 2
+  explanation: A held-out set provides a check on performance beyond examples used to build or tune the system.
+    Choosing examples based on outputs or retrieval success can bias the comparison.
+- id: q18
+  topic: Capstone Project
+  text: A capstone RAG prototype often misses answers that depend on a sentence split across two adjacent chunks.
+    Which change is most likely to help?
+  options:
+  - Add some overlap between neighboring chunks
+  - Remove all punctuation before creating chunks
+  - Increase the embedding vector dimension
+  - Train the generator for more epochs on the same documents
+  answer: 0
+  explanation: Overlap preserves some shared context across chunk boundaries, making it more likely that retrieval
+    returns the complete relevant passage. Changing punctuation or generator training does not directly address
+    the boundary problem.
+- id: q19
+  topic: Capstone Project
+  text: Your capstone assistant must check a live shipment status through an external service. What should happen
+    when a user asks for an update?
+  options:
+  - Ask the language model to predict the shipment status from its training
+  - Fine-tune the model on yesterday’s shipment records
+  - Search a vector database of past shipment questions
+  - Have the model call the status tool and use its returned result
+  answer: 3
+  explanation: A tool call can retrieve the live status from the external service, which is the appropriate source
+    for current information. Training data and past questions cannot reliably provide a shipment’s present state.
+- id: q20
+  topic: Capstone Project
+  text: 'A capstone project uses two agents: one extracts facts from research papers, and the other writes a summary
+    from those facts. What is the main benefit of this setup?'
+  options:
+  - The agents can avoid needing evaluation because they check each other
+  - Each agent can focus on a distinct responsibility before coordinating
+  - The writing agent can access every tool without any task boundaries
+  - The agents can guarantee that extracted facts are free from errors
+  answer: 1
+  explanation: Specializing the agents separates fact extraction from summary writing and gives the workflow clear
+    responsibilities. Multiple agents do not automatically eliminate errors or the need for evaluation.
+- id: q21
+  topic: Capstone Project
+  text: For a capstone prototype, a base model understands the task but sometimes ignores a requested output format.
+    You have only a few examples and need to test the idea quickly. What is the best first step?
+  options:
+  - Pretrain a new language model on a large general text collection
+  - Replace the model with a bag-of-words classifier
+  - Try a clearer prompt with a small number of format examples
+  - Quantize the model and expect its output format to improve
+  answer: 2
+  explanation: Prompting with clear instructions and examples is a quick way to test whether the model can follow
+    the desired format. Pretraining is far beyond the need, while quantization mainly affects model storage and
+    computation.
+- id: q22
+  topic: Capstone Project
+  text: Your capstone team has limited GPU memory but wants to adapt a large model for a narrow task. Which approach
+    best fits that constraint?
+  options:
+  - Use QLoRA to train adapter parameters with a quantized base model
+  - Use full fine-tuning and update every model parameter
+  - Increase the model size so its task knowledge is more complete
+  - Run inference at higher precision while training all model weights
+  answer: 0
+  explanation: QLoRA combines a quantized base model with trainable low-rank adapters to reduce memory requirements
+    during adaptation. Full fine-tuning updates all parameters and generally demands more memory.
+- id: q23
+  topic: Capstone Project
+  text: A capstone RAG assistant produces fluent answers, but some claims are unsupported by retrieved documents.
+    Which evaluation change would best reveal this failure?
+  options:
+  - Measure only how quickly the assistant responds
+  - Compare answer length across several prompt styles
+  - Count the number of chunks stored in the vector database
+  - Check whether answer claims are supported by the retrieved evidence
+  answer: 3
+  explanation: Checking claims against retrieved evidence directly tests whether the assistant is grounded in its
+    sources. Speed, answer length, and collection size do not show whether claims are supported.
 problem:
   title: Scaled Dot-Product Attention
   prompt: 'Write `self_attention(queries, keys, values)` to compute a basic self-attention layer from already-projected
@@ -277,3 +376,4 @@ problem:
     \"\"\n    row = [1.0 / len(keys)] * len(keys)\n    weights = [row[:] for _ in queries]\n    outputs = [\n  \
     \      [sum(w * value[d] for w, value in zip(row, values)) for d in range(len(values[0]))]\n        for _ in\
     \ queries\n    ]\n    return weights, outputs"
+problems: []

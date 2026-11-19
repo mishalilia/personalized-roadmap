@@ -184,6 +184,104 @@ questions:
   answer: 0
   explanation: CTC supports training speech recognition systems when the transcript is known but the precise alignment
     between audio frames and text tokens is not.
+- id: q16
+  topic: Capstone Project
+  text: For an ASR capstone, you need to compare small and large Whisper models on accented, noisy recordings. Which
+    evaluation plan best supports a fair comparison?
+  options:
+  - Use the same held-out recordings for each model and compare WER and transcription speed
+  - Use different recordings for each model and compare the number of transcribed words
+  - Choose the model with the clearest output on one clip and report its average speed
+  - Compare training loss across models and use it to estimate transcription accuracy
+  answer: 0
+  explanation: Testing each model on the same held-out audio makes the comparison fair, while WER and speed measure
+    accuracy and inference cost. Training loss or a single example does not provide the same evaluation.
+- id: q17
+  topic: Capstone Project
+  text: Your text-classification capstone must treat “the package arrived late” and “my delivery was delayed” as
+    related complaints despite their different wording. Which representation is the best fit to explore?
+  options:
+  - Raw word counts, since frequent words capture shared meaning
+  - TF-IDF vectors, since rare words automatically encode paraphrases
+  - Contextual embeddings, since they can represent meaning beyond exact word overlap
+  - Character counts, since similar message lengths indicate similar intent
+  answer: 2
+  explanation: Contextual embeddings can represent a sentence using its surrounding words, helping capture related
+    meanings despite limited word overlap. Bag-of-Words and TF-IDF primarily represent token occurrence or weighting.
+- id: q18
+  topic: Capstone Project
+  text: In an image-generation capstone, users must provide a rough pose drawing and have the generated image follow
+    its structure. Which approach should you try?
+  options:
+  - Use ControlNet to condition generation on the drawing
+  - Increase the text prompt length so it describes the pose in more detail
+  - Use a text-only classifier to select a matching generated image
+  - Train a language model to predict the next pose-description token
+  answer: 0
+  explanation: ControlNet is designed to guide image generation with an additional structured input, such as a pose
+    or drawing. A text-only prompt does not provide the same direct structural conditioning.
+- id: q19
+  topic: Capstone Project
+  text: Your TTS capstone mispronounces dates and abbreviations in user-submitted text. Which change best addresses
+    this before speech is generated?
+  options:
+  - Pass the original text directly to the vocoder
+  - Convert the text to a mel spectrogram before expanding abbreviations
+  - Use voice cloning to teach the model the intended pronunciation
+  - Normalize the text and convert it to pronunciation-oriented inputs before the acoustic model
+  answer: 3
+  explanation: Text normalization and grapheme-to-phoneme conversion can turn dates, abbreviations, and written
+    forms into inputs that better represent how they should be spoken. The vocoder comes later, converting acoustic
+    features into waveform audio.
+- id: q20
+  topic: Capstone Project
+  text: Generated images in your diffusion capstone often ignore important details in the prompt. You want to test
+    whether guidance scale affects prompt adherence. Which experiment is most informative?
+  options:
+  - Change the prompt and guidance scale for every image, then compare the results
+  - Keep the prompt and other settings fixed while generating outputs at several guidance scales
+  - Change the noise schedule for each guidance scale and compare only the sharpest result
+  - Use a different model for each guidance scale so each setting gets a fresh trial
+  answer: 1
+  explanation: Varying guidance scale while holding other settings constant helps isolate its effect on prompt adherence.
+    Changing several factors at once makes it difficult to tell what caused a difference.
+- id: q21
+  topic: Capstone Project
+  text: You want a diffusion capstone to generate images of a custom object, but you have limited compute and want
+    to avoid updating all the model weights. What should you try?
+  options:
+  - Replace the denoising U-Net with a text tokenizer
+  - Train a new diffusion model from scratch using only the object images
+  - Fine-tune the model with a LoRA adapter on examples of the object
+  - Increase the sampling steps without changing the model parameters
+  answer: 2
+  explanation: LoRA adapts a model using a relatively small set of added trainable parameters, making it a practical
+    option for limited-resource fine-tuning. Increasing sampling steps changes inference, not what the model has
+    learned.
+- id: q22
+  topic: Capstone Project
+  text: For a mini language-model capstone, the model should generate a sequence one token at a time without using
+    tokens that come later in the sequence. Which training setup matches this goal?
+  options:
+  - Mask random input tokens and predict all masked tokens at once
+  - Encode the whole sequence and classify its overall topic
+  - Use an unmasked attention layer and predict the first token from the last
+  - Use causal attention and train the model to predict the next token
+  answer: 3
+  explanation: Causal attention blocks access to future tokens, matching next-token prediction during autoregressive
+    generation. Masked-token prediction is a different objective that uses context on both sides of a masked position.
+- id: q23
+  topic: Capstone Project
+  text: Your audio capstone combines clips recorded at different sample rates, but the speech model expects one
+    fixed rate. What should the preprocessing pipeline do?
+  options:
+  - Relabel each clip with the expected rate without changing its samples
+  - Resample each clip to the model’s expected rate before feature extraction
+  - Convert every clip to a mel spectrogram before checking its sample rate
+  - Increase the bit depth so all clips have the same number of samples per second
+  answer: 1
+  explanation: Resampling changes the audio samples so they represent the signal at the required rate; changing
+    only the rate label would misrepresent the audio. Bit depth describes amplitude precision, not samples per second.
 problem:
   title: Build TF-IDF Vectors
   prompt: 'Write `tfidf_vectors(documents)`, which converts a list of documents into sparse TF-IDF vectors. Return
@@ -280,3 +378,4 @@ problem:
     \            counts[token] = counts.get(token, 0) + 1\n        vectors.append({token: count / len(tokens) *\
     \ (math.log((1 + n_documents) / (1 + df[token])) + 1) for token, count in counts.items()} if tokens else {})\n\
     \    return vectors"
+problems: []

@@ -189,6 +189,102 @@ questions:
   explanation: mAP summarizes average precision across classes and specified IoU criteria, so Model B is better
     by that evaluated aggregate metric. A single precision measurement at one threshold does not establish overall
     superiority.
+- id: q16
+  topic: Capstone
+  text: A capstone system must identify several objects in each image and draw a separate box around each one. Which
+    model output best fits the requirement?
+  options:
+  - A detector that predicts a class and box for each object
+  - A classifier that predicts one label for the whole image
+  - A feature extractor that returns one vector for each image
+  - A classifier that returns probabilities for image-level labels
+  answer: 0
+  explanation: Object detection predicts both object classes and their locations, including multiple objects in
+    one image. Image classification alone does not provide separate bounding boxes.
+- id: q17
+  topic: Capstone
+  text: You prepare a custom YOLO dataset, but training reports incorrect classes for some objects. What should
+    you check first?
+  options:
+  - Whether the optimizer uses momentum during training
+  - Whether label class IDs match the dataset's class-name order
+  - Whether the validation images have a higher resolution
+  - Whether the model uses a sigmoid activation in its head
+  answer: 1
+  explanation: YOLO labels refer to classes by ID, so those IDs must correspond to the class names in the dataset
+    configuration. A mismatch can cause objects to be trained under the wrong classes.
+- id: q18
+  topic: Capstone
+  text: Your capstone dataset contains many frames from each video. Which split strategy gives a more trustworthy
+    evaluation?
+  options:
+  - Randomly split all frames after resizing them
+  - Put frames with rare classes in the validation set
+  - Split by source video before assigning frames to sets
+  - Use the same frames for training and validation
+  answer: 2
+  explanation: Frames from the same video are often very similar, so splitting by source video reduces near-duplicate
+    examples across training and validation. This gives a more realistic measure of performance on unseen footage.
+- id: q19
+  topic: Capstone
+  text: You have a small labeled dataset for a new object-detection task. Which starting approach is most likely
+    to make effective use of it?
+  options:
+  - Train a detector from scratch and stop after one epoch
+  - Train only on the validation set to conserve labels
+  - Remove the detection head and use the model as a classifier
+  - Fine-tune a pretrained detector on the labeled images
+  answer: 3
+  explanation: Fine-tuning lets the model reuse visual features learned from earlier data, which is often helpful
+    when the new labeled dataset is small. Training from scratch generally requires more data and training.
+- id: q20
+  topic: Capstone
+  text: When you plot your capstone's training annotations over the images, many boxes appear shifted and oversized.
+    What should you investigate first?
+  options:
+  - The annotation coordinate format and any required normalization
+  - The learning-rate scheduler and its warm-up period
+  - The number of classes in the model's output layer
+  - The GPU batch size and available device memory
+  answer: 0
+  explanation: Misplaced or oversized plotted boxes point to an annotation-format or coordinate-scaling mismatch.
+    Fixing that data issue is more relevant than changing training settings.
+- id: q21
+  topic: Capstone
+  text: During capstone inference, you move the model to CUDA but get a device-mismatch error when passing it an
+    image batch. What should you do?
+  options:
+  - Convert the model weights to a different floating-point type
+  - Move the image batch to the same CUDA device as the model
+  - Increase the confidence threshold before running inference
+  - Switch the model to training mode before passing the batch
+  answer: 1
+  explanation: A model and its input tensors must be on compatible devices for the forward pass. Moving the image
+    batch to the model's CUDA device resolves this mismatch.
+- id: q22
+  topic: Capstone
+  text: Your detector has high precision but misses many labeled objects. Predictions appear only when the confidence
+    score is very high. Which change should you test?
+  options:
+  - Raise the confidence threshold to remove more predictions
+  - Increase the IoU threshold used to match predicted boxes
+  - Lower the confidence threshold and re-evaluate precision and recall
+  - Evaluate using only the training images instead of validation images
+  answer: 2
+  explanation: Lowering the confidence threshold allows more predictions through, which can recover missed objects
+    and improve recall. Re-evaluating also shows the effect on precision.
+- id: q23
+  topic: Capstone
+  text: Your capstone detector has good mAP, but it must run in real time on a specific edge device. What is the
+    most useful next evaluation?
+  options:
+  - Measure training time on the computer used to build the model
+  - Compare the number of parameters without running inference
+  - Measure latency only on a high-end desktop GPU
+  - Measure end-to-end inference latency on the target device
+  answer: 3
+  explanation: Deployment speed depends on the target hardware and the inference pipeline, not just model accuracy
+    or parameter count. Measuring end-to-end latency on the intended device directly tests the real-time requirement.
 problem:
   title: Calculate Box IoU
   prompt: 'Write `intersection_over_union(box_a, box_b)` to calculate the Intersection over Union (IoU) of two bounding
@@ -245,3 +341,4 @@ problem:
     \ bx1))\n    height = max(0, min(ay2, by2) - max(ay1, by1))\n    intersection = width * height\n    area_a =\
     \ (ax2 - ax1) * (ay2 - ay1)\n    area_b = (bx2 - bx1) * (by2 - by1)\n    union = area_a + area_b - intersection\n\
     \    return intersection / union"
+problems: []

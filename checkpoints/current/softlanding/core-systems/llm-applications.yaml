@@ -185,6 +185,18 @@ questions:
   answer: 0
   explanation: Testing a meaningful failure case checks behavior that a success-only test cannot establish. Comparing
     it with the acceptance criteria helps determine whether the implementation is suitable.
+- id: q16
+  topic: LLM fundamentals
+  text: An extraction prompt requests 12 items from a source that fits in the context, but the response stops after
+    five items at the configured output cap. What should you change first?
+  options:
+  - Raise the temperature so the model considers more items.
+  - Expand the context window so the model can see more source text.
+  - Raise the output-token limit so the model can finish the list.
+  - Fine-tune the model on examples of complete lists.
+  answer: 2
+  explanation: The output-token limit caps how much the model can generate, so raising it gives the response room
+    to include the remaining items.
 problem:
   title: Check a Structured Answer
   prompt: 'Write `check_response(response_json, expected)` to check an LLM''s JSON answer against reference information
@@ -298,3 +310,4 @@ problem:
     \ answers.values()):\n        return {\"structure_ok\": False, \"content_ok\": False}\n    content_ok = all(answers[k]\
     \ == (\"not stated\" if v is None else v) for k, v in expected.items())\n    return {\"structure_ok\": True,\
     \ \"content_ok\": content_ok}"
+problems: []

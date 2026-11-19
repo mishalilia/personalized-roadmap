@@ -175,6 +175,19 @@ questions:
   answer: 1
   explanation: The equally likely outcomes are HH, HT, TH, and TT; exactly one head occurs in HT and TH, so the
     probability is 2/4 = 1/2.
+- id: q16
+  topic: Probability & statistics
+  text: Individual delivery times are strongly right-skewed. A team repeatedly takes independent random samples
+    of 40 deliveries and calculates each sample's mean time. What should the distribution of those means generally
+    look like?
+  options:
+  - Strongly right-skewed, with its center at the most common delivery time
+  - Approximately bell-shaped, with its center near the population mean
+  - Uniform, with its center at the median delivery time
+  - Approximately bell-shaped, with its center near the largest delivery time
+  answer: 1
+  explanation: With sufficiently large independent random samples, the distribution of sample means is generally
+    approximately bell-shaped and centered near the population mean, even when individual delivery times are skewed.
 problem:
   title: One-Sample Z Test
   prompt: 'Write `one_sample_z(data, null_mean, population_sd, alpha)` to summarize a sample and perform a two-sided
@@ -286,3 +299,4 @@ problem:
     : standard_error,\n        \"confidence_interval\": (mean - 1.96 * standard_error, mean + 1.96 * standard_error),\n\
     \        \"z_stat\": z_stat,\n        \"p_value\": p_value,\n        \"reject_null\": p_value < alpha,\n   \
     \ }"
+problems: []

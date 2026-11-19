@@ -350,3 +350,12 @@ def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
     assert checkpoint.problem_for(frozenset({"A", "B"})) is None
     grade = checkpoint.grade(0, {x.id: 0 for x in only_b}, frozenset({"A", "C"}))
     assert grade.total == 5
+
+
+def test_a_question_that_speaks_of_code_must_show_it():
+    from roadmap.checkpoints import missing_code
+
+    assert missing_code("This code prints `4` instead of `9`. Where would a print help?")
+    assert not missing_code("What does this code print? `values = [1, 2]`")
+    assert not missing_code("What does this code print?\n```python\nprint(1)\n```")
+    assert not missing_code("Which line of a script reads the file?")

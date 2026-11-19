@@ -183,6 +183,215 @@ questions:
   answer: 0
   explanation: A useful handover records the Python version, dependencies, configuration, and run and test commands,
     while keeping credentials outside committed code.
+- id: q16
+  topic: 1. Readable Python
+  text: "A teammate needs to understand this function at a glance: `def f(rows):\n    return [r for r in rows if\
+    \ r[\"score\"] >= 70]`. Which rewrite makes its purpose clearest without changing its behavior?"
+  options:
+  - '`def process(rows): return [row for row in rows if row["score"] >= 70]`'
+  - '`def keep_passing_rows(rows): return [row for row in rows if row["score"] >= 70]`'
+  - '`def filter(rows): return [row for row in rows if row["score"] >= 70]`'
+  - '`def make_list(rows): return [row for row in rows if row["score"] >= 70]`'
+  answer: 1
+  explanation: The function name describes the specific result it produces, and the variable name `row` is more
+    informative than `r`. The other names are vague or could be confused with a general operation.
+- id: q17
+  topic: 1. Readable Python
+  text: A function omits archived records because a downstream service rejects them, even though archived records
+    otherwise meet the filter criteria. Which addition best explains this non-obvious decision?
+  options:
+  - A comment beside the filter explaining the downstream service requirement
+  - A docstring that repeats the filter expression in plain language
+  - A longer variable name that includes the word `archived`
+  - A comment above the function saying that it filters records
+  answer: 0
+  explanation: The comment should explain why the code makes a non-obvious choice, rather than restating what the
+    filter does. A docstring is more useful for describing how to use the function.
+- id: q18
+  topic: 1. Readable Python
+  text: "What does this code print? `class Badge:\n    def __init__(self, label): self.label = label\n    def show(self):\
+    \ return self.label\n\nfirst = Badge(\"Guest\")\nsecond = Badge(\"Staff\")\nprint(first.show(), second.show())`"
+  options:
+  - '`Staff Staff`, because both instances use the most recently assigned label'
+  - '`Guest Staff`, because each instance has its own label and `show` reads that instance''s attribute'
+  - '`Guest Guest`, because `show` always uses the first instance created'
+  - An error, because instance methods cannot read attributes set in `__init__`
+  answer: 1
+  explanation: Each call to `Badge` creates an instance with its own `label` attribute, and `show` reads the attribute
+    on the instance it is called on. Therefore the two labels remain separate.
+- id: q19
+  topic: 1. Readable Python
+  text: "A caller needs to add a tag to a list but keep the original list unchanged. This helper currently modifies\
+    \ its input: `def add_tag(tags, tag):\n    tags.append(tag)\n    return tags`. Which change makes the behavior\
+    \ match the caller's expectation?"
+  options:
+  - Rename `tags` to `original_tags` and keep the body unchanged
+  - Remove the return statement so the caller cannot see the changed list
+  - Create a copy first, append to the copy, and return the copy
+  - Move the helper into a class so the list is stored as an attribute
+  answer: 2
+  explanation: Appending directly to `tags` changes the caller's list, so the helper needs to copy it before appending
+    if it should leave the input untouched. Renaming the parameter or changing where the function lives does not
+    remove that side effect.
+- id: q20
+  topic: 2. Testing and debugging
+  text: A test writes a small CSV file, calls `build_report(path)`, and checks the report’s total. `build_report`
+    reads the file and calculates the total. What kind of test is this?
+  options:
+  - A unit test of the CSV reader
+  - A small integration test of connected parts
+  - A unit test of the total calculation
+  - A test of the test fixture setup
+  answer: 1
+  explanation: The test checks file reading and calculation working together through `build_report`, so it covers
+    connected parts rather than one isolated unit.
+- id: q21
+  topic: 2. Testing and debugging
+  text: A function keeps records whose timestamps are at or before a cutoff. Existing tests use timestamps well
+    before and well after it. Which case most directly checks the boundary?
+  options:
+  - A record dated one day before the cutoff
+  - A record dated one day after the cutoff
+  - An empty list of records
+  - A record dated exactly at the cutoff
+  answer: 3
+  explanation: The exact-cutoff case checks whether the inclusive boundary (`at or before`) is implemented correctly.
+- id: q22
+  topic: 2. Testing and debugging
+  text: A config loader hides missing files and malformed JSON by returning an empty dictionary. Which handler best
+    communicates the failure while retaining its cause?
+  options:
+  - '`except (OSError, ValueError) as exc: raise RuntimeError(f"Could not load {path}") from exc`'
+  - '`except (OSError, ValueError): return {}`'
+  - '`except (OSError, ValueError) as exc: print(exc); return {}`'
+  - '`except (OSError, ValueError) as exc: raise RuntimeError(f"Could not load {path}") from None`'
+  answer: 0
+  explanation: Raising an error with the path gives callers useful context, and `from exc` preserves the original
+    failure as the cause.
+- id: q23
+  topic: 3. Refactoring and project structure
+  text: A training script and an evaluation script both need the same metric calculation. Which change gives the
+    calculation a reusable, understandable interface?
+  options:
+  - Copy the calculation into each script and keep their versions synchronized
+  - Move the calculation into `metrics.py` and have both scripts call it
+  - Move the calculation into the training script and import that script from evaluation
+  - Put the calculation in a project-wide `utils.py` alongside unrelated helpers
+  answer: 1
+  explanation: A focused `metrics.py` module groups related logic and lets both scripts use it through a clear function
+    interface. Copying creates duplication, while importing a script or using a catch-all module gives the logic
+    a less clear home.
+- id: q24
+  topic: 3. Refactoring and project structure
+  text: Importing `cleaning.py` unexpectedly reads a large data file and prints a report because the full workflow
+    runs at the top level. What is the best refactor?
+  options:
+  - Move the import of `cleaning.py` to the end of every script that uses it
+  - Wrap the workflow in a function and call it only from the program's entry point
+  - Catch file and printing errors so importing the module can continue
+  - Move the file-reading statement into each function that needs cleaned data
+  answer: 1
+  explanation: Defining the workflow as a function and calling it from the entry point prevents importing the module
+    from running the workflow. This makes the module's reusable functions easier to use without unexpected input/output
+    operations.
+- id: q25
+  topic: 3. Refactoring and project structure
+  text: A project’s `utils.py` now contains CSV loading, image resizing, model scoring, and chart drawing. Where
+    should a new image-preprocessing function go?
+  options:
+  - In `utils.py`, so all helper functions remain together
+  - In the model-scoring module, since preprocessing affects model results
+  - In a focused preprocessing module with related image-transformation functions
+  - In the command-line script, beside the code that selects input files
+  answer: 2
+  explanation: A focused preprocessing module groups related transformations and gives them a clearer home than
+    a catch-all utility file. The command-line script and scoring module have different responsibilities.
+- id: q26
+  topic: 3. Refactoring and project structure
+  text: While reorganizing a report function, you are also asked to intentionally change its rounding rule. How
+    should you handle the two changes?
+  options:
+  - Combine them into one change and update tests only if the refactor fails
+  - Keep the old rule in tests and treat the new output as a refactoring detail
+  - Make the new rule explicit and test it separately from the structural reorganization
+  - Avoid changing the code structure until the new rule has been released
+  answer: 2
+  explanation: Changing the rounding rule changes behavior, while reorganizing the function is structural. Making
+    the behavior change explicit and testing it separately makes both the intended output and the refactor easier
+    to review.
+- id: q27
+  topic: 4. Collaboration and handover
+  text: A pull request fixes a calculation bug, but its diff also reformats several unrelated modules. What is the
+    most useful review request?
+  options:
+  - Ask the author to remove the unrelated formatting so the fix is easier to review.
+  - Approve the change because formatting makes the project more consistent.
+  - Ask the author to combine the fix with another feature before merging.
+  - Request a rewrite of the calculation using a different programming style.
+  answer: 0
+  explanation: Removing unrelated changes keeps the diff focused and makes it easier to assess whether the bug fix
+    is correct. A broad formatting change can be proposed separately.
+- id: q28
+  topic: 4. Collaboration and handover
+  text: A pull request changes a parser, but its tests cover only ordinary input. The intended behavior also specifies
+    what happens for empty input. What should you do in the review?
+  options:
+  - Approve it because ordinary input is the main use case.
+  - Ask for a test that checks the specified empty-input behavior.
+  - Ask the author to replace the parser with a third-party package.
+  - Wait for a user to report an empty-input problem before commenting.
+  answer: 1
+  explanation: The review should check that tests cover meaningful intended behavior, including the specified empty-input
+    case. A focused test can reveal regressions before the change is merged.
+- id: q29
+  topic: 4. Collaboration and handover
+  text: You find that a pull request silently skips records when a file cannot be read. Which review comment is
+    most actionable?
+  options:
+  - This error handling is bad; please make the code better.
+  - I don't like this approach; perhaps rewrite this whole section.
+  - Could you preserve the read error or report it clearly instead of skipping the record? Please add a test for
+    that case.
+  - This might cause trouble later, so keep an eye on it.
+  answer: 2
+  explanation: The comment identifies the behavior that needs attention and suggests a way to verify the fix. Specific
+    feedback gives the author a clear next step.
+- id: q30
+  topic: 4. Collaboration and handover
+  text: A reviewer points out that your change breaks a documented behavior and suggests a test case. What is the
+    best next step?
+  options:
+  - Explain why the change is reasonable and leave the code as it is.
+  - Remove the documentation so it no longer conflicts with the change.
+  - Ask the reviewer to make the correction in a separate pull request.
+  - Check the behavior, add the suggested regression test, and revise the change.
+  answer: 3
+  explanation: Reproducing the concern and adding a test helps confirm the issue and prevents it from returning.
+    Revising your change addresses the review rather than leaving a known mismatch.
+- id: q31
+  topic: 4. Collaboration and handover
+  text: Your team is creating an issue for a small change to a report export. Which acceptance criterion will make
+    it clearest when the issue is complete?
+  options:
+  - Improve the export and make the implementation clean.
+  - Export the requested columns in the specified order, with a test checking the resulting file.
+  - Refactor the reporting code and consider adding more export formats.
+  - Make the report work well for users with different needs.
+  answer: 1
+  explanation: This criterion states a specific observable result and how it can be verified. The other options
+    are broad or introduce work beyond the bounded change.
+- id: q32
+  topic: 4. Collaboration and handover
+  text: Your project needs an API token to run, and a new contributor needs to know how to provide it. Which approach
+    should you use?
+  options:
+  - Commit a working token in the README so contributors can copy it.
+  - Put the token in a default configuration file tracked by Git.
+  - Read the token from an environment variable and document how to set it.
+  - Ask contributors to paste the token into the source before running.
+  answer: 2
+  explanation: An environment variable lets each contributor provide their own credential without committing secrets.
+    Documenting how to set it makes the required configuration clear.
 problem:
   title: Format a Fuel Gauge
   prompt: 'Write a pure function `format_fuel_level(fraction)` that converts a fraction string into a fuel-gauge
@@ -236,3 +445,129 @@ problem:
     \    if denominator == 0:\n        raise ValueError(\"denominator must not be zero\")\n    percentage = (200\
     \ * numerator + denominator) // (2 * denominator)\n    if percentage <= 1:\n        return \"E\"\n    if percentage\
     \ >= 99:\n        return \"F\"\n    return f\"{percentage}%\""
+problems:
+- title: Summarize Readings
+  prompt: 'Write `summarize_readings(readings)`, a pure function that summarizes a list of numeric readings. This
+    is a one-shot calculation with no state, so use a function rather than a class. Use meaningful names and a docstring
+    that describes the input, returned values, and empty-list behavior. Do not print or modify the input.
+
+
+    Return a dictionary with `count`, `minimum`, `maximum`, and `mean`. For an empty list, return a count of `0`
+    and `None` for the other values. Assume readings are valid numbers; input validation is not required.
+
+
+    Example:
+
+    ```python
+
+    summarize_readings([4, 2, 8])
+
+    # {''count'': 3, ''minimum'': 2, ''maximum'': 8, ''mean'': 14 / 3}
+
+    ```'
+  starter_code: "def summarize_readings(readings):\n    \"\"\"Summarize numeric readings without changing the input\
+    \ list.\n\n    Return a dictionary with count, minimum, maximum, and mean. For an\n    empty list, return a\
+    \ count of 0 and None for the other values.\n    \"\"\"\n    ..."
+  tests: 'summary = summarize_readings([4, 2, 8])
+
+    assert summary == {"count": 3, "minimum": 2, "maximum": 8, "mean": 14 / 3}, "summarize a typical list"
+
+    assert summarize_readings([7]) == {"count": 1, "minimum": 7, "maximum": 7, "mean": 7.0}, "handle one reading"
+
+    assert summarize_readings([]) == {"count": 0, "minimum": None, "maximum": None, "mean": None}, "handle an empty
+    list"
+
+    assert summarize_readings([0, -2]) == {"count": 2, "minimum": -2, "maximum": 0, "mean": -1.0}, "handle zero
+    and negative readings"
+
+    assert summarize_readings([1, 2])["mean"] == 1.5, "preserve a fractional mean"
+
+    readings = [3, 1, 2]
+
+    summarize_readings(readings)
+
+    assert readings == [3, 1, 2], "leave the input list unchanged"'
+  solution: "def summarize_readings(readings):\n    \"\"\"Summarize numeric readings without changing the input\
+    \ list.\n\n    Return a dictionary with count, minimum, maximum, and mean. For an\n    empty list, return a\
+    \ count of 0 and None for the other values.\n    \"\"\"\n    count = len(readings)\n    if count == 0:\n   \
+    \     return {\n            \"count\": 0,\n            \"minimum\": None,\n            \"maximum\": None,\n\
+    \            \"mean\": None,\n        }\n\n    total = sum(readings)\n    return {\n        \"count\": count,\n\
+    \        \"minimum\": min(readings),\n        \"maximum\": max(readings),\n        \"mean\": total / count,\n\
+    \    }"
+  packages: []
+  topic: 1. Readable Python
+  wrong_solutions:
+  - "def summarize_readings(readings):\n    \"\"\"Summarize readings, using integer division for the mean.\"\"\"\
+    \n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"minimum\": None, \"maximum\"\
+    : None, \"mean\": None}\n    return {\n        \"count\": count,\n        \"minimum\": min(readings),\n    \
+    \    \"maximum\": max(readings),\n        \"mean\": sum(readings) // count,\n    }"
+  - "def summarize_readings(readings):\n    \"\"\"Summarize readings, using zeros for empty-list statistics.\"\"\
+    \"\n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"minimum\": 0, \"maximum\"\
+    : 0, \"mean\": 0}\n    return {\n        \"count\": count,\n        \"minimum\": min(readings),\n        \"\
+    maximum\": max(readings),\n        \"mean\": sum(readings) / count,\n    }"
+  - "def summarize_readings(readings):\n    \"\"\"Summarize readings after sorting the input list.\"\"\"\n    readings.sort()\n\
+    \    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"minimum\": None, \"maximum\"\
+    : None, \"mean\": None}\n    return {\n        \"count\": count,\n        \"minimum\": readings[0],\n      \
+    \  \"maximum\": readings[-1],\n        \"mean\": sum(readings) / count,\n    }"
+- title: Pure Usage Summary
+  prompt: "Write `summarize_usage(records)`, the pure analysis part of a small usage-reporting project. It receives\
+    \ records that have already been loaded; it must not read files, print output, or rely on global state.\n\n\
+    Each record is a dictionary with `model` (a string), `input_tokens` (an integer), and `output_tokens` (an integer).\
+    \ Assume records are well-formed. Return a list with one dictionary per distinct model, in the order each model\
+    \ first appears. Each summary dictionary must contain `model`, `requests` (the number of that model's input\
+    \ records), `input_tokens` (the sum), and `output_tokens` (the sum). Do not modify the input records. A record\
+    \ with zero tokens still counts as a request.\n\nExample:\n\n```python\nrecords = [\n    {\"model\": \"cedar\"\
+    , \"input_tokens\": 12, \"output_tokens\": 3},\n    {\"model\": \"maple\", \"input_tokens\": 5, \"output_tokens\"\
+    : 2},\n    {\"model\": \"cedar\", \"input_tokens\": 4, \"output_tokens\": 6},\n]\nsummarize_usage(records)\n\
+    ```\n\nResult:\n\n```python\n[\n    {\"model\": \"cedar\", \"requests\": 2, \"input_tokens\": 16, \"output_tokens\"\
+    : 9},\n    {\"model\": \"maple\", \"requests\": 1, \"input_tokens\": 5, \"output_tokens\": 2},\n]\n```"
+  starter_code: "def summarize_usage(records: list[dict]) -> list[dict]:\n    \"\"\"Summarize token usage per model,\
+    \ preserving first-seen model order.\n\n    Records are assumed to contain model, input_tokens, and output_tokens.\n\
+    \    This function transforms supplied data without performing input/output.\n    \"\"\"\n    ..."
+  tests: "records = [\n    {\"model\": \"cedar\", \"input_tokens\": 12, \"output_tokens\": 3},\n    {\"model\":\
+    \ \"maple\", \"input_tokens\": 5, \"output_tokens\": 2},\n    {\"model\": \"cedar\", \"input_tokens\": 4, \"\
+    output_tokens\": 6},\n]\nassert summarize_usage(records) == [\n    {\"model\": \"cedar\", \"requests\": 2, \"\
+    input_tokens\": 16, \"output_tokens\": 9},\n    {\"model\": \"maple\", \"requests\": 1, \"input_tokens\": 5,\
+    \ \"output_tokens\": 2},\n], \"repeated models should have combined counts\"\n\nordered = [\n    {\"model\"\
+    : \"zeta\", \"input_tokens\": 1, \"output_tokens\": 0},\n    {\"model\": \"alpha\", \"input_tokens\": 2, \"\
+    output_tokens\": 3},\n    {\"model\": \"zeta\", \"input_tokens\": 4, \"output_tokens\": 5},\n]\nassert [row[\"\
+    model\"] for row in summarize_usage(ordered)] == [\"zeta\", \"alpha\"], \"models should retain first-seen order\"\
+    \n\nassert summarize_usage([]) == [], \"empty input should produce an empty summary\"\n\nzero_record = [{\"\
+    model\": \"still-a-request\", \"input_tokens\": 0, \"output_tokens\": 0}]\nassert summarize_usage(zero_record)\
+    \ == [\n    {\"model\": \"still-a-request\", \"requests\": 1, \"input_tokens\": 0, \"output_tokens\": 0}\n],\
+    \ \"zero-token records should still count as requests\"\n\noriginal = [{\"model\": \"cedar\", \"input_tokens\"\
+    : 2, \"output_tokens\": 7}]\nassert summarize_usage(original) == [{\"model\": \"cedar\", \"requests\": 1, \"\
+    input_tokens\": 2, \"output_tokens\": 7}], \"single-record totals should be included\"\nassert original == [{\"\
+    model\": \"cedar\", \"input_tokens\": 2, \"output_tokens\": 7}], \"summarizing should not modify input records\"\
+    \n\nassert summarize_usage([{\"model\": \"other\", \"input_tokens\": 3, \"output_tokens\": 4}]) == [\n    {\"\
+    model\": \"other\", \"requests\": 1, \"input_tokens\": 3, \"output_tokens\": 4}\n], \"each call should summarize\
+    \ only its own input\""
+  solution: "def summarize_usage(records: list[dict]) -> list[dict]:\n    \"\"\"Summarize token usage per model,\
+    \ preserving first-seen model order.\n\n    Records are assumed to contain model, input_tokens, and output_tokens.\n\
+    \    This function transforms supplied data without performing input/output.\n    \"\"\"\n    summaries = {}\n\
+    \    for record in records:\n        model = record[\"model\"]\n        if model not in summaries:\n       \
+    \     summaries[model] = {\n                \"model\": model,\n                \"requests\": 0,\n          \
+    \      \"input_tokens\": 0,\n                \"output_tokens\": 0,\n            }\n        summary = summaries[model]\n\
+    \        summary[\"requests\"] += 1\n        summary[\"input_tokens\"] += record[\"input_tokens\"]\n       \
+    \ summary[\"output_tokens\"] += record[\"output_tokens\"]\n\n    return list(summaries.values())"
+  packages: []
+  topic: 3. Refactoring and project structure
+  wrong_solutions:
+  - "def summarize_usage(records: list[dict]) -> list[dict]:\n    \"\"\"Summarize usage, but sort models alphabetically.\"\
+    \"\"\n    summaries = {}\n    for record in records:\n        model = record[\"model\"]\n        if model not\
+    \ in summaries:\n            summaries[model] = {\"model\": model, \"requests\": 0, \"input_tokens\": 0, \"\
+    output_tokens\": 0}\n        summary = summaries[model]\n        summary[\"requests\"] += 1\n        summary[\"\
+    input_tokens\"] += record[\"input_tokens\"]\n        summary[\"output_tokens\"] += record[\"output_tokens\"\
+    ]\n    return [summaries[model] for model in sorted(summaries)]"
+  - "def summarize_usage(records: list[dict]) -> list[dict]:\n    \"\"\"Summarize usage, ignoring records with no\
+    \ token usage.\"\"\"\n    summaries = {}\n    for record in records:\n        if record[\"input_tokens\"] ==\
+    \ 0 and record[\"output_tokens\"] == 0:\n            continue\n        model = record[\"model\"]\n        if\
+    \ model not in summaries:\n            summaries[model] = {\"model\": model, \"requests\": 0, \"input_tokens\"\
+    : 0, \"output_tokens\": 0}\n        summary = summaries[model]\n        summary[\"requests\"] += 1\n       \
+    \ summary[\"input_tokens\"] += record[\"input_tokens\"]\n        summary[\"output_tokens\"] += record[\"output_tokens\"\
+    ]\n    return list(summaries.values())"
+  - "def summarize_usage(records: list[dict]) -> list[dict]:\n    \"\"\"Summarize token totals per model, but omit\
+    \ request counts.\"\"\"\n    summaries = {}\n    for record in records:\n        model = record[\"model\"]\n\
+    \        if model not in summaries:\n            summaries[model] = {\"model\": model, \"input_tokens\": 0,\
+    \ \"output_tokens\": 0}\n        summaries[model][\"input_tokens\"] += record[\"input_tokens\"]\n        summaries[model][\"\
+    output_tokens\"] += record[\"output_tokens\"]\n    return list(summaries.values())"

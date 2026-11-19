@@ -185,4 +185,103 @@ questions:
   answer: 3
   explanation: DBSCAN's clusters and noise labels depend on its neighborhood radius and minimum-neighbor settings.
     Reviewing those settings may help capture meaningful groups that are less dense.
+- id: q16
+  topic: Capstone
+  text: An A/B test compares conversion rates and reports a p-value of 0.03 using a significance level of 0.05.
+    What is the most appropriate conclusion?
+  options:
+  - There is evidence that the conversion rates differ, but this does not establish the size or practical importance
+    of the difference.
+  - The new version caused the conversion rate to improve by a practically important amount.
+  - There is not enough evidence to conclude the conversion rates differ because the p-value is below 0.05.
+  - The two versions have identical conversion rates because the test used the same audience.
+  answer: 0
+  explanation: Because the p-value is below the chosen significance level, the results provide evidence against
+    equal conversion rates. A p-value does not show the size or practical importance of the difference.
+- id: q17
+  topic: Capstone
+  text: A team wants to compare the average order value across four website designs. Which approach is most suitable
+    for an initial test of whether any group means differ?
+  options:
+  - Run a separate two-group test for every pair and treat each result as an independent overall conclusion.
+  - Use a test of population variances to determine whether the average order values differ.
+  - Use ANOVA to test whether there is evidence that at least one group mean differs.
+  - Use a clustering method to assign each design to the group with the highest average.
+  answer: 2
+  explanation: ANOVA is an appropriate initial test for comparing means across multiple groups. A significant result
+    indicates that at least one mean differs, but does not by itself identify which groups differ.
+- id: q18
+  topic: Capstone
+  text: Two independent groups have similar sample sizes, but one group's measurements are much more variable. The
+    team wants to compare their means. What should it do?
+  options:
+  - Pool the variances automatically, since similar sample sizes make the variability difference irrelevant.
+  - Use a comparison method that does not assume equal population variances.
+  - Replace the mean comparison with a test of whether the sample sizes are equal.
+  - Conclude that the group means differ because one group has greater variability.
+  answer: 1
+  explanation: A substantial variance difference can make an equal-variance comparison unreliable. A method that
+    does not assume equal population variances is more appropriate for comparing the means.
+- id: q19
+  topic: Capstone
+  text: A screening model is used to flag patients who may need follow-up. Missing a patient who needs care is especially
+    costly, even if that means more false alarms. Which metric should the team prioritize?
+  options:
+  - Precision, because it measures how many flagged patients truly need follow-up.
+  - Accuracy, because it gives equal importance to every prediction.
+  - Specificity, because it measures how many patients needing care are found.
+  - Recall, because it measures how many patients needing care are successfully flagged.
+  answer: 3
+  explanation: Recall measures the share of actual positive cases the model identifies. Prioritizing recall fits
+    a situation where missing a patient who needs care is especially costly.
+- id: q20
+  topic: Capstone
+  text: Two models predict the probability that a customer will renew. Their Brier scores on the same evaluation
+    data are 0.12 and 0.19. Which model has better probability predictions by this metric?
+  options:
+  - The model with a score of 0.19, because a larger score means greater confidence.
+  - The model with a score of 0.12, because a lower Brier score indicates more accurate probability predictions.
+  - Neither model, because the Brier score only evaluates the chosen classification threshold.
+  - Both models equally, because Brier scores cannot be compared on the same evaluation data.
+  answer: 1
+  explanation: The Brier score measures the squared error of predicted probabilities, so lower is better. Since
+    the models were evaluated on the same data, the score of 0.12 is preferable.
+- id: q21
+  topic: Capstone
+  text: A dataset contains several curved, irregularly shaped groups, along with scattered points that do not belong
+    to dense groups. Which clustering approach is a better first choice?
+  options:
+  - K-Means, because it is designed to label scattered points as noise while finding curved groups.
+  - K-Means, because assigning every point to a centroid naturally handles groups of varying shapes.
+  - DBSCAN, because it can find density-based groups of irregular shape and leave isolated points unclustered.
+  - DBSCAN, because it requires the number of clusters to be set before fitting.
+  answer: 2
+  explanation: DBSCAN groups points by density, can identify irregularly shaped clusters, and can leave sparse points
+    as noise. K-Means instead assigns every point to a cluster around a centroid.
+- id: q22
+  topic: Capstone
+  text: A team runs K-Means on customer data with annual spending in dollars and satisfaction rated from 1 to 5.
+    The spending values dominate the distance calculations. What is the best next step?
+  options:
+  - Scale the features so their numerical ranges are comparable before calculating distances.
+  - Remove satisfaction because K-Means only works with one feature at a time.
+  - Increase the number of clusters so satisfaction has more influence on the distances.
+  - Convert spending to categories so the original distance calculations remain unchanged.
+  answer: 0
+  explanation: With distance-based clustering, a feature on a much larger numerical scale can dominate the distances.
+    Scaling the features makes their contributions more comparable.
+- id: q23
+  topic: Capstone
+  text: A fraud model is evaluated on a dataset where fraud cases are rare. The team wants one classification metric
+    that reflects correct and incorrect predictions across both classes. Which should it choose?
+  options:
+  - Accuracy, because the rare class has little effect on the metric.
+  - Precision, because it incorporates true negatives as well as false positives.
+  - Recall, because it incorporates both true negatives and false negatives.
+  - Matthews Correlation Coefficient (MCC), because it incorporates all four confusion-matrix counts.
+  answer: 3
+  explanation: MCC uses true positives, true negatives, false positives, and false negatives, making it a useful
+    overall measure when classes are imbalanced. Accuracy can appear high simply because the majority class is predicted
+    well.
 problem: null
+problems: []

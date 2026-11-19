@@ -38,6 +38,17 @@ GENERATED_QUESTIONS = 15
 QUESTIONS_PER_TOPIC = 8
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+# A question that points at code ("this code prints...") must carry it: code of several lines, or a line of code
+# in backticks, such as `x = f(2)`.
+_POINTS_AT_CODE = re.compile(r"\b(this|the following) (code|snippet|script|program)\b", re.IGNORECASE)
+_INLINE_CODE = re.compile(r"`[^`]*[=(:][^`]*`")
+
+
+def missing_code(text: str) -> bool:
+    """True for a question that speaks of "this code" but shows none, so it cannot be answered."""
+    return bool(_POINTS_AT_CODE.search(text)) and "\n" not in text and not _INLINE_CODE.search(text)
+
+
 _NUMBERING = re.compile(r"^\s*\d+[.)]\s*")
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -436,6 +447,8 @@ class CheckpointGenerator:
         def check(response: TopicQuestions) -> None:
             if any(_module_topic(q.topic, titles) != topic for q in response.questions):
                 raise UnusableAnswer(f"Every question must be on {topic}")
+            if any(missing_code(q.text) for q in response.questions):
+                raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
 
         response = self._llm.ask(prompts.load("topic_questions"), prompt, TopicQuestions, check=check)
         # A question that repeats one already there is left out; the caller asks again for what is missing.
@@ -505,6 +518,8 @@ def _check_generated(response: GeneratedQuestions, module: Module) -> None:
     texts = {question.text.casefold() for question in response.questions}
     if len(texts) != len(response.questions):
         raise UnusableAnswer("Questions repeat")
+    if any(missing_code(question.text) for question in response.questions):
+        raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
     # A failed attempt sends the learner back to these topics, so they must be the module's own.
     titles = [topic.title for topic in module.topics]
     unknown = {
