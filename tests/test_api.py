@@ -882,7 +882,9 @@ def test_after_a_failed_checkpoint_the_assistant_sees_the_topics_of_the_wrong_an
     curriculum, questions
 ):
     llm = FakeLLM(
-        study_all(curriculum), {"reply": "Review the shell basics.", "modules": []}
+        study_all(curriculum),
+        study_all(curriculum),  # asked again after the failure: no change to suggest
+        {"reply": "Review the shell basics.", "modules": []},
     )
     client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
     confirmed_path(client)

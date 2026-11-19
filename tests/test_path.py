@@ -331,3 +331,80 @@ def test_a_projects_parts_cannot_be_skimmed_or_skipped(curriculum):
 
     with pytest.raises(PathStateError):
         path.with_topic(project.id, "Deliverables", TopicChoice.SKIP)
+
+
+def _with_topics(curriculum: Curriculum, module_id: str, titles: list[str], skim: list[str]) -> LearningPath:
+    """A confirmed path studying every module; `module_id` has the given topics and skims some of them."""
+    from roadmap.curriculum import Topic
+    from roadmap.path import SkimTopic
+
+    items = []
+    for module in curriculum.modules:
+        if module.id == module_id:
+            module = module.model_copy(update={"topics": [Topic(title=t) for t in titles]})
+        marks = [SkimTopic(topic=t, reason="You know it.") for t in skim] if module.id == module_id else None
+        items.append(PathItem.suggestion(module, Choice.STUDY, "Study it.", skim=marks))
+    return path_with(curriculum, {}).model_copy(update={"items": items}).confirm()
+
+
+def test_a_failed_checkpoint_turns_the_skimmed_topics_it_got_wrong_to_study(curriculum):
+    path = _with_topics(curriculum, TERMINAL, ["1. Shell Basics", "2. Files", "3. Git"], ["2. Files", "3. Git"])
+
+    failed = path.with_checkpoint_result(TERMINAL, 1, 5, passed=False, missed_topics=["Files", "Shell Basics"])
+
+    item = failed.item(TERMINAL)
+    assert [marked.topic for marked in item.skim] == ["3. Git"]  # the skimmed topic it got right stays
+    assert "Changed to study in full: 2. Files" in (item.adjustment or "")
+
+
+def test_after_a_failure_only_heavier_suggestions_are_kept_even_for_locked_modules(curriculum):
+    from roadmap.path import TopicChoice
+
+    path = _with_topics(curriculum, NOTES, ["Intro", "Practice"], ["Intro"])
+    path = path.with_choice(VISION, Choice.SKIP).confirm()
+    failed = path.with_checkpoint_result(TERMINAL, 1, 5, passed=False, missed_topics=["Shell Basics"])
+    assert NOTES in failed.locked_module_ids
+
+    suggested = failed.with_proposals(
+        [
+            Proposal(module_id=VISION, choice=Choice.STUDY, reason="Needs the shell.", after_failure=True),
+            Proposal(module_id=ALGEBRA, choice=Choice.SKIP, reason="Lighter.", after_failure=True),
+            Proposal(
+                module_id=NOTES, topic="Intro", topic_choice=TopicChoice.STUDY, reason="Uses the shell.",
+                after_failure=True,
+            ),
+            Proposal(
+                module_id=NOTES, topic="Practice", topic_choice=TopicChoice.SKIM, reason="Lighter.",
+                after_failure=True,
+            ),
+        ]
+    )
+
+    assert [(p.module_id, p.topic) for p in suggested.proposals] == [(VISION, None), (NOTES, "Intro")]
+
+
+def test_the_learner_accepts_or_declines_a_suggestion_about_one_topic(curriculum):
+    from roadmap.path import TopicChoice
+
+    path = _with_topics(curriculum, NOTES, ["Intro", "Practice"], ["Intro", "Practice"]).with_proposals(
+        [
+            Proposal(module_id=NOTES, topic=t, topic_choice=TopicChoice.STUDY, reason="Needed.", after_failure=True)
+            for t in ("Intro", "Practice")
+        ]
+    )
+
+    accepted = path.accept(NOTES, "Intro")
+    assert accepted.item(NOTES).topic_choice("Intro") is TopicChoice.STUDY
+    assert accepted.item(NOTES).topic_choice("Practice") is TopicChoice.SKIM
+    assert accepted.confirmed
+    declined = accepted.decline(NOTES, "Practice")
+    assert declined.proposals == [] and declined.item(NOTES).topic_choice("Practice") is TopicChoice.SKIM
+
+
+def test_a_proposal_changes_a_module_or_a_topic_not_both(curriculum):
+    from roadmap.path import TopicChoice
+
+    with pytest.raises(ValidationError):
+        Proposal(module_id=NOTES, choice=Choice.STUDY, topic="Intro", topic_choice=TopicChoice.STUDY, reason="x")
+    with pytest.raises(ValidationError):
+        Proposal(module_id=NOTES, reason="Nothing to change.")

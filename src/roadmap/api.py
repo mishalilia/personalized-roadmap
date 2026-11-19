@@ -220,6 +220,7 @@ class AttemptResponse(BaseModel):
 
 class ModuleAction(BaseModel):
     module_id: str
+    topic: str | None = None  # for accepting or declining a suggestion about one of the module's topics
 
 
 class ChoiceRequest(BaseModel):
@@ -881,10 +882,16 @@ def create_app(
                 )
             except ValueError as error:
                 raise HTTPException(422, str(error)) from error
-            if grade.effortless:
-                within_quota(request)  # suggestions after it ask the model
+            # Suggestions after an easy pass or a failure ask the model; over the quota the result still
+            # counts, without them.
+            suggest = True
+            if grade.effortless or not grade.passed:
+                try:
+                    within_quota(request)
+                except HTTPException:
+                    suggest = False
             grades.append(grade)
-            return edition.roadmap.after_checkpoint(path, module_id, grade)
+            return edition.roadmap.after_checkpoint(path, module_id, grade, suggest=suggest)
 
         updated = change(signed_in(request), graded)
         record(
@@ -1226,11 +1233,11 @@ def create_app(
 
     @app.post("/me/path/accept")
     def accept(body: ModuleAction, request: Request) -> LearningPath:
-        return change(signed_in(request), lambda path: path.accept(body.module_id))
+        return change(signed_in(request), lambda path: path.accept(body.module_id, body.topic))
 
     @app.post("/me/path/decline")
     def decline(body: ModuleAction, request: Request) -> LearningPath:
-        return change(signed_in(request), lambda path: path.decline(body.module_id))
+        return change(signed_in(request), lambda path: path.decline(body.module_id, body.topic))
 
     # Checkpoints
 
