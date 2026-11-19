@@ -1475,6 +1475,14 @@ def load_editions(settings: Settings) -> list[Edition]:
 @lru_cache(maxsize=1)
 def _app() -> FastAPI:
     settings = ApiSettings()
+    # The core's own messages, such as how long each model call took, go to the server's log next to
+    # uvicorn's, which configures only its own loggers.
+    core = logging.getLogger("roadmap")
+    if not core.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        core.addHandler(handler)
+        core.setLevel(logging.INFO)
     return create_app(
         editions=load_editions(settings),
         allowed_origins=settings.allowed_origins,
