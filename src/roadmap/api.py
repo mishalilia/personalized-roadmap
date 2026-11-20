@@ -10,7 +10,8 @@ working against that version, so learners keep their progress when the course mo
 
 Run it with `uvicorn roadmap.api:app`. Settings come from the environment or `.env`, as for the rest of the
 core: API_ALLOWED_ORIGINS lists the sites that may call it, API_REPORT_TOKEN opens the progress report,
-API_ACCOUNTS_FILE is where accounts and their paths are kept, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET turn
+DATABASE_URL is the PostgreSQL database for accounts, paths and the rest (without it, SQLite files:
+API_ACCOUNTS_FILE, API_EVENTS_FILE), GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET turn
 on sign-in with Google (roadmap.google).
 """
 
@@ -51,6 +52,7 @@ from .accounts import (
     AccountStore,
 )
 from .checkpoints import (
+    MAX_OPEN_ANSWER,
     PASS_MARK,
     CheckpointQuestion,
     QUESTIONS_PER_ATTEMPT,
@@ -58,15 +60,18 @@ from .checkpoints import (
     Checkpoint,
     CheckpointStore,
     Grade,
+    OpenAnswerGrader,
+    OpenQuestion,
     Status,
 )
 from .config import Settings
 from .curriculum import Level, Module
+from .database import Database
 from .events import EventKind, EventLog, Report
 from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
-from .onboarding import LearnerProfile, load_profiles
+from .onboarding import ChoiceAnswer, LearnerProfile, Option, answer_texts, load_profiles
 from .path import Choice, LearningPath, PathItem, PathStateError, Progress, TopicChoice
 from .path_chat import CHATS_PER_DAY, ChatReply, ChatRequest, PathAssistant
 from .project_files import (
@@ -96,7 +101,17 @@ logger = logging.getLogger(__name__)
 
 MAX_ANSWER_LENGTH = 2000  # characters; a long answer costs quota and says no more
 
-Answer = Annotated[str, StringConstraints(max_length=MAX_ANSWER_LENGTH)]
+Text = Annotated[str, StringConstraints(max_length=MAX_ANSWER_LENGTH)]
+
+
+class ChoiceAnswerIn(BaseModel):
+    """An answer to a choice question: the options' ids and, optionally, details in the learner's words."""
+
+    choices: Annotated[list[Annotated[str, StringConstraints(max_length=40)]], Field(max_length=12)] = []
+    details: Text = ""
+
+
+Answer = Text | ChoiceAnswerIn  # a text question's answer, or a choice question's
 Goal = Annotated[
     str,
     StringConstraints(
@@ -118,9 +133,14 @@ class Edition:
 
 
 class QuestionOut(BaseModel):
+    """A question as the browser shows it; a code question's right option is not among what it is told."""
+
     id: str
     text: str
+    kind: Literal["text", "single", "multiple", "check"]
     placeholder: str
+    options: list[Option]
+    code: str
 
 
 class CurriculumInfo(BaseModel):
@@ -174,14 +194,16 @@ class CheckpointOut(BaseModel):
 
 
 class ReviewedQuestion(BaseModel):
-    """A question of an attempt the learner passed, as they saw it, with the right option and why."""
+    """A question of an attempt the learner passed, as they saw it, with the right option and why; for an open
+    question, a full answer."""
 
     id: str
     topic: str
     text: str
     options: list[str]
-    answer: int  # the position of the right option, as shown
+    answer: int | None  # the position of the right option, as shown; None for an open question
     explanation: str
+    kind: Literal["choice", "open"] = "choice"
 
 
 class ProblemOut(BaseModel):
@@ -202,6 +224,7 @@ class ReportedQuestion(QuestionReport):
 
     module_title: str
     question: CheckpointQuestion | None  # None when the checkpoint no longer has this question
+    open_question: OpenQuestion | None = None  # instead, for an open question: with its rubric
 
 
 class ResolveRequest(BaseModel):
@@ -211,6 +234,8 @@ class ResolveRequest(BaseModel):
 class AttemptRequest(BaseModel):
     attempt: int = Field(ge=0)
     answers: dict[str, int]  # question id -> position of the chosen option, as shown
+    # The open question's id -> the learner's answer in their own words.
+    open_answers: dict[str, Annotated[str, StringConstraints(max_length=MAX_OPEN_ANSWER)]] = {}
 
 
 class AttemptResponse(BaseModel):
@@ -232,6 +257,12 @@ class TopicRequest(BaseModel):
     module_id: str
     topic: str
     choice: TopicChoice
+
+
+class TopicFinishedRequest(BaseModel):
+    module_id: str
+    topic: str
+    finished: bool
 
 
 class ShareRequest(BaseModel):
@@ -433,7 +464,6 @@ def create_app(
                 )
         return await call_next(request)
 
-    question_ids = {question.id for question in newest.roadmap.questions}
 
     def info(edition: Edition) -> CurriculumInfo:
         curriculum = edition.roadmap.curriculum
@@ -444,12 +474,21 @@ def create_app(
             licence=curriculum.attribution.licence,
         )
 
-    def check_answers(answers: dict[str, str]) -> dict[str, str]:
-        if unknown := sorted(answers.keys() - question_ids):
-            raise HTTPException(422, f"Unknown questions: {', '.join(unknown)}")
-        if not any(answer.strip() for answer in answers.values()):
+    def check_answers(answers: dict[str, Answer]) -> dict[str, str]:
+        """The answers as text for the model and the path (roadmap.onboarding.answer_texts)."""
+        try:
+            texts = answer_texts(
+                newest.roadmap.questions,
+                {
+                    key: value if isinstance(value, str) else ChoiceAnswer(**value.model_dump())
+                    for key, value in answers.items()
+                },
+            )
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+        if not any(text.strip() for text in texts.values()):
             raise HTTPException(422, "Answer at least one question.")
-        return answers
+        return texts
 
     def client_of(request: Request) -> str:
         """Behind a reverse proxy, run uvicorn with --proxy-headers so that the client is the learner,
@@ -544,7 +583,12 @@ def create_app(
         return QuestionsResponse(
             questions=[
                 QuestionOut(
-                    id=question.id, text=question.text, placeholder=question.placeholder
+                    id=question.id,
+                    text=question.text,
+                    kind=question.kind,
+                    placeholder=question.placeholder,
+                    options=question.options,
+                    code=question.code,
                 )
                 for question in newest.roadmap.questions
             ],
@@ -757,6 +801,14 @@ def create_app(
             lambda path: path.with_topic(body.module_id, body.topic, body.choice),
         )
 
+    @app.post("/me/path/topic-finished")
+    def finish_topic(body: TopicFinishedRequest, request: Request) -> LearningPath:
+        """The learner marks a topic of a module they study as finished, or takes the mark back."""
+        return change(
+            signed_in(request),
+            lambda path: path.with_topic_finished(body.module_id, body.topic, body.finished),
+        )
+
     def topics_of(request: Request, module_id: str) -> tuple[frozenset[str], frozenset[str]]:
         """The topics the signed-in learner skips and skims in a module; none for anyone else."""
         account = account_of(request)
@@ -879,9 +931,22 @@ def create_app(
                 raise HTTPException(
                     409, "This attempt does not follow your last one. Reload the page."
                 )
+            # An open answer is marked by a model; over the quota, or without a model, it is left out of the
+            # attempt (Checkpoint.grade) rather than holding the learner up.
+            judge = None
+            if edition.roadmap.llm is not None and any(text.strip() for text in body.open_answers.values()):
+                try:
+                    within_quota(request)
+                    judge = OpenAnswerGrader(edition.roadmap.llm)
+                except HTTPException:
+                    judge = None
             try:
                 grade = found.grade(
-                    body.attempt, body.answers, path.item(module_id).skipped_topics
+                    body.attempt,
+                    body.answers,
+                    path.item(module_id).skipped_topics,
+                    open_answers=body.open_answers,
+                    judge=judge,
                 )
             except ValueError as error:
                 raise HTTPException(422, str(error)) from error
@@ -1028,7 +1093,10 @@ def create_app(
         if path is None or all(item.module.id != module_id for item in path.items):
             raise HTTPException(404, f"'{module_id}' is not in your path")
         checkpoint = checkpoint_of(edition_of(path), module_id)
-        if all(question.id != body.question_id for question in checkpoint.questions):
+        if all(
+            question.id != body.question_id
+            for question in (*checkpoint.questions, *checkpoint.open_questions)
+        ):
             raise HTTPException(404, "No such question in this checkpoint.")
         return reports.add(account.id, module_id, path.curriculum_version, body)
 
@@ -1043,6 +1111,9 @@ def create_app(
             question = next(
                 (q for q in checkpoint.questions if q.id == report.question_id), None
             ) if checkpoint else None
+            open_question = next(
+                (q for q in checkpoint.open_questions if q.id == report.question_id), None
+            ) if checkpoint else None
             module = (
                 next((m for m in edition.roadmap.curriculum.modules if m.id == report.module_id), None)
                 if edition
@@ -1053,6 +1124,7 @@ def create_app(
                     **report.model_dump(),
                     module_title=module.full_title if module else report.module_id,
                     question=question,
+                    open_question=open_question,
                 )
             )
         return found
@@ -1300,6 +1372,18 @@ def create_app(
                     explanation=question.explanation,
                 )
             )
+        if (open_question := checkpoint.open_for_attempt(attempt, item.skipped_topics)) is not None:
+            reviewed.append(
+                ReviewedQuestion(
+                    id=open_question.id,
+                    topic=open_question.topic,
+                    text=open_question.text,
+                    options=[],
+                    answer=None,
+                    explanation=open_question.model_answer,
+                    kind="open",
+                )
+            )
         return reviewed
 
     @app.get("/checkpoints/{module_id:path}")
@@ -1411,7 +1495,11 @@ class ApiSettings(Settings):
     api_rate_limit: int = 20  # model-calling requests per client per window
     api_rate_window: int = 3600  # seconds
     api_report_token: str | None = None  # opens GET /report; no report without it
-    # Accounts and their paths; data/accounts.sqlite unless set.
+    # PostgreSQL for accounts, paths, submissions, question reports and shared progress, such as
+    # postgresql://roadmap:password@db:5432/roadmap. Without it they are kept in SQLite files (below), which suits
+    # tests and trying the API out on one machine.
+    database_url: SecretStr | None = None
+    # Accounts and their paths, without DATABASE_URL; data/accounts.sqlite unless set.
     api_accounts_file: Path | None = None
     # Send the session cookie over HTTPS only. Turn off only to try the API over plain HTTP.
     api_cookie_secure: bool = True
@@ -1483,19 +1571,22 @@ def _app() -> FastAPI:
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
         core.addHandler(handler)
         core.setLevel(logging.INFO)
+    database = (
+        Database.open(settings.database_url.get_secret_value()) if settings.database_url else None
+    )
     return create_app(
         editions=load_editions(settings),
         allowed_origins=settings.allowed_origins,
         limiter=RateLimiter(settings.api_rate_limit, settings.api_rate_window),
-        events=EventLog(settings.events_file),
+        events=EventLog(database or settings.events_file),
         report_token=settings.api_report_token,
         profiles=load_profiles(settings.profiles_file),
-        accounts=AccountStore(settings.accounts_file),
+        accounts=AccountStore(database or settings.accounts_file),
         secure_cookies=settings.api_cookie_secure,
         google=settings.google,
-        submissions=SubmissionStore(settings.accounts_file, settings.uploads_dir),
+        submissions=SubmissionStore(database or settings.accounts_file, settings.uploads_dir),
         reviewers=settings.reviewers,
-        question_reports=QuestionReportStore(settings.accounts_file),
+        question_reports=QuestionReportStore(database or settings.accounts_file),
         github_token=(
             settings.github_token.get_secret_value() if settings.github_token else None
         ),

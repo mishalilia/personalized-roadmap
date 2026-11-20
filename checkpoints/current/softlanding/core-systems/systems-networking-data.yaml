@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/systems-networking-data
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Systems, Networking, and Data Foundations
@@ -186,6 +186,38 @@ questions:
   answer: 2
   explanation: The insert is part of a transaction, and committing it makes the change persist in the database.
     Closing a connection with an uncommitted transaction can discard the change.
+open_questions:
+- id: o1
+  topic: Systems, Networking, and Data Foundations
+  text: A service works when you run `curl` on its host, but a client cannot reach it using its hostname. How would
+    you investigate whether the problem is the application process, its listening address or port, DNS, or a blocked
+    network connection, and why would each check help?
+  rubric:
+  - Checks whether the application process is running and listening on the expected address and port.
+  - Checks whether the hostname resolves to the intended IP address.
+  - Uses connection or request tests to distinguish an incorrect port or listening address from traffic blocked
+    along the network path.
+  - Explains how the result of at least one check narrows down the likely cause.
+  required: 3
+  model_answer: First, I would check that the process is running and listening on the expected port and on an address
+    reachable by other machines, rather than only on localhost. I would look up the hostname and compare its resolved
+    IP address with the host's intended address, since a wrong result points to DNS. Then I would test the host
+    and port directly; if they are correct but the connection still fails remotely, a route or firewall may be blocking
+    traffic. Each check rules out a different part of the request path.
+- id: o2
+  topic: Systems, Networking, and Data Foundations
+  text: You are adding record creation to a Python application backed by SQLite, and the records must still be present
+    after the application restarts. How would you safely write and verify the records, and why are your steps needed?
+  rubric:
+  - Uses parameterized SQL values rather than inserting user-provided values by string concatenation.
+  - Commits the transaction so the changes are saved to the database.
+  - Checks the records by querying the database after restarting or reopening the application.
+  - Recognizes that records must be stored in the SQLite database, not only kept in the application's memory.
+  required: 3
+  model_answer: I would store the records in the SQLite database and use a parameterized insert so input values
+    are treated as data rather than SQL code. I would commit the transaction so SQLite saves the changes. After
+    restarting the application, I would query the database and confirm that the records are still there. This verifies
+    that the data was persisted instead of only being held in the process's memory.
 problem:
   title: Persist Records with SQLite
   prompt: 'Write `save_records(conn, records)` using Python’s standard-library `sqlite3` module. `conn` is an open
@@ -255,3 +287,4 @@ problem:
     \        conn.execute(\"CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,\
     \ status INTEGER NOT NULL)\")\n        conn.executemany(\"INSERT INTO records (name, status) VALUES (?, ?)\"\
     , records)\n    return list(records)"
+problems: []

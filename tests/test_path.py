@@ -422,3 +422,46 @@ def test_suggestions_for_a_checkpoint_taken_again_meanwhile_are_dropped(curricul
     assert path.with_suggestions(f"{TERMINAL}:1", late).proposals == []
     landed = path.with_suggestions(f"{TERMINAL}:2", late)
     assert [p.module_id for p in landed.proposals] == [NOTES] and landed.suggestions_pending is None
+
+
+def test_the_learner_marks_topics_of_a_module_they_study_as_finished(curriculum):
+    from roadmap.curriculum import Topic
+    from roadmap.path import TopicChoice
+
+    first, second, third = "1. Shell Basics", "2. Files", "3. Git"
+    module = curriculum.modules[0].model_copy(
+        update={"topics": [Topic(title=first), Topic(title=second), Topic(title=third)]}
+    )
+    items = [
+        PathItem.suggestion(module if i == 0 else m, Choice.STUDY, "Study it.")
+        for i, m in enumerate(curriculum.modules)
+    ]
+    unconfirmed = path_with(curriculum, {}).model_copy(update={"items": items})
+    with pytest.raises(PathStateError):  # as with all progress: only on a confirmed path
+        unconfirmed.with_topic_finished(module.id, first, True)
+    path = unconfirmed.confirm()
+
+    marked = path.with_topic_finished(module.id, third, True).with_topic_finished(module.id, first, True)
+    assert marked.item(module.id).finished_topics == [first, third]  # in the module's order
+    assert marked.item(module.id).progress is Progress.NOT_STARTED and marked.confirmed  # a tally, not a pass
+    assert marked.with_topic_finished(module.id, third, False).item(module.id).finished_topics == [first]
+
+    # A topic left out is not one to finish, and skipping it takes the mark away.
+    skipped = marked.with_topic(module.id, third, TopicChoice.SKIP)
+    assert skipped.item(module.id).finished_topics == [first]
+    with pytest.raises(PathStateError):
+        skipped.with_topic_finished(module.id, third, True)
+    with pytest.raises(KeyError):
+        path.with_topic_finished(module.id, "No such topic", True)
+    with pytest.raises(PathStateError):  # a module proved is checked whole
+        path.with_choice(module.id, Choice.PROVE).confirm().with_topic_finished(module.id, first, True)
+
+
+def test_a_finished_modules_decision_no_longer_changes(curriculum):
+    module_id = curriculum.modules[0].id
+    path = confirmed(curriculum, {m.id: Choice.STUDY for m in curriculum.modules})
+    done = path.with_checkpoint_result(module_id, 5, 5, True, False)
+    assert done.item(module_id).progress is Progress.PASSED
+    with pytest.raises(PathStateError):
+        done.with_choice(module_id, Choice.SKIP)
+    assert done.with_choice(module_id, done.item(module_id).choice).item(module_id).progress is Progress.PASSED

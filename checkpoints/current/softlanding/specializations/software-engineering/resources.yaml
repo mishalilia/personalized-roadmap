@@ -1,8 +1,8 @@
 module_id: softlanding/specializations/software-engineering/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: 1. Networking Fundamentals
@@ -672,6 +672,186 @@ questions:
   answer: 0
   explanation: The frontend should get records through the API, which provides the service's intended interface
     to its data. Connecting directly to the database bypasses that boundary and exposes backend details to the client.
+open_questions:
+- id: o1
+  topic: 1. Networking Fundamentals
+  text: A user enters your service’s URL and waits for a page to load. How does the request get from the browser
+    to the service, and where could DNS, TCP, TLS, or HTTP affect that journey?
+  rubric:
+  - Explains that DNS helps the browser find an address for the service.
+  - Explains that TCP establishes a reliable connection and TLS protects HTTPS traffic before or while the HTTP
+    exchange takes place.
+  - Explains that HTTP carries the request and response between the browser and service.
+  required: 2
+  model_answer: DNS helps the browser find the service’s network address. For HTTPS, TCP establishes a reliable
+    connection and TLS protects the traffic. The browser then sends an HTTP request, and the service returns an
+    HTTP response.
+- id: o2
+  topic: 1. Networking Fundamentals
+  text: A team is choosing how to send video from a live camera to viewers. How would the choice between TCP and
+    UDP affect playback, and why might the team choose one over the other?
+  rubric:
+  - Explains that TCP uses connection setup and reliable delivery, which can add delay or require retransmission.
+  - Explains that UDP avoids retransmission guarantees and can be faster, but some packets may be lost.
+  - Connects the choice to whether low delay or complete, reliable delivery matters more for the video use case.
+  required: 2
+  model_answer: TCP aims to deliver data reliably, retransmitting missing packets, but that can add delay. UDP can
+    send data with less waiting, but packets may be lost and the receiver may see gaps or artifacts. For live video,
+    a team may prefer UDP when low delay matters more than perfect delivery.
+- id: o3
+  topic: 2. Architecture Principles
+  text: A service must handle a sudden increase in traffic by adding more instances. How would stateless processes
+    and external backing services make that easier?
+  rubric:
+  - Explains that a stateless instance does not depend on local memory from an earlier request, so another instance
+    can handle the next request.
+  - Explains that shared backing services, such as a database, let instances access common persistent data.
+  - Connects horizontal scaling to adding instances behind a traffic-distributing layer.
+  required: 2
+  model_answer: If instances do not keep essential request state locally, a later request can go to a different
+    instance without losing that state. Shared backing services provide common storage or other dependencies to
+    all instances. The service can then scale horizontally by adding instances and distributing traffic among them.
+- id: o4
+  topic: 2. Architecture Principles
+  text: A team deploys the same service to development and production, but it uses different settings and sometimes
+    fails only after deployment. How would 12-factor ideas help the team reduce this risk and operate the service?
+  rubric:
+  - Explains that environment-specific configuration should be separated from the application code.
+  - Explains that keeping development and production environments more alike helps reveal problems earlier.
+  - Explains that telemetry helps the team observe the service, or that disposability makes instances easier to
+    start, stop, and replace.
+  required: 2
+  model_answer: The team can keep environment-specific settings outside the code so the same application can run
+    with different configuration. Keeping development and production more alike can expose deployment problems earlier.
+    Telemetry helps reveal how the deployed service is behaving, and disposable instances are easier to replace
+    when they fail.
+- id: o5
+  topic: 3. API Design & Implementation
+  text: You are adding an API operation that changes a customer’s email address. How would you choose a REST resource
+    and HTTP method for it, and how would the response help a client understand what happened?
+  rubric:
+  - Identifies the customer as a resource, rather than treating the operation as an unrelated action.
+  - Chooses an appropriate HTTP method for changing the customer’s data, such as PATCH or PUT, and explains the
+    choice.
+  - Explains that an appropriate status code and response communicate success or a relevant failure to the client.
+  required: 2
+  model_answer: I would treat the customer as the resource and use PATCH if the request changes only the email field,
+    or PUT if it replaces the full representation. The API should return a status code that indicates whether the
+    update succeeded or failed. A response body can also provide the updated customer details or explain the problem.
+- id: o6
+  topic: 3. API Design & Implementation
+  text: A FastAPI endpoint receives user-submitted data and later needs to be used by another team. How would typed
+    request models and automatic API documentation help both the endpoint and its clients?
+  rubric:
+  - Explains that a Pydantic model describes the expected request shape and can validate incoming data.
+  - Explains that validation can help reject or report malformed input before endpoint logic uses it.
+  - Explains that generated OpenAPI documentation helps clients understand the endpoint’s inputs and outputs.
+  required: 2
+  model_answer: A Pydantic model describes the fields and types the endpoint expects, and FastAPI can use it to
+    validate incoming data. Invalid input can be reported rather than passed unchecked into the endpoint’s logic.
+    FastAPI’s generated OpenAPI documentation helps the other team see how to call the endpoint and what it returns.
+- id: o7
+  topic: 4. Database Design & Management
+  text: A database table repeats a customer’s address on every order, and staff sometimes update only some of those
+    copies. How would normalization help, and what role might an index play when the application looks up a customer’s
+    orders?
+  rubric:
+  - Explains that storing customer details separately from orders reduces repeated data.
+  - Explains that this separation helps avoid inconsistent updates to duplicate customer details.
+  - Explains that an index on a lookup or join column can speed finding matching rows without scanning the whole
+    table.
+  required: 2
+  model_answer: Customer details can be stored once in a customer table, with orders referring to the customer by
+    an identifier. This reduces duplicated addresses and prevents different copies from becoming inconsistent when
+    an address changes. An index on the customer identifier can help the database find related orders without scanning
+    every row.
+- id: o8
+  topic: 4. Database Design & Management
+  text: An application transfers money between two accounts by subtracting from one and adding to another. What
+    could go wrong if only one update succeeds, and how would a transaction help?
+  rubric:
+  - Explains that a partial transfer can leave account balances incorrect if only one update takes effect.
+  - Explains that a transaction groups the updates so they succeed together or are rolled back together.
+  - Connects this behavior to the ACID goal of keeping data consistent despite failures.
+  required: 2
+  model_answer: If the subtraction succeeds but the addition fails, the money may appear to disappear from the accounts.
+    A transaction groups both updates so they commit together, or the successful part is rolled back if the operation
+    cannot finish. This supports consistency by preventing a partial transfer from being left in the database.
+- id: o9
+  topic: 5. Testing Strategies
+  text: A team changes how its API stores a user profile. How would unit, integration, and end-to-end tests provide
+    different evidence that the change works?
+  rubric:
+  - Explains that a unit test checks a small piece of behavior in isolation.
+  - Explains that an integration test checks how connected parts, such as the API and database, work together.
+  - Explains that an end-to-end test checks a user-facing flow through the system.
+  required: 2
+  model_answer: A unit test can check a profile-related function in isolation, such as how it validates input. An
+    integration test can verify that the API and database correctly save and retrieve a profile together. An end-to-end
+    test can exercise a user flow through the application to confirm the change works from the user’s perspective.
+- id: o10
+  topic: 5. Testing Strategies
+  text: You are adding a feature that calls an unreliable external service. How would you use tests, fixtures, or
+    mocks to check the feature without depending on the real service every time?
+  rubric:
+  - Explains that a mock can imitate the external service and provide controlled responses.
+  - Explains that controlled responses let tests check both successful and failure behavior consistently.
+  - Explains that fixtures can set up reusable test data or dependencies for the tests.
+  required: 2
+  model_answer: I would mock the external service so a test can supply predictable success and failure responses
+    without making a real network call. That makes it possible to check how the feature handles different outcomes
+    consistently. A fixture can provide reusable test data or configure the mock for each test.
+- id: o11
+  topic: 6. DevOps & Deployment
+  text: A developer’s application works on their laptop but fails on another machine because of different installed
+    dependencies. How would Docker help, and what does Docker Compose add when the application also needs a database?
+  rubric:
+  - Explains that a Docker image packages the application with its required environment or dependencies.
+  - Connects running the same image in different environments to more consistent behavior.
+  - Explains that Docker Compose can define and run multiple services, such as the application and database, together.
+  required: 2
+  model_answer: Docker packages the application and its dependencies into an image, which helps it run in a consistent
+    environment on different machines. This reduces differences caused by local installations. Docker Compose can
+    describe the application and database as separate services and start them together.
+- id: o12
+  topic: 6. DevOps & Deployment
+  text: A team sometimes deploys code that has not been tested or linted. How would a CI/CD pipeline change the
+    process, and why might the team make deployment depend on those checks?
+  rubric:
+  - Explains that a pipeline can automatically run tests and linting when code changes.
+  - Explains that deployment can be gated on checks passing to reduce the chance of releasing known problems.
+  - Explains that automated deployment can make releases more repeatable or reduce manual steps.
+  required: 2
+  model_answer: A CI/CD pipeline can automatically run tests and linting whenever code changes. The team can require
+    those checks to pass before deployment, reducing the risk of releasing code with known problems. Automating
+    deployment also makes the release process more repeatable and less dependent on manual steps.
+- id: o13
+  topic: 7. Specialization (Choose One)
+  text: You are building a web or mobile frontend for an API that requires users to sign in and shows their activity
+    over time. How would you connect the frontend to the API, handle authentication, and present the activity clearly?
+  rubric:
+  - Explains that the frontend sends API requests to retrieve or update the data needed by the interface.
+  - Explains that authentication credentials or tokens should be handled so requests are associated with the signed-in
+    user.
+  - Explains that a visualization can make activity over time easier to understand, and should reflect the returned
+    data.
+  required: 2
+  model_answer: The frontend can call the API to retrieve the signed-in user’s activity and update the interface
+    with the response. It should include the appropriate authentication information with requests and avoid exposing
+    credentials unnecessarily. A chart or timeline can make changes over time easier to see, and it should be based
+    on the data returned by the API.
+- id: o14
+  topic: 7. Specialization (Choose One)
+  text: A frontend currently shows a blank screen when its API request is slow or fails. How would you change the
+    frontend so users can understand what is happening and recover?
+  rubric:
+  - Explains that the interface should show a loading state while the request is in progress.
+  - Explains that the interface should present an understandable error state if the request fails.
+  - Explains that the user should have a way to retry or otherwise continue after the failure.
+  required: 2
+  model_answer: While the request is in progress, the frontend should show a loading indicator instead of a blank
+    screen. If the request fails, it should explain the problem in a way the user can understand. A retry option
+    lets the user try again once the problem may have cleared.
 problem:
   title: Trace an HTTP Request
   prompt: "Write `http_request_trace(host, secure)`, a function that returns a conceptual network-event trace for\

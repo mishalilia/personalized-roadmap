@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/apis-containers-deployment
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: APIs, Containers, and Deployment
@@ -182,6 +182,36 @@ questions:
   answer: 2
   explanation: The command uses POST, includes the JSON request body, and identifies that body as JSON with `Content-Type`.
     `Accept` describes the response format the client can receive, not the request body format.
+open_questions:
+- id: o1
+  topic: APIs, Containers, and Deployment
+  text: You are exposing a model that takes time to load and can fail during inference. How would you structure
+    the FastAPI service so requests are validated, the model is reused efficiently, and failures are handled clearly?
+  rubric:
+  - Explains that a request model validates incoming data and helps reject invalid requests.
+  - Explains that the model should be loaded once during application startup or lifespan and reused across requests.
+  - Explains that inference should be separate from HTTP handling and that inference failures should produce a clear
+    error response.
+  required: 2
+  model_answer: I would define a Pydantic request model so invalid inputs can be rejected before inference. I would
+    load the model during the application lifespan and reuse it for later requests instead of loading it on every
+    request. The route would pass validated data to separate inference logic and translate inference failures into
+    a clear error response.
+- id: o2
+  topic: APIs, Containers, and Deployment
+  text: A service works on your computer, but after a fresh Docker run it reports unhealthy and you cannot tell
+    whether its settings were applied. What would you check or change, and how would you use automated tests and
+    logs to build confidence before deployment?
+  rubric:
+  - Checks that runtime configuration is supplied to the container and that the service reads the intended values.
+  - Uses a health endpoint or health check to verify the running service is available.
+  - Checks container or application logs to identify startup or runtime errors.
+  - Runs automated tests in a workflow, such as on a push or pull request, before deploying.
+  required: 3
+  model_answer: I would verify that the required runtime settings are passed into the container and read by the
+    service, then make a request to its health endpoint. I would inspect the container and application logs for
+    startup errors or clues about the unhealthy status. I would also have a workflow run the tests on a push or
+    pull request, and deploy only after those checks pass.
 problem:
   title: Build an Inference Handler
   prompt: 'Write `handle_prediction(payload, infer)`, the framework-independent core of a prediction endpoint. `payload`
@@ -255,3 +285,4 @@ problem:
     }}\n    try:\n        result = infer(payload[\"text\"].strip())\n    except Exception:\n        return {\"status_code\"\
     : 400, \"body\": {\"detail\": \"inference failed\"}}\n    return {\"status_code\": 200, \"body\": {\"result\"\
     : result}}"
+problems: []

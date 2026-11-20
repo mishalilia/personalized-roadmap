@@ -67,11 +67,16 @@ class Site:
         events: EventLog | None = None,
         token: str | None = None,
         reviewers: set[str] | None = None,
+        open_questions: list = (),
     ) -> None:
         editions = [
             Edition(
                 roadmap,
-                {TERMINAL: terminal_checkpoint(roadmap.curriculum.version, problem, problems)},
+                {
+                    TERMINAL: terminal_checkpoint(roadmap.curriculum.version, problem, problems).model_copy(
+                        update={"open_questions": list(open_questions)}
+                    )
+                },
             )
             for roadmap in roadmaps
         ]
@@ -176,7 +181,7 @@ def test_a_level_and_a_path_for_the_level_the_learner_chose(
 ):
     llm = FakeLLM(ASSESSMENT, study_all(curriculum))
     client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
-    answers = {"programming": "One month of Python"}
+    answers = {"programming": {"choices": ["under_year"], "details": "One month of Python"}}
 
     assessment = client.post("/level", json={"answers": answers}).json()["assessment"]
     response = client.post(
@@ -190,7 +195,11 @@ def test_a_level_and_a_path_for_the_level_the_learner_chose(
     assert path.assessment is not None and path.assessment.level == "beginner"
     assert [item.module.id for item in path.items] == module_ids
     assert all(item.choice is Choice.STUDY for item in path.items)
-    assert not path.confirmed and path.answers == answers and path.id
+    assert not path.confirmed and path.id
+    # The path keeps the answers as the model read them: the option chosen and the learner's own words.
+    assert path.answers == {
+        "programming": "Chose: Under a year, including programs of my own. In their own words: One month of Python"
+    }
     assert client.get("/me/path").json()["id"] == path.id
 
 
@@ -805,10 +814,10 @@ def test_a_stored_path_shows_its_modules_as_the_course_is_read_now(
     client = site.signed_in()
     confirmed_path(client)
     # A path stored before the course was read differently: its copy of a module is out of date.
-    with site.accounts._db:
-        stored = site.accounts._db.execute("SELECT path FROM paths").fetchone()[0]
+    with site.accounts._db.transaction() as tx:
+        stored = tx.execute("SELECT path FROM paths").fetchone()[0]
         assert "Shell Basics" in stored
-        site.accounts._db.execute(
+        tx.execute(
             "UPDATE paths SET path = ?", (stored.replace("Shell Basics", "Old heading"),)
         )
 
@@ -1148,3 +1157,24 @@ def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions
     assert [(p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]] == [
         ("tracks/notes", "study", True)
     ]
+
+
+def test_the_browser_gets_the_options_but_not_the_right_answer_to_the_code_question(curriculum, questions):
+    client = site_for(Roadmap(curriculum, questions, None)).learner()
+
+    asked = {question["id"]: question for question in client.get("/questions").json()["questions"]}
+
+    assert asked["tools"]["kind"] == "multiple" and len(asked["tools"]["options"]) > 2
+    assert asked["code_check"]["kind"] == "check" and "print" in asked["code_check"]["code"]
+    assert "correct" not in asked["code_check"] and asked["goal"]["kind"] == "text"
+
+
+def test_an_option_a_question_does_not_have_is_refused(curriculum, questions):
+    client = site_for(Roadmap(curriculum, questions, FakeLLM(ASSESSMENT))).learner()
+
+    for answers in (
+        {"math": {"choices": ["genius"]}},
+        {"math": {"choices": ["school", "faded"]}},  # one option for a single-choice question
+        {"pets": "two cats"},
+    ):
+        assert client.post("/level", json={"answers": answers}).status_code == 422

@@ -11,8 +11,6 @@ learner and to reviewers, as a download.
 from __future__ import annotations
 
 import re
-import sqlite3
-import threading
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -23,6 +21,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .database import Database, as_database
 from .project_review import ProjectReview
 
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
@@ -94,14 +93,12 @@ def safe_file_name(name: str | None) -> str:
 
 
 class SubmissionStore:
-    def __init__(self, file: Path, uploads: Path) -> None:
-        file.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, database: Database | Path | str, uploads: Path) -> None:
         uploads.mkdir(parents=True, exist_ok=True)
         self._uploads = uploads
-        self._db = sqlite3.connect(file, check_same_thread=False)
-        self._lock = threading.Lock()
-        with self._lock, self._db:
-            self._db.execute(
+        self._db = as_database(database)
+        with self._db.transaction() as tx:
+            tx.execute(
                 "CREATE TABLE IF NOT EXISTS submissions ("
                 " id TEXT PRIMARY KEY, account_id TEXT NOT NULL, email TEXT NOT NULL,"
                 " module_id TEXT NOT NULL, module_title TEXT NOT NULL,"
@@ -110,14 +107,11 @@ class SubmissionStore:
                 " review_comment TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT,"
                 " UNIQUE (account_id, module_id))"
             )
-            columns = {
-                row[1] for row in self._db.execute("PRAGMA table_info(submissions)")
-            }
-            for column in ("reviewed_by", "ai_review"):
-                if column not in columns:  # databases made before reviews by a model
-                    self._db.execute(
-                        f"ALTER TABLE submissions ADD COLUMN {column} TEXT"
-                    )
+        columns = self._db.columns("submissions")
+        for column in ("reviewed_by", "ai_review"):
+            if column not in columns:  # databases made before reviews by a model
+                with self._db.transaction() as tx:
+                    tx.execute(f"ALTER TABLE submissions ADD COLUMN {column} TEXT")
 
     def keep_archive(self, upload: BinaryIO) -> tuple[str, int]:
         """Copies an uploaded archive to the uploads folder under a random name; returns the name and size.
@@ -163,16 +157,16 @@ class SubmissionStore:
 
         now = datetime.now(UTC).isoformat()
         stored, size, name = archive if archive else (None, None, None)
-        with self._lock, self._db:
-            previous = self._db.execute(
+        with self._db.transaction() as tx:
+            previous = tx.execute(
                 "SELECT stored_as FROM submissions WHERE account_id = ? AND module_id = ?",
                 (account_id, module_id),
             ).fetchone()
-            self._db.execute(
+            tx.execute(
                 "DELETE FROM submissions WHERE account_id = ? AND module_id = ?",
                 (account_id, module_id),
             )
-            self._db.execute(
+            tx.execute(
                 "INSERT INTO submissions (id, account_id, email, module_id, module_title,"
                 " curriculum_version, link, note, file_name, file_size, stored_as, status,"
                 " submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -221,15 +215,15 @@ class SubmissionStore:
         )[:limit]
 
     def archive_of(self, submission_id: str) -> Path | None:
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT stored_as FROM submissions WHERE id = ?", (submission_id,)
             ).fetchone()
         return self._uploads / row[0] if row and row[0] else None
 
     def set_status(self, submission_id: str, status: Status) -> None:
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "UPDATE submissions SET status = ? WHERE id = ?",
                 (status, submission_id),
             )
@@ -244,8 +238,8 @@ class SubmissionStore:
     ) -> Submission:
         """Records a decision: the model's, or a person's, who may also decide otherwise than the model did.
         Not while the model is still reading the project."""
-        with self._lock, self._db:
-            changed = self._db.execute(
+        with self._db.transaction() as tx:
+            changed = tx.execute(
                 "UPDATE submissions SET status = ?, review_comment = ?, reviewed_at = ?,"
                 " reviewed_by = ?, ai_review = COALESCE(?, ai_review)"
                 " WHERE id = ? AND status != ?",
@@ -267,11 +261,11 @@ class SubmissionStore:
 
     def delete_for(self, account_id: str) -> None:
         """Deletes an account's submissions and their archives, with the account."""
-        with self._lock, self._db:
-            stored = self._db.execute(
+        with self._db.transaction() as tx:
+            stored = tx.execute(
                 "SELECT stored_as FROM submissions WHERE account_id = ?", (account_id,)
             ).fetchall()
-            self._db.execute(
+            tx.execute(
                 "DELETE FROM submissions WHERE account_id = ?", (account_id,)
             )
         for (name,) in stored:
@@ -279,8 +273,8 @@ class SubmissionStore:
                 (self._uploads / name).unlink(missing_ok=True)
 
     def _select(self, where: str, args: tuple) -> Iterator[Submission]:
-        with self._lock:
-            rows = self._db.execute(
+        with self._db.transaction() as tx:
+            rows = tx.execute(
                 "SELECT id, account_id, email, module_id, module_title, curriculum_version, link,"
                 " note, file_name, file_size, status, review_comment, submitted_at, reviewed_at,"
                 " reviewed_by, ai_review"

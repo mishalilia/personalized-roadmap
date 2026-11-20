@@ -1,8 +1,8 @@
 module_id: softlanding/specializations/nlp/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q24
   topic: 1. Text Representation & Classical NLP
@@ -580,6 +580,199 @@ questions:
   answer: 3
   explanation: An agent loop uses observations from tool execution to guide its next action. It should also have
     a stopping condition so it can return an answer once the task is sufficiently complete.
+open_questions:
+- id: o1
+  topic: 1. Text Representation & Classical NLP
+  text: You are preparing a collection of customer reviews where the same word appears with different capitalization
+    and punctuation, and some reviews contain phrases such as “not helpful.” How would you preprocess the text before
+    creating features, and why would you be careful about which words you remove?
+  rubric:
+  - Explains that tokenization and normalization can make varied text forms more consistent for feature extraction.
+  - Notes that stopword removal can reduce uninformative features but should preserve words such as “not” when they
+    change a phrase’s meaning.
+  - Connects consistent preprocessing choices to producing more useful or comparable text features.
+  required: 2
+  model_answer: I would tokenize the reviews and normalize forms such as capitalization so that equivalent words
+    are less likely to become separate features. I would remove only stopwords that are not useful for the task,
+    since removing “not” could reverse the meaning of a review. Applying the same preprocessing choices to every
+    review makes their feature representations more consistent.
+- id: o2
+  topic: 1. Text Representation & Classical NLP
+  text: Suppose a classifier using single-word counts treats “good” and “not good” as similar, and its feature vocabulary
+    becomes very large after you add longer phrases. How would TF-IDF and n-grams change the representation, and
+    what limitation would remain?
+  rubric:
+  - Explains that TF-IDF weights terms using how common or distinctive they are across documents rather than treating
+    every count equally.
+  - Explains that n-grams can represent local word sequences such as “not good,” helping distinguish phrases from
+    their individual words.
+  - Notes that adding n-grams can grow the vocabulary and increase sparsity.
+  - Identifies that count-based features still have limited ability to represent broader context or semantic similarity.
+  required: 3
+  model_answer: TF-IDF can give less weight to words that occur in many reviews and more weight to terms that are
+    distinctive to particular reviews. Adding n-grams lets the classifier represent a phrase such as “not good”
+    instead of relying only on separate word counts. But longer n-grams can greatly expand the vocabulary and make
+    the vectors sparse. These features also do not reliably capture broader context or the similarity of different
+    words with similar meanings.
+- id: o3
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: You are training word embeddings on a small corpus and want to compare CBOW with Skip-gram. How do their
+    training examples differ, and why might negative sampling be useful?
+  rubric:
+  - Explains that CBOW uses surrounding context words to predict a target word.
+  - Explains that Skip-gram uses a target word to predict surrounding context words.
+  - Explains that negative sampling reduces the work of training by using a small set of negative examples instead
+    of updating against the full vocabulary.
+  required: 2
+  model_answer: CBOW combines nearby context words to predict the word at the center of a window. Skip-gram starts
+    with a center word and predicts words around it. Negative sampling makes training more efficient by contrasting
+    observed word-context pairs with a limited number of sampled negative pairs rather than computing updates for
+    every vocabulary word.
+- id: o4
+  topic: 2. Word Embeddings & Distributional Semantics
+  text: A teammate finds that two words used in similar contexts have nearby vectors and suggests using cosine similarity
+    to compare their meanings. How would you explain why this can work, and what caution would you raise when using
+    the similarity results?
+  rubric:
+  - 'Connects the distributional hypothesis to embeddings: words appearing in similar contexts can acquire similar
+    representations.'
+  - Explains that cosine similarity compares the direction of vectors and can indicate how similar their learned
+    representations are.
+  - Notes that similarity in a vector space is not a guarantee that two words have the same meaning in every context.
+  - Recognizes that embeddings can encode social biases or artifacts from their training data.
+  required: 3
+  model_answer: The distributional idea is that words used in similar contexts tend to have related meanings, so
+    training can place their vectors near one another. Cosine similarity compares the directions of those vectors,
+    providing a way to assess how similar their learned representations are. That similarity does not mean the words
+    are interchangeable in every context. The vectors may also reflect biases or other artifacts in the data used
+    to train them.
+- id: o5
+  topic: 3. Attention Mechanisms & Transformers
+  text: In a self-attention layer, one token needs to use information from other tokens in its sentence. How do
+    queries, keys, and values help form that token’s context, and why does a Transformer also need positional information?
+  rubric:
+  - Explains that a query is compared with keys to produce attention scores or weights for other tokens.
+  - Explains that the weights combine the corresponding values into a context representation.
+  - Explains that positional information helps the model distinguish token order because attention alone does not
+    encode sequence order.
+  required: 2
+  model_answer: The token’s query is compared with the keys of tokens in the sentence to determine how much attention
+    to give each one. Those attention weights are used to combine the tokens’ values into a context representation.
+    Positional information is also needed because the attention operation by itself does not tell the model which
+    token came first or how the sequence is ordered.
+- id: o6
+  topic: 3. Attention Mechanisms & Transformers
+  text: Your team is choosing between a Transformer and an RNN for processing sequences in parallel during training.
+    How would you explain the Transformer’s advantage and one cost or limitation to consider as sequence length
+    grows?
+  rubric:
+  - Explains that Transformers can process different sequence positions in parallel during training, unlike the
+    step-by-step dependency of an RNN.
+  - Explains that self-attention lets tokens use information from other positions in the sequence.
+  - Notes that attention computation or memory use can become costly as sequence length grows.
+  required: 2
+  model_answer: A Transformer can compute representations for many positions in parallel, while an RNN’s state at
+    each step depends on earlier steps. Self-attention also lets tokens use information from other positions in
+    the sequence. However, the computation and memory used by attention can grow substantially for long sequences,
+    so parallel processing does not make sequence length cost-free.
+- id: o7
+  topic: 4. Large Language Models (LLMs)
+  text: A team has a pretrained language model and wants it to follow a particular task’s instructions more reliably.
+    How would you explain the role of next-token prediction in pretraining and what fine-tuning changes?
+  rubric:
+  - Explains that next-token prediction trains a language model to predict the next token from preceding context.
+  - Explains that pretraining builds general language capabilities from a broad training process or dataset.
+  - Explains that fine-tuning adapts the pretrained model using task- or behavior-specific examples rather than
+    starting training from scratch.
+  required: 2
+  model_answer: In next-token prediction, the model uses the preceding context to predict what token comes next.
+    Pretraining on broad data gives the model general language patterns and capabilities. Fine-tuning then uses
+    more task-specific examples to adapt that pretrained model, such as improving how it follows a particular kind
+    of instruction.
+- id: o8
+  topic: 4. Large Language Models (LLMs)
+  text: Your team is considering a larger model and more training data because a smaller model sometimes gives confident
+    but incorrect answers. How would you reason about the expected benefits and trade-offs, and what limitation
+    would still need testing?
+  rubric:
+  - Explains that increasing model or data scale can improve performance, while not guaranteeing improvement on
+    every task.
+  - Recognizes that larger-scale training requires greater compute or data resources.
+  - Notes that scaling does not eliminate limitations such as hallucinations or context limits, so the model still
+    needs evaluation for relevant failures.
+  required: 2
+  model_answer: A larger model trained with more data may perform better, but improvement is not guaranteed for
+    every task or failure case. Increasing scale also requires more compute and training resources. It does not
+    ensure that confident incorrect answers will disappear, or remove limits on how much context the model can handle.
+    I would test the model on representative examples to see whether the specific failures have improved.
+- id: o9
+  topic: 5. Fine-Tuning Methods
+  text: You have limited GPU memory and need to adapt a large model to a task. How would LoRA and QLoRA help, and
+    what trade-off would you consider when choosing between them and full fine-tuning?
+  rubric:
+  - Explains that LoRA trains small low-rank adapter updates rather than updating all of the model’s parameters.
+  - Explains that QLoRA combines low-rank adaptation with a quantized base model to reduce memory use further.
+  - Identifies a trade-off involving memory or compute savings versus adaptation quality, precision, or the flexibility
+    of updating the full model.
+  required: 2
+  model_answer: LoRA keeps the original model weights mostly fixed and trains small low-rank updates, which reduces
+    the number of trainable parameters and memory needed for training. QLoRA also quantizes the base model, reducing
+    its memory footprint further while training adapters. These methods can make adaptation possible on limited
+    hardware, but they differ from updating all parameters and may involve trade-offs in quality, flexibility, or
+    precision. I would compare results and resource use on the task before choosing.
+- id: o10
+  topic: 5. Fine-Tuning Methods
+  text: A model prompted with examples handles a task inconsistently, so your team is considering fine-tuning it.
+    How would you decide whether fine-tuning is appropriate, and how would you check for overfitting before deployment?
+  rubric:
+  - Distinguishes prompting, which guides a model through its input, from fine-tuning, which updates the model using
+    task-specific training examples.
+  - Explains that fine-tuning may be appropriate when repeated prompting does not provide the needed consistent
+    task adaptation.
+  - Explains that comparing training and validation performance or loss can reveal overfitting.
+  - Notes that a deployment-ready model should be evaluated on relevant held-out examples before release.
+  required: 3
+  model_answer: Prompting guides the model through the instructions and examples in an input, whereas fine-tuning
+    updates the model using task-specific training examples. I would consider fine-tuning if prompting does not
+    provide the consistency the task requires and the team has suitable data and resources. I would compare training
+    and validation results, since improving training performance while validation performance worsens can indicate
+    overfitting. Before deployment, I would also evaluate the model on held-out examples relevant to its intended
+    use.
+- id: o11
+  topic: 6. RAG and AI Agents orchestration
+  text: A RAG system answers questions from a collection of long documents, but it often retrieves passages that
+    miss the relevant detail. How would you improve its chunking and retrieval process, and why might these changes
+    help?
+  rubric:
+  - Explains that chunk size affects whether retrieved passages preserve enough context while remaining focused.
+  - Explains that overlap between chunks can help retain information that crosses chunk boundaries.
+  - Connects embeddings and vector search to retrieving passages relevant to a query.
+  - Recommends evaluating retrieval quality or experimenting with chunking settings rather than assuming one setting
+    works for every collection.
+  required: 3
+  model_answer: I would experiment with chunk sizes so that passages include enough context to answer questions
+    without containing too much unrelated material. Some overlap can preserve details that fall near the boundary
+    between chunks. Embeddings and vector search can then help find passages relevant to a question. I would compare
+    retrieval quality across settings, since the best chunk size and overlap can depend on the documents and questions.
+- id: o12
+  topic: 6. RAG and AI Agents orchestration
+  text: A single assistant has to look up information from an external service, analyze it, and produce a report.
+    How would you decide whether to use tool calling or multiple specialized agents, and what would you do to coordinate
+    the workflow?
+  rubric:
+  - Explains that tool calling lets an agent request an external function or service and use its result in the workflow.
+  - Explains that multiple agents may help when distinct parts of the work benefit from specialized roles, but are
+    not automatically necessary.
+  - Describes coordinating the work through planned or clearly assigned tasks and passing relevant results between
+    steps or agents.
+  - Recognizes a need to manage execution or verify outputs, since orchestration can introduce coordination or reliability
+    failures.
+  required: 3
+  model_answer: I would use tool calling when the assistant needs a specific external service, such as looking up
+    information, and then use the result in its response. I would consider multiple agents if the analysis and report-writing
+    stages benefit from distinct responsibilities; a single agent may be simpler when the task is straightforward.
+    I would assign clear tasks and pass the relevant results from one step to the next. I would also check the returned
+    information and final report, since tool or agent coordination can fail.
 problem:
   title: Build Classical Text Features
   prompt: 'Write `classical_text_features(documents)`, which builds Bag-of-Words and TF-IDF features for a list

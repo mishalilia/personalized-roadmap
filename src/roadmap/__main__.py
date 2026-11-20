@@ -18,7 +18,7 @@ from .curriculum import Module
 from .events import EventLog
 from .config import Settings
 from .curriculum import Level
-from .onboarding import LearnerProfile, load_profiles
+from .onboarding import LearnerProfile, answer_texts, load_profiles
 from .path import Choice, LearningPath, path_difference
 from .service import Roadmap
 from .llm import UnusableAnswer, LLMUnavailable, connect
@@ -105,6 +105,11 @@ def _parser() -> argparse.ArgumentParser:
         help="for modules with several topics: questions until each topic has its own pool, and a problem per topic",
     )
     generate.add_argument(
+        "--open-questions",
+        action="store_true",
+        help="add open questions, marked by a model against a rubric, to checkpoints that have none",
+    )
+    generate.add_argument(
         "--problems-only",
         action="store_true",
         help="write new coding problems for checkpoints that have one, keeping their questions",
@@ -162,10 +167,11 @@ def _build_path(
     roadmap: Roadmap, profile: LearnerProfile, level: Level | None = None
 ) -> LearningPath:
     """Plan for the given level, or for the suggested one when none is given."""
-    assessment = None if level else roadmap.assess_level(profile.answers)
+    answers = answer_texts(roadmap.questions, profile.answers)
+    assessment = None if level else roadmap.assess_level(answers)
     if assessment is not None:
         level = assessment.level
-    return roadmap.build_path(profile.answers, level, assessment)
+    return roadmap.build_path(answers, level, assessment)
 
 
 def _find_profile(settings: Settings, profile_id: str) -> LearnerProfile:
@@ -230,6 +236,9 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
     if args.topic_pools:
         _topic_pools(generator, store, [modules[module_id] for module_id in wanted])
         return
+    if args.open_questions:
+        _open_questions(generator, store, [modules[module_id] for module_id in wanted], args.force)
+        return
     for module_id in wanted:
         existing = store.load(module_id)
         if (
@@ -261,6 +270,26 @@ def _new_problems(
             print(f"Kept the old problem for {module.id}: {error}")
             continue
         print(f"New problem for {module.id} written to {store.save(checkpoint)}: review it")
+
+
+def _open_questions(
+    generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module], force: bool
+) -> None:
+    """Open questions for checkpoints that have none (with --force, new ones for all). The checkpoint becomes a
+    draft again: a person reviews the questions and their rubrics."""
+    for module in modules:
+        checkpoint = store.load(module.id)
+        if checkpoint is None or (checkpoint.open_questions and not force):
+            continue
+        try:
+            added = generator.open_questions(module, checkpoint)
+        except (LLMUnavailable, UnusableAnswer) as error:
+            print(f"No open questions for {module.id}: {error}")
+            continue
+        checkpoint = checkpoint.model_copy(
+            update={"open_questions": added, "status": Status.DRAFT, "reviewed_by": None}
+        )
+        print(f"{len(added)} open questions for {module.id} written to {store.save(checkpoint)}: review them")
 
 
 def _topic_pools(

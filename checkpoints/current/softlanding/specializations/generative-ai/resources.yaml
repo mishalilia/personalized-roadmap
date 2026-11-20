@@ -1,8 +1,8 @@
 module_id: softlanding/specializations/generative-ai/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q24
   topic: Foundations of Natural Language Processing
@@ -296,6 +296,94 @@ questions:
   answer: 1
   explanation: Streaming recognition processes audio as it arrives, allowing partial transcription before the speaker
     finishes. Offline recognition typically processes a completed recording.
+open_questions:
+- id: o1
+  topic: Foundations of Natural Language Processing
+  text: You need to represent a collection of documents so that words that are common in every document count less
+    than words that help distinguish one document from another. How would you choose between Bag-of-Words and TF-IDF,
+    and what important information might either representation still miss?
+  rubric:
+  - Explains that TF-IDF reduces the influence of words that occur frequently across many documents.
+  - Explains that Bag-of-Words or TF-IDF represents text using word counts or weights rather than word meaning in
+    context.
+  - Identifies a limitation such as losing word order or failing to capture contextual meaning.
+  required: 2
+  model_answer: I would use TF-IDF because it gives less weight to words that appear in many documents and more
+    weight to words that distinguish particular documents. Bag-of-Words records word counts, while TF-IDF adjusts
+    those counts using how widely each word appears across the collection. Both treat text as a set of word features,
+    so they can miss word order and contextual meaning.
+- id: o2
+  topic: Foundations of Natural Language Processing
+  text: In a sentence, the meaning of one word may depend on several other words. How does self-attention help a
+    model use that context, and why can multiple attention heads be useful?
+  rubric:
+  - Explains that self-attention lets each token use information from other tokens in the sequence.
+  - Describes Query, Key, and Value in terms of deciding which token information to gather and combining that information.
+  - Explains that multiple heads can learn or attend to different relationships or aspects of the context.
+  required: 2
+  model_answer: Self-attention lets a token gather information from other tokens, so its representation can reflect
+    the surrounding sentence. A token’s query is compared with other tokens’ keys to determine how much attention
+    to give them, and their values provide the information that is combined. Multiple heads can focus on different
+    relationships in the same sentence, giving the model several ways to use context.
+- id: o3
+  topic: Diffusion Models Foundations
+  text: Imagine training a model to create images by gradually adding noise to training examples and then learning
+    to undo that process. How do the forward and reverse processes work together, and why does the noise schedule
+    matter?
+  rubric:
+  - Explains that the forward process progressively adds noise to data.
+  - Explains that the model learns a reverse process that removes noise to generate a sample.
+  - Explains that the noise schedule controls how much noise is added at different steps and affects the denoising
+    task or sampling.
+  required: 2
+  model_answer: In the forward process, noise is added to training images over many steps until the original structure
+    is obscured. The model learns to reverse this process by predicting how to remove noise, allowing it to generate
+    an image from noise. The noise schedule determines how quickly noise increases across steps, which shapes the
+    denoising problem and can affect the quality or behavior of sampling.
+- id: o4
+  topic: Diffusion Models Foundations
+  text: You want generated images to follow both a written prompt and a rough layout or pose supplied by an image.
+    How could text conditioning and ControlNet help, and what might changing the guidance scale do?
+  rubric:
+  - Explains that text conditioning helps guide generation toward the prompt.
+  - Explains that ControlNet uses an additional image-based signal, such as a layout or pose, to provide structural
+    guidance.
+  - Explains that changing guidance scale changes how strongly generation follows the conditioning, with possible
+    trade-offs in the result.
+  required: 2
+  model_answer: Text conditioning gives the diffusion model information about the content requested in the prompt.
+    ControlNet can provide an additional structural signal, such as a pose or layout, to help preserve the desired
+    arrangement. Increasing guidance scale can make the result follow its conditioning more strongly, though stronger
+    guidance may also affect image quality or variety.
+- id: o5
+  topic: Speech Technologies
+  text: You are preparing a recorded speech clip for a model and want to inspect how its sound changes over time
+    and frequency. What would a spectrogram help you see, and why might you also use a mel spectrogram or MFCC features?
+  rubric:
+  - Explains that a spectrogram represents how signal energy at different frequencies changes over time.
+  - Explains that a mel spectrogram groups or scales frequency information to better reflect perceptual frequency
+    spacing.
+  - Explains that MFCCs provide a compact set of features derived from the spectral shape for speech processing.
+  required: 2
+  model_answer: A spectrogram shows how the signal’s frequency content and energy change over time, which can reveal
+    patterns in speech sounds. A mel spectrogram expresses frequency information on the mel scale, which gives more
+    resolution to frequency ranges that matter more to human hearing. MFCCs summarize aspects of the spectral shape
+    into compact features that can be useful for speech models.
+- id: o6
+  topic: Speech Technologies
+  text: A transcription system performs well on clean recordings but poorly on noisy, accented speech, and you need
+    to decide whether to use it for live captions. How would you evaluate its errors and what trade-offs would you
+    consider between streaming and offline recognition?
+  rubric:
+  - Explains that WER or CER can quantify transcription errors by comparing a transcription with a reference.
+  - Recognizes that noisy or accented audio can affect recognition accuracy and may need to be included in evaluation.
+  - Explains that streaming recognition provides results with low delay, while offline recognition can use the full
+    audio before producing results.
+  required: 2
+  model_answer: I would compare transcripts with references using WER or CER, and include noisy and accented recordings
+    to test the conditions where the system currently struggles. Streaming recognition can provide captions quickly,
+    but it must work with audio as it arrives. Offline recognition can use the complete recording before returning
+    a transcript, which may improve results but adds delay.
 problem:
   title: Build TF-IDF Vectors
   prompt: 'Write `tfidf_vectors(documents)`, which returns one dictionary per document, mapping each token in that

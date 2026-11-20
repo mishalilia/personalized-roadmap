@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/data-manipulation
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: NumPy Foundations
@@ -371,6 +371,118 @@ questions:
   answer: 1
   explanation: The data supports describing an association, but an observational pattern alone does not establish
     that delays caused lower ratings. Other factors may contribute to the relationship.
+open_questions:
+- id: o1
+  topic: NumPy Foundations
+  text: You need to apply the same calculation to every value in a very large array, and some inputs have compatible
+    but different shapes. How could NumPy operations help you do this without writing a Python loop, and why do
+    the shapes matter?
+  rubric:
+  - Explains that a vectorized array operation applies the calculation across values without an explicit Python
+    loop.
+  - Explains that broadcasting can apply an operation across compatible shapes without manually copying values.
+  - Notes that incompatible shapes cannot be combined by broadcasting as intended.
+  required: 2
+  model_answer: A vectorized NumPy operation applies the calculation across the array without a Python loop for
+    each value. Broadcasting can let arrays with compatible shapes work together without manually copying the smaller
+    array. The shapes still matter because incompatible dimensions cannot be combined in that way.
+- id: o2
+  topic: NumPy Foundations
+  text: A two-dimensional array stores measurements for several days in rows and different sensors in columns. How
+    would choosing an aggregation axis affect a summary of the measurements, and how could you check that the result
+    has the shape you expect?
+  rubric:
+  - Explains that aggregating along the rows produces one result per sensor column.
+  - Explains that aggregating along the columns produces one result per day row.
+  - Connects the output shape or number of results to the dimension that remains after aggregation.
+  required: 2
+  model_answer: To summarize each sensor across days, aggregate along the row dimension, leaving one result for
+    each sensor column. Aggregating across the sensor columns instead gives one result for each day. I would check
+    the output shape and confirm that it contains one value for each dimension I intended to keep.
+- id: o3
+  topic: Pandas and Data Cleaning
+  text: A dataset has prices loaded as text with currency symbols, category labels that differ only in capitalization,
+    some missing prices, and repeated records. How would you decide what to clean before analyzing the data, and
+    why should you inspect the results afterward?
+  rubric:
+  - Explains that prices should be converted to a suitable numeric type after handling the currency symbols.
+  - Explains that category labels should be standardized so equivalent categories are treated consistently.
+  - Explains that missing prices and repeated records should be handled based on their meaning rather than removed
+    blindly.
+  - Notes that inspecting the cleaned data helps verify the changes and catch remaining problems.
+  required: 3
+  model_answer: I would remove or handle the currency symbols and convert prices to a numeric type so they can be
+    analyzed. I would standardize capitalization in category labels so the same category is not split into multiple
+    groups. I would check why prices are missing and whether repeated records are true duplicates before deciding
+    how to handle them. Finally, I would inspect the cleaned data to confirm the changes worked.
+- id: o4
+  topic: Pandas and Data Cleaning
+  text: You have a sales table with a customer ID and a separate customer table with one row per customer. What
+    would you consider when combining them, and how could you check that the result still represents the sales records
+    correctly?
+  rubric:
+  - Explains that the customer ID is the key used to match rows across the two tables.
+  - Explains that the choice of merge affects whether sales without a matching customer are retained.
+  - Notes that checking row counts or unmatched IDs can reveal unexpected merge results.
+  required: 2
+  model_answer: I would merge the tables using customer ID, after checking that the customer table has one row per
+    ID so a match does not unexpectedly multiply sales rows. An inner merge would drop sales whose IDs are not in
+    the customer table, while a left merge from sales would retain them. I would compare row counts and check for
+    unmatched IDs to confirm the result is as expected.
+- id: o5
+  topic: SQL
+  text: You need to report customers with at least three completed orders. How would you structure a SQL query so
+    it first selects the relevant orders and then keeps only customers who meet the threshold, and why do those
+    conditions belong at different stages?
+  rubric:
+  - Explains that a row-level condition for completed orders belongs in WHERE before grouping.
+  - Explains that the query groups orders by customer to calculate a per-customer count.
+  - Explains that the threshold on the calculated count belongs in HAVING after grouping.
+  required: 2
+  model_answer: I would use WHERE to keep only completed orders before calculating counts. Then I would group the
+    remaining rows by customer and count their orders. I would use HAVING to keep groups whose count is at least
+    three, because that condition applies to the aggregate result.
+- id: o6
+  topic: SQL
+  text: You want the latest order for every customer, along with the other columns from that order. How would you
+    use a window function to identify those rows, and why might that be more useful than returning only the maximum
+    order date?
+  rubric:
+  - Explains that the window function should divide orders into groups by customer and order them by date.
+  - Explains that assigning a row number within each customer group makes the latest order identifiable.
+  - Explains that filtering to the first-ranked row retains the full order row, not just the maximum date.
+  required: 2
+  model_answer: I would use a window function partitioned by customer and ordered from newest to oldest order date.
+    It can assign row number 1 to the latest order for each customer, and I can filter to those rows, using a CTE
+    or subquery if needed. Unlike returning only the maximum date, this keeps the other columns from the selected
+    order.
+- id: o7
+  topic: Exploratory Analysis and Visualization
+  text: A numeric response-time dataset contains a few values much larger than most of the others. How would you
+    visualize and investigate the distribution before deciding whether those values should affect your analysis?
+  rubric:
+  - Names a histogram or another suitable distribution-focused view to reveal the overall spread and unusual values.
+  - Explains that unusual values should be investigated in context before being removed or treated as errors.
+  - Notes that the distribution or unusual values can affect which summary or comparison is appropriate.
+  required: 2
+  model_answer: I would use a histogram to see the distribution, including whether most response times cluster together
+    and how extreme the large values are. I would investigate those values to determine whether they are errors
+    or genuine slow responses before removing them. If they are genuine, they may affect summaries and should be
+    considered when interpreting the results.
+- id: o8
+  topic: Exploratory Analysis and Visualization
+  text: A team wants to compare weekly signups for several product categories and share a short finding. What chart
+    would help show the comparison over time, and what would you include so readers can understand both the finding
+    and its limitations?
+  rubric:
+  - Chooses a line chart or another suitable chart for showing changes over time across categories.
+  - Explains that clear labels, a title, and a legend help readers interpret the displayed categories and values.
+  - Identifies a relevant limitation, such as missing weeks or the chart showing association rather than a cause.
+  required: 2
+  model_answer: I would use a line chart with a separate line for each product category to show weekly changes over
+    time. I would add a descriptive title, label the axes, and include a readable legend. In the finding, I would
+    describe the visible comparison without claiming the chart proves what caused it. I would also note relevant
+    limitations, such as missing weeks in the data.
 problem:
   title: Reshape and Filter Readings
   prompt: "Write `analyze_readings(readings, rows, cols, cutoff)` using NumPy. Treat `readings` as a flat sequence\

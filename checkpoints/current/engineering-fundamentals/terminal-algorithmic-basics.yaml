@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/terminal-algorithmic-basics
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Terminal and Filesystem
@@ -482,6 +482,137 @@ questions:
   answer: 1
   explanation: A `KeyError` here means the dictionary does not contain the requested key. Check the data-building
     code and make sure it supplies `name` as expected.
+open_questions:
+- id: o1
+  topic: Terminal and Filesystem
+  text: You open a terminal and need to locate a project file, then read it without changing it. How would you work
+    out where you are, navigate or search for the file, and choose a command to read it? Explain why you would use
+    those steps.
+  rubric:
+  - Uses `pwd` to check the current directory and `cd` or `ls` to navigate or inspect locations.
+  - Uses `find` or another appropriate directory listing to locate the file.
+  - Chooses a read-only command such as `cat` or `less` to inspect the file.
+  required: 2
+  model_answer: I would use `pwd` to see my current location and `ls` to check what is in that directory. If the
+    project is elsewhere, I would use `cd` to move there, or use `find` to search for the file. I would use `less`
+    to read it without editing it, or `cat` if it is short.
+- id: o2
+  topic: Terminal and Filesystem
+  text: You need to remove an old file from a project, but you are not completely sure which file it is or where
+    it is. How would you check before removing anything, and why is that caution useful?
+  rubric:
+  - Checks the current directory or file location before acting.
+  - Inspects the target with a command such as `ls` or `file` to confirm it is the intended file.
+  - Explains that `rm` removes files and that checking first helps avoid deleting the wrong item.
+  required: 2
+  model_answer: I would use `pwd` to confirm where I am and `ls` to inspect the files there. If I am unsure about
+    the target, I would use `file` to check what it is before removing it. Since `rm` deletes the specified file,
+    these checks help prevent accidentally removing something important or the wrong file.
+- id: o3
+  topic: Python Environment Setup
+  text: A project needs a Python package, but you also work on other projects that may need different package versions.
+    How would you set up and use the project’s environment, and why would you record its dependencies?
+  rubric:
+  - Creates and activates a virtual environment for the project.
+  - Installs the needed package in that environment rather than relying on a shared global installation.
+  - Records dependencies so the environment can be recreated consistently.
+  required: 2
+  model_answer: I would create a virtual environment for the project and activate it before installing the package.
+    This keeps the project’s packages separate from those used by other projects. I would record the dependencies
+    so that I or another person can install the same requirements later.
+- id: o4
+  topic: Python Environment Setup
+  text: A notebook opens, but it cannot import a package that you installed for your project. What would you check
+    or change, and why might this fix the problem?
+  rubric:
+  - Checks that the package was installed in the project environment.
+  - Checks that the notebook is using a kernel associated with that same environment.
+  - Explains that a notebook using a different environment may not see the installed package.
+  required: 2
+  model_answer: I would first check that I installed the package while the project environment was active. Then
+    I would check that the notebook is using the kernel for that environment and select it if needed. A notebook
+    attached to a different environment may not have access to the package I installed.
+- id: o5
+  topic: Git and GitHub
+  text: You are asked to make a small change to a shared project and propose it for review. How would you work from
+    getting the repository to asking for review, and why use a separate branch?
+  rubric:
+  - Clones the repository and creates or switches to a feature branch before making the change.
+  - Inspects and stages the intended changes, then makes a meaningful commit.
+  - Pushes the branch to GitHub and opens a pull request for review.
+  - Explains that a branch keeps the proposed work separate from the main line of work while it is developed or
+    reviewed.
+  required: 3
+  model_answer: I would clone the repository, create a feature branch, and make the change there. I would inspect
+    the changes, stage the intended files, and commit them with a message that describes the work. I would push
+    the branch to GitHub and open a pull request so others can review it. The branch keeps this work separate from
+    the main line until it is ready to merge.
+- id: o6
+  topic: Git and GitHub
+  text: A merge stops because both your branch and another branch changed the same part of a file. How would you
+    resolve the conflict and finish the work, and why should you inspect the result before completing the merge?
+  rubric:
+  - Inspects the conflicted file and understands that the conflicting sections represent changes that need a deliberate
+    choice or combination.
+  - Edits the file to keep the intended result and removes the conflict markers.
+  - Checks or tests the resolved result, then stages it and completes the merge with a commit if needed.
+  required: 2
+  model_answer: I would open the conflicted file and compare the changes from both branches rather than choosing
+    blindly. I would edit the file to keep the intended code, remove the conflict markers, and inspect or test the
+    result. Then I would stage the resolved file and complete the merge with a commit if Git requires one. Checking
+    the result helps catch accidentally lost or broken changes.
+- id: o7
+  topic: Debugging Fundamentals
+  text: A Python program crashes when you give it a particular input. How would you use the traceback and a repeatable
+    test to find and fix the problem? Explain why reproducing the failure helps.
+  rubric:
+  - Repeats the failure with the input that triggers it.
+  - Uses the traceback to identify where the runtime error occurred and what kind of operation failed.
+  - Inspects or isolates relevant values and code, then changes the cause rather than only hiding the symptom.
+  required: 2
+  model_answer: I would run the program again with the input that caused the crash so I can reliably observe the
+    failure. I would read the traceback to find the relevant line and understand what operation failed. Then I would
+    inspect the values involved, isolate the cause, and change the code that produced the error. Reproducing the
+    problem lets me check whether the fix addresses the same failure.
+- id: o8
+  topic: Debugging Fundamentals
+  text: A function runs without crashing but gives the wrong answer for an ordinary input and also fails on an empty
+    input. How would you investigate and verify a fix, and how can you tell these failures apart from a runtime
+    error?
+  rubric:
+  - Recognizes that a wrong result without a crash is a logic error.
+  - Recognizes the empty-input failure as an edge-case problem and reproduces it.
+  - Uses inspection such as print statements or a breakpoint to follow relevant values and isolate the faulty behavior.
+  - Tests the fix with both ordinary and edge-case inputs.
+  required: 3
+  model_answer: The incorrect result on an ordinary input is a logic error because the program runs but does the
+    wrong thing. I would reproduce both that result and the empty-input failure, which is an edge case the function
+    may not handle. I would use print statements or a breakpoint to inspect the values as the function runs and
+    isolate the faulty behavior. After changing it, I would test both ordinary inputs and the empty input again.
+- id: o9
+  topic: Algorithms and Problem Solving
+  text: You need to find a person’s name in a short, unsorted list, and the name may not be present. How would you
+    describe a reliable step-by-step approach, and why must it account for the name being absent?
+  rubric:
+  - Checks the list entries one at a time until the name is found or all entries have been checked.
+  - Stops searching once a match is found.
+  - Reports that the name is absent after checking every entry without a match.
+  required: 2
+  model_answer: I would start at the first entry and compare each name with the one I am looking for. If I find
+    a match, I can stop and report that it is present. If I reach the end without a match, I would report that it
+    is absent. Checking for that outcome prevents the search from assuming every requested name is in the list.
+- id: o10
+  topic: Algorithms and Problem Solving
+  text: You need to calculate the total of a list of numbers and explain how you know your approach works. How would
+    you break the task into steps, and what examples would you use to check it?
+  rubric:
+  - Describes starting with a total and adding each list value to it.
+  - Uses a small ordinary example to check that the procedure produces the expected total.
+  - Considers an edge case such as an empty list and explains the expected result.
+  required: 2
+  model_answer: I would start the total at zero and add each number in the list one at a time. For example, I would
+    check that the list 2, 3, and 4 produces a total of 9. I would also test an empty list, where the total should
+    remain zero. These checks help show that the steps handle both a typical input and an edge case.
 problem:
   title: Debug a Reading Summary
   prompt: "Debug the reading-summary routine below. Trace it with an empty list, a list whose average is fractional,\

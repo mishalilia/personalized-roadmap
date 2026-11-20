@@ -8,7 +8,8 @@ A path planned before signing in is kept as a draft for a day, under its random 
 afterwards keeps it.
 
 Passwords are stored as scrypt hashes; sessions as SHA-256 hashes of random tokens, so a copy of the database
-signs nobody in. One SQLite file, safe for the API's worker threads.
+signs nobody in. Kept in PostgreSQL, or a SQLite file (roadmap.database); safe for the API's worker threads
+and for several API processes.
 """
 
 from __future__ import annotations
@@ -16,8 +17,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-import sqlite3
-import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
@@ -26,6 +25,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from .database import Database, IntegrityError, as_database
 from .path import LearningPath
 
 SESSION_DAYS = 30
@@ -86,15 +86,12 @@ def normalize_email(email: str) -> str:
 
 
 class AccountStore:
-    def __init__(self, file: Path) -> None:
-        file.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(file, check_same_thread=False)
-        self._lock = threading.Lock()
-        self._path_locks: dict[str, threading.Lock] = {}
+    def __init__(self, database: Database | Path | str) -> None:
+        self._db = as_database(database)
         # Applied to every path read back, such as bringing its modules up to date (see refresh_paths_with).
         self._refresh: Callable[[LearningPath], LearningPath] = lambda path: path
-        with self._lock, self._db:
-            self._db.executescript("""
+        with self._db.transaction() as tx:
+            for statement in """
                 CREATE TABLE IF NOT EXISTS accounts (
                     id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -111,13 +108,14 @@ class AccountStore:
                     token TEXT PRIMARY KEY,
                     account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
                     created_at TEXT NOT NULL);
-                """)
-            columns = {
-                row[1] for row in self._db.execute("PRAGMA table_info(accounts)")
-            }
-            if "google_sub" not in columns:  # databases made before sign-in with Google
-                self._db.execute("ALTER TABLE accounts ADD COLUMN google_sub TEXT")
-            self._db.execute(
+                """.split(";"):
+                if statement.strip():
+                    tx.execute(statement)
+        if "google_sub" not in self._db.columns("accounts"):  # databases made before sign-in with Google
+            with self._db.transaction() as tx:
+                tx.execute("ALTER TABLE accounts ADD COLUMN google_sub TEXT")
+        with self._db.transaction() as tx:
+            tx.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS accounts_google ON accounts (google_sub)"
             )
 
@@ -132,12 +130,12 @@ class AccountStore:
             )
         account = Account(id=uuid4().hex, email=email)
         try:
-            with self._lock, self._db:
-                self._db.execute(
+            with self._db.transaction() as tx:
+                tx.execute(
                     "INSERT INTO accounts (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
                     (account.id, email, hash_password(password), _now().isoformat()),
                 )
-        except sqlite3.IntegrityError as error:
+        except IntegrityError as error:
             raise AccountError(
                 "An account with this email already exists. Sign in instead."
             ) from error
@@ -148,8 +146,8 @@ class AccountStore:
             email = normalize_email(email)
         except AccountError:
             email = ""
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT id, email, password_hash FROM accounts WHERE email = ?",
                 (email,),
             ).fetchone()
@@ -168,25 +166,25 @@ class AccountStore:
         signed up with a password and the same address becomes the Google user's: Google has verified that the
         address is theirs."""
         email = normalize_email(email)
-        with self._lock, self._db:
+        with self._db.transaction() as tx:
             row = (
-                self._db.execute(
+                tx.execute(
                     "SELECT id FROM accounts WHERE google_sub = ?", (subject,)
                 ).fetchone()
-                or self._db.execute(
+                or tx.execute(
                     "SELECT id FROM accounts WHERE email = ?", (email,)
                 ).fetchone()
             )
             if row is None:
                 account_id = uuid4().hex
-                self._db.execute(
+                tx.execute(
                     "INSERT INTO accounts (id, email, password_hash, created_at, google_sub)"
                     " VALUES (?, ?, '', ?, ?)",
                     (account_id, email, _now().isoformat(), subject),
                 )
             else:
                 account_id = row[0]
-                self._db.execute(
+                tx.execute(
                     "UPDATE accounts SET google_sub = ? WHERE id = ?",
                     (subject, account_id),
                 )
@@ -198,8 +196,8 @@ class AccountStore:
         return self._account(account_id)
 
     def _account(self, account_id: str) -> Account | None:
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT id, email, password_hash FROM accounts WHERE id = ?",
                 (account_id,),
             ).fetchone()
@@ -211,8 +209,8 @@ class AccountStore:
         """The account a session token belongs to, while the session lasts."""
         if not token:
             return None
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT accounts.id, accounts.email, accounts.password_hash FROM sessions JOIN accounts"
                 " ON accounts.id = sessions.account_id"
                 " WHERE token_hash = ? AND expires_at > ?",
@@ -223,16 +221,16 @@ class AccountStore:
         )
 
     def sign_out(self, token: str) -> None:
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "DELETE FROM sessions WHERE token_hash = ?", (_token_hash(token),)
             )
 
     def delete(self, account: Account, confirmation: str) -> None:
         """Deletes the account, its sessions and its path. `confirmation` is the account's password, or, for an
         account made with Google, which has none, its email address typed again."""
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT email, password_hash FROM accounts WHERE id = ?", (account.id,)
             ).fetchone()
         if row is None:
@@ -242,14 +240,14 @@ class AccountStore:
             raise AccountError("The password is wrong.")
         if not stored and confirmation.strip().lower() != email:
             raise AccountError("Type your email address to confirm.")
-        with self._lock, self._db:
+        with self._db.transaction() as tx:
             for table, column in (
                 ("sessions", "account_id"),
                 ("paths", "account_id"),
                 ("public_links", "account_id"),
                 ("accounts", "id"),
             ):
-                self._db.execute(
+                tx.execute(
                     f"DELETE FROM {table} WHERE {column} = ?",  # nosec B608: fixed names
                     (account.id,),
                 )
@@ -257,11 +255,11 @@ class AccountStore:
     def _new_session(self, account_id: str) -> str:
         token = secrets.token_urlsafe(32)
         now = _now()
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "DELETE FROM sessions WHERE expires_at <= ?", (now.isoformat(),)
             )
-            self._db.execute(
+            tx.execute(
                 "INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?, ?, ?)",
                 (
                     _token_hash(token),
@@ -281,20 +279,20 @@ class AccountStore:
         self._refresh = refresh
 
     def path_of(self, account: Account) -> LearningPath | None:
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT path FROM paths WHERE account_id = ?", (account.id,)
             ).fetchone()
         return self._refresh(LearningPath.model_validate_json(row[0])) if row else None
 
     def save_path(self, account: Account, path: LearningPath | None) -> None:
-        with self._lock, self._db:
+        with self._db.transaction() as tx:
             if path is None:
-                self._db.execute(
+                tx.execute(
                     "DELETE FROM paths WHERE account_id = ?", (account.id,)
                 )
             else:
-                self._db.execute(
+                tx.execute(
                     "INSERT INTO paths (account_id, path, updated_at) VALUES (?, ?, ?)"
                     " ON CONFLICT (account_id) DO UPDATE"
                     " SET path = excluded.path, updated_at = excluded.updated_at",
@@ -306,9 +304,7 @@ class AccountStore:
         """Holds the account's path while one request changes it, so that two requests at once (two tabs)
         do not overwrite each other. Other accounts are not held up, even while a model call runs.
         """
-        with self._lock:
-            lock = self._path_locks.setdefault(account.id, threading.Lock())
-        with lock:
+        with self._db.held(f"path:{account.id}"):
             yield
 
     def change_path(
@@ -326,8 +322,8 @@ class AccountStore:
     # A public link to the learner's progress, which they can show, for example on a CV
 
     def public_link_of(self, account: Account) -> str | None:
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT token FROM public_links WHERE account_id = ?", (account.id,)
             ).fetchone()
         return row[0] if row else None
@@ -336,21 +332,21 @@ class AccountStore:
         """A new link token for the account; a link it had before stops working. The token is kept as it
         is, not hashed: it opens nothing but a read-only page, and the learner may want to copy it again."""
         token = secrets.token_urlsafe(16)
-        with self._lock, self._db:
-            self._db.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
+            tx.execute(
                 "INSERT INTO public_links (token, account_id, created_at) VALUES (?, ?, ?)",
                 (token, account.id, _now().isoformat()),
             )
         return token
 
     def remove_public_link(self, account: Account) -> None:
-        with self._lock, self._db:
-            self._db.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
+        with self._db.transaction() as tx:
+            tx.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))
 
     def account_by_public_link(self, token: str) -> Account | None:
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT account_id FROM public_links WHERE token = ?", (token,)
             ).fetchone()
         return self._account(row[0]) if row else None
@@ -360,21 +356,22 @@ class AccountStore:
     def keep_draft(self, path: LearningPath) -> str:
         draft_id = path.id or uuid4().hex
         now = _now()
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "DELETE FROM drafts WHERE created_at <= ?",
                 ((now - timedelta(hours=DRAFT_HOURS)).isoformat(),),
             )
-            self._db.execute(
-                "INSERT OR REPLACE INTO drafts (id, path, created_at) VALUES (?, ?, ?)",
+            tx.execute(
+                "INSERT INTO drafts (id, path, created_at) VALUES (?, ?, ?)"
+                " ON CONFLICT (id) DO UPDATE SET path = excluded.path, created_at = excluded.created_at",
                 (draft_id, path.model_dump_json(), now.isoformat()),
             )
         return draft_id
 
     def draft(self, draft_id: str) -> LearningPath | None:
         cutoff = (_now() - timedelta(hours=DRAFT_HOURS)).isoformat()
-        with self._lock:
-            row = self._db.execute(
+        with self._db.transaction() as tx:
+            row = tx.execute(
                 "SELECT path FROM drafts WHERE id = ? AND created_at > ?",
                 (draft_id, cutoff),
             ).fetchone()
@@ -387,6 +384,6 @@ class AccountStore:
             if path is None:
                 return None
             self.save_path(account, path)
-            with self._lock, self._db:
-                self._db.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
+            with self._db.transaction() as tx:
+                tx.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
             return path

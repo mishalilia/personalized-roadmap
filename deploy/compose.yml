@@ -1,4 +1,5 @@
-# The curriculum site with the personal path page, the API, and Caddy for HTTPS, on one server.
+# The curriculum site with the personal path page, the API, its PostgreSQL database, and Caddy for HTTPS, on one
+# server.
 # Run from this directory: docker compose up -d --build   (see deploy/README.md)
 services:
   api:
@@ -9,10 +10,30 @@ services:
     environment:
       API_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
       API_PUBLIC_URL: https://${API_DOMAIN}
+      DATABASE_URL: postgresql://roadmap:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/roadmap
     volumes:
       - api-state:/app/state
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     # Not published: only Caddy reaches it, which is why it may trust the forwarded client address.
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: roadmap
+      POSTGRES_DB: roadmap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roadmap -d roadmap"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # Not published: only the API reaches it, on the compose network.
 
   site:
     build:
@@ -44,5 +65,6 @@ services:
 
 volumes:
   api-state:
+  db-data:
   caddy-data:
   caddy-config:

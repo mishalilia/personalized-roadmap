@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/llm-applications
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: LLM fundamentals
@@ -197,6 +197,67 @@ questions:
   answer: 2
   explanation: The output-token limit caps how much the model can generate, so raising it gives the response room
     to include the remaining items.
+open_questions:
+- id: o1
+  topic: LLM fundamentals
+  text: A model receives a question and a paragraph of supplied source material, then generates an answer. How does
+    the input become a generated response, and which parts of that process change when the paragraph changes versus
+    when the model is trained?
+  rubric:
+  - Explains that the input is tokenized and represented as embeddings before being processed by transformer layers.
+  - Explains that transformer processing produces probabilities for the next token, which are used to generate the
+    response.
+  - Identifies the model's weights as values learned during training.
+  - Explains that changing the paragraph changes the input or context, not the learned weights.
+  required: 3
+  model_answer: The text is split into tokens and represented as embeddings, then transformer layers process it
+    in context. The model uses that processing to produce probabilities for the next token and generates the response
+    from them. Training changes the model's learned weights. Changing the supplied paragraph changes the input context,
+    not those weights.
+- id: o2
+  topic: LLM fundamentals
+  text: A model returns valid JSON with a confident answer to a question that the supplied documents do not address.
+    How would you check whether the answer is reliable, and what could help the model answer the question more accurately?
+  rubric:
+  - Explains that valid JSON or confident wording does not establish that the answer is factually correct.
+  - Recommends checking the answer against relevant source material or another appropriate source.
+  - Recognizes that the model may produce an unsupported answer because its knowledge or supplied context is limited.
+  - Explains that retrieval or an appropriate tool can supply relevant information, while still requiring the result
+    to be checked.
+  required: 3
+  model_answer: Valid JSON only shows that the response has the requested structure; it does not prove the answer
+    is true. I would check the claim against the documents or another suitable source, since the supplied context
+    does not answer the question. The model may still produce an unsupported answer when its knowledge or context
+    is limited. Retrieval or a suitable tool could provide relevant information, but I would still verify the result.
+- id: o3
+  topic: Agent-assisted engineering
+  text: You want an agent to fix a small bug in an existing project, but your first request is vague. How would
+    you make the task manageable and check the agent's approach before it changes code?
+  rubric:
+  - Names the relevant files or project context the agent should inspect.
+  - Sets constraints and clear acceptance criteria for the fix.
+  - Asks the agent to make a manageable plan and reviews that plan before implementation.
+  - Explains how project instructions can communicate relevant conventions or constraints to the agent.
+  required: 3
+  model_answer: I would identify the relevant files and give the agent enough project context to understand the
+    bug. I would state constraints and acceptance criteria so the expected fix is clear and bounded. I would ask
+    for a plan, review it before implementation, and correct it if it misses something. Project instructions can
+    also give the agent persistent guidance about conventions or constraints.
+- id: o4
+  topic: Agent-assisted engineering
+  text: An agent reports that a change is complete, but you have not checked the result. What would you do to decide
+    whether to keep the change, and how would you respond if a check exposed a problem?
+  rubric:
+  - Recommends inspecting the diff rather than relying only on the agent's completion summary.
+  - Recommends running a relevant automated test or verification check.
+  - Recommends checking actual behavior, including a meaningful failure case where appropriate.
+  - Explains that a failed check should lead to investigating and correcting the change or rejecting an unsuitable
+    suggestion.
+  required: 3
+  model_answer: I would inspect the diff to see what changed rather than relying on the agent's summary. I would
+    run a relevant automated check and try the feature in normal use and a meaningful failure case. If a check exposes
+    a problem, I would investigate it and ask for a correction or make one myself. I would reject the suggestion
+    if it remains unsuitable.
 problem:
   title: Check a Structured Answer
   prompt: 'Write `check_response(response_json, expected)` to check an LLM''s JSON answer against reference information

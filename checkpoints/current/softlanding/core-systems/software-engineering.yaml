@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/software-engineering
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: 1. Readable Python
@@ -392,6 +392,118 @@ questions:
   answer: 2
   explanation: An environment variable lets each contributor provide their own credential without committing secrets.
     Documenting how to set it makes the required configuration clear.
+open_questions:
+- id: o1
+  topic: 1. Readable Python
+  text: A function reads a file from a hard-coded global path, calculates a summary, and writes the result to another
+    file. How would you change its design to make its responsibility and dependencies clearer, and why?
+  rubric:
+  - Separates the calculation from file reading or writing.
+  - Makes file paths or input data explicit rather than relying on hidden global state.
+  - Describes the function’s inputs, outputs, assumptions, or side effects so another person can use it.
+  required: 2
+  model_answer: I would put the calculation in a function that takes its data as an argument and returns a summary.
+    Separate code can read the input file and write the result, with file paths passed in explicitly. A docstring
+    can explain the calculation’s inputs, return value, and assumptions, while comments can explain any non-obvious
+    design choice.
+- id: o2
+  topic: 1. Readable Python
+  text: You are building a small program that tracks a single user's current balance and has a function that formats
+    any balance for display. How would you decide whether the balance should belong in a class or be passed to functions,
+    and how would you make the code easy to understand?
+  rubric:
+  - Recognizes that a class can group the balance and behavior that operates on that instance's state.
+  - Recognizes that a function is sufficient when the behavior does not need to maintain related state.
+  - Mentions using clear names and a docstring or explanatory comment to make use or intent understandable.
+  required: 2
+  model_answer: If the program needs to keep and update each user's balance together with related behavior, I would
+    store that state on an instance and use instance methods to work with it. If formatting just takes a balance
+    and returns display text, a standalone function is sufficient. I would choose names that reveal their purpose
+    and add a docstring to describe how to use the function or class.
+- id: o3
+  topic: 2. Testing and debugging
+  text: A function accepts a number of items, but it should reject negative values and return zero when given zero.
+    How would you choose tests for this behavior, and how could pytest express both a normal result and an expected
+    rejection?
+  rubric:
+  - Includes a normal valid input to check the intended result.
+  - Includes boundary cases such as zero and an invalid negative input.
+  - Explains that pytest can assert a returned value and check that invalid input raises an expected exception.
+  required: 2
+  model_answer: I would test a normal positive input to check the expected result and test zero because it is a
+    boundary case with a specific expected result. I would also test a negative input and expect the function to
+    raise an appropriate exception. In pytest, an assertion can check the returned value, and `pytest.raises` can
+    check the exception.
+- id: o4
+  topic: 2. Testing and debugging
+  text: A test fails after someone reports that a particular input produces the wrong result. How would you investigate
+    the failure, handle it clearly if that input is invalid, and prevent the same bug from returning?
+  rubric:
+  - Reproduces the failure with the reported input or a focused test.
+  - Inspects relevant state or execution to identify and fix the cause rather than just hiding the symptom.
+  - Adds a regression test for the failing behavior.
+  - Handles expected invalid input clearly and preserves useful error context instead of silently continuing.
+  required: 3
+  model_answer: I would reproduce the report with a focused test using the problematic input, then inspect the relevant
+    values as the code runs to find the cause. I would fix that cause and, if the input is invalid, report it clearly
+    while retaining useful context about the failure. I would keep a regression test for the case so the bug is
+    caught if it returns.
+- id: o5
+  topic: 3. Refactoring and project structure
+  text: A long function both loads a data file and calculates results from it, and the same calculation is needed
+    in another part of the project. How would you reorganize the code to make it reusable, and how would you check
+    that the change has not altered its behavior?
+  rubric:
+  - Separates file input/output from the calculation or transformation.
+  - Moves related reusable calculation logic behind an understandable module or function interface.
+  - Uses existing tests or representative outputs to check that behavior remains the same.
+  required: 2
+  model_answer: I would move the calculation into a function that accepts data and returns results, leaving file
+    loading in separate code. I would put related calculation logic in a module with a clear interface so both parts
+    of the project can use it. Before and after the refactor, I would run the existing tests and compare representative
+    outputs to check that behavior is preserved.
+- id: o6
+  topic: 3. Refactoring and project structure
+  text: While splitting a long function into smaller helpers, you realize one proposed change would also alter how
+    missing values are handled. How would you distinguish the refactor from that behavior change and make the work
+    easier to verify?
+  rubric:
+  - Explains that a structural refactor should preserve existing behavior, while changing missing-value handling
+    is an intentional behavior change.
+  - Keeps the refactor small or separates the behavior change so each change can be understood and reviewed.
+  - Uses tests or representative outputs to check preserved behavior and adds or updates tests for the intentional
+    change.
+  required: 2
+  model_answer: A refactor changes the organization of the code while keeping its behavior the same; changing how
+    missing values are handled is a separate behavior change. I would separate that change or clearly identify it,
+    and keep the code changes small enough to review. I would use existing tests and representative outputs to check
+    the refactor, and add or update tests to specify the new missing-value behavior.
+- id: o7
+  topic: 4. Collaboration and handover
+  text: You are opening a pull request for a change to how a project handles invalid input. What would you include
+    so a reviewer can judge whether it meets the need, and how would you respond if they find a problem?
+  rubric:
+  - Describes the change and its bounded scope in the issue or pull request.
+  - States acceptance criteria or tests that make the intended behavior checkable.
+  - Gives or responds to review feedback in an actionable way and revises the work when needed.
+  required: 2
+  model_answer: I would describe the specific invalid-input behavior being changed and keep the pull request focused
+    on that scope. I would state acceptance criteria, such as which inputs should be rejected and what error should
+    be raised, and link tests that check them. If a reviewer finds a problem, I would discuss the concern constructively,
+    revise the code or tests, and explain what changed.
+- id: o8
+  topic: 4. Collaboration and handover
+  text: A teammate needs to set up your project on a different machine and run its tests. What would you record
+    in the README or project files to make that possible, and how would you keep sensitive credentials safe?
+  rubric:
+  - Records the Python version, dependencies, and relevant configuration needed for the project.
+  - Provides sample inputs and commands to set up, run, and test the project.
+  - Keeps credentials out of committed code and configuration files.
+  required: 2
+  model_answer: I would document the Python version, dependencies, and any required configuration, along with sample
+    inputs and the commands to set up, run, and test the project. I would make those steps specific enough that
+    a teammate can follow them on a clean machine. Credentials should be supplied through a secure external mechanism,
+    not committed to the repository.
 problem:
   title: Format a Fuel Gauge
   prompt: 'Write a pure function `format_fuel_level(fraction)` that converts a fraction string into a fuel-gauge

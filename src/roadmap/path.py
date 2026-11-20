@@ -106,6 +106,9 @@ class PathItem(BaseModel):
     skim: list[SkimTopic] = []
     # For a module to study: topics the learner leaves out, so its checkpoint does not ask about them.
     skip_topics: list[SkimTopic] = []
+    # Topics the learner marked as finished, in the module's order: their own tally, which neither unlocks nor
+    # passes anything; the checkpoint still decides whether the module is passed.
+    finished_topics: list[str] = []
 
     @model_validator(mode="after")
     def _prove_only_with_a_checklist(self) -> "PathItem":
@@ -252,6 +255,9 @@ class LearningPath(BaseModel):
         """A copy in which the learner's choice for the module replaces the planner's."""
         if module_id not in {item.module.id for item in self.items}:
             raise KeyError(f"The path has no module '{module_id}'")
+        current = self.item(module_id)
+        if choice is not current.choice and current.progress in (Progress.PASSED, Progress.DONE):
+            raise PathStateError("This module is finished: its decision no longer changes")
         items = [
             item.chosen(choice) if item.module.id == module_id else item
             for item in self.items
@@ -292,8 +298,28 @@ class LearningPath(BaseModel):
                     "skip_topics": kept(
                         item.skip_topics, choice is TopicChoice.SKIP, "You chose to skip it."
                     ),
+                    # A topic left out is not one to finish.
+                    "finished_topics": [
+                        t for t in item.finished_topics if not (t == topic and choice is TopicChoice.SKIP)
+                    ],
                 }
             )
+        )
+
+    def with_topic_finished(self, module_id: str, topic: str, finished: bool) -> "LearningPath":
+        """The learner marks a topic of a module they study as finished, or takes the mark back. It is their own
+        tally of where they are in the module; the module is still passed by its checkpoint."""
+        item = self._check_open(module_id)
+        order = [candidate.title for candidate in item.module.topics]
+        if topic not in order:
+            raise KeyError(f"'{module_id}' has no topic '{topic}'")
+        if item.choice is not Choice.STUDY or item.module.is_project:
+            raise PathStateError("Only the topics of a module you study can be marked as finished")
+        if finished and topic in item.skipped_topics:
+            raise PathStateError("This topic is skipped: study it to mark it as finished")
+        done = (set(item.finished_topics) | {topic}) if finished else (set(item.finished_topics) - {topic})
+        return self._replace(
+            item.model_copy(update={"finished_topics": [t for t in order if t in done]})
         )
 
     def confirm(self) -> "LearningPath":

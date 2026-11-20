@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/applied-ml-deep-learning
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Applied ML and evaluation
@@ -198,6 +198,67 @@ questions:
   answer: 1
   explanation: The widening gap suggests overfitting, so an earlier checkpoint with lower validation loss is likely
     to generalize better. Continuing to optimize training loss alone may make validation performance worse.
+open_questions:
+- id: o1
+  topic: Applied ML and evaluation
+  text: You are building a classifier to flag a rare but important condition, and missing a true case is costly.
+    How would you choose an evaluation metric and set up your data split and preprocessing so your evaluation is
+    trustworthy?
+  rubric:
+  - Explains that recall is useful when missing true cases is costly, or otherwise connects the metric choice to
+    the task’s error costs.
+  - Keeps the final test set separate until model and preprocessing choices are complete.
+  - Fits preprocessing only on training data, such as by using a pipeline, to prevent leakage.
+  required: 2
+  model_answer: Because missing a true case is costly, I would pay close attention to recall, while also checking
+    precision to understand how many flagged cases are false alarms. I would split off a final test set and avoid
+    using it to choose models or settings. I would fit preprocessing on training data only, ideally within a pipeline,
+    so information from validation or test data cannot leak into training.
+- id: o2
+  topic: Applied ML and evaluation
+  text: You have a baseline and two candidate models for a prediction task. How would you compare them fairly, and
+    what would you do if the strongest model still makes a recurring kind of mistake?
+  rubric:
+  - Compares the baseline and candidates using the same split and preprocessing rules.
+  - Uses a metric suited to the task to judge whether a candidate improves on the baseline.
+  - Inspects mistakes to identify a useful next improvement, rather than relying only on the overall score.
+  required: 2
+  model_answer: I would run the baseline and both candidates on the same data split, using the same preprocessing
+    rules, so their results are comparable. I would compare their scores using a metric that reflects the task’s
+    goal and check whether they improve on the baseline. Then I would inspect examples of the recurring mistakes
+    to look for a useful change, such as addressing a data issue or improving the relevant features.
+- id: o3
+  topic: Deep learning and pretrained models
+  text: A small neural network’s training loss is changing erratically and its predictions are not improving. How
+    would you use the training loop and training behavior to diagnose and repair a possible learning-rate problem?
+  rubric:
+  - Explains that the forward pass produces predictions and the loss measures their error.
+  - Explains that backpropagation and the optimizer use gradients to update the weights.
+  - Connects an unsuitable learning rate to unstable or ineffective learning and proposes changing it and checking
+    training behavior again.
+  required: 2
+  model_answer: The forward pass uses the current weights to produce predictions, and the loss measures how far
+    those predictions are from the targets. Backpropagation calculates gradients, which the optimizer uses to update
+    the weights. If the learning rate is too high, updates may overshoot and make loss unstable; if it is too low,
+    learning may be very slow. I would adjust the learning rate and check whether the loss becomes more stable and
+    predictions improve.
+- id: o4
+  topic: Deep learning and pretrained models
+  text: You need to classify short text and are considering running a pretrained transformer or fine-tuning one.
+    How would you explain the difference between these choices, and what would you check before trusting the pretrained
+    model’s output?
+  rubric:
+  - Distinguishes pretrained inference, which uses existing weights without updating them, from fine-tuning, which
+    updates weights using task data.
+  - Identifies the model’s expected input and the kind of output it returns for the task.
+  - Recognizes a limitation or reason to check the output, such as errors on the task’s language or examples unlike
+    the model’s training data.
+  required: 2
+  model_answer: With pretrained inference, I would pass text in the format the model expects and use its output
+    without changing its weights. Fine-tuning would update the weights using examples for my classification task,
+    which may help adapt the model to that task. I would check how the model expects text to be provided and whether
+    its output is a label, score, or probability. I would also test representative examples because it can make
+    mistakes, especially on language or cases unlike those it learned from.
 problem:
   title: Binary Classification Metrics
   prompt: "Write `binary_metrics(y_true, y_pred)` to calculate binary classification metrics, treating `1` as the\

@@ -1,8 +1,14 @@
 """Checkpoints: questions that check a learner understood a module, before the path moves on.
 
 Questions are generated once per module and curriculum version, reviewed by a person and kept in
-`checkpoints/`, rather than generated for each learner: a checkpoint then costs no model call, every learner
-of a module gets the same reviewed questions, and grading is ordinary code.
+`checkpoints/`, rather than generated for each learner: every learner of a module gets the same reviewed
+questions, and multiple-choice grading is ordinary code.
+
+An attempt has four multiple-choice questions and, where the checkpoint has them, one open question: the
+learner explains something in their own words, and a model marks which points of the question's rubric the
+answer makes and what it states wrongly (OpenAnswerGrader). Whether that is enough is decided here, in code:
+enough points, and nothing wrong. When no
+model can mark it, the open question is left out of the attempt rather than holding the learner up.
 
 The source has little text of its own (Q-004), so the model writes questions about what the module says it
 teaches: its topics and stated outcomes, its checklist and the authors' notes on each resource. Nothing is
@@ -18,9 +24,10 @@ import re
 import subprocess  # nosec B404: only runs a reviewer's own checkpoint files, see verify_problem
 import sys
 import tempfile
+from collections.abc import Callable
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import yaml
 from pydantic import BaseModel, Field, StringConstraints, model_validator
@@ -36,6 +43,9 @@ PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
 GENERATED_QUESTIONS = 15
 # Each topic's own pool: a learner who skips the module's other topics still gets other questions at a retake.
 QUESTIONS_PER_TOPIC = 8
+OPEN_PER_ATTEMPT = 1  # of the QUESTIONS_PER_ATTEMPT, when the checkpoint has open questions
+OPEN_PER_TOPIC = 2  # open questions generated for each topic, so a retake asks another one
+MAX_OPEN_ANSWER = 2000  # characters
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 # A question that points at code ("this code prints...") must carry it: code of several lines, or a line of code
@@ -78,6 +88,53 @@ class CheckpointQuestion(BaseModel):
         if len({option.casefold() for option in self.options}) != len(self.options):
             raise ValueError(f"Question {self.id} repeats an option")
         return self
+
+
+class OpenQuestion(BaseModel):
+    """A question the learner answers in their own words, marked against its rubric."""
+
+    id: str = Field(description="Short and unique within the checkpoint, such as o1.")
+    topic: Text = Field(description="The module topic the question checks.")
+    text: Text = Field(
+        description="The question. The learner explains how or why in two to five sentences."
+    )
+    rubric: list[Text] = Field(
+        min_length=2,
+        max_length=4,
+        description="The points a full answer makes: each one idea that can be found in a learner's answer or not.",
+    )
+    required: int = Field(
+        ge=1, description="How many of the rubric's points make the answer right."
+    )
+    model_answer: Text = Field(
+        description="A full answer in three to five sentences, shown to the learner after a pass."
+    )
+
+    @model_validator(mode="after")
+    def _attainable(self) -> OpenQuestion:
+        if self.required > len(self.rubric):
+            raise ValueError(f"Question {self.id} requires more points than its rubric has")
+        return self
+
+
+class OpenVerdict(BaseModel):
+    """What a model found in a learner's answer to an open question."""
+
+    points_met: list[int] = Field(
+        description="The numbers (from 1) of the rubric points the answer makes; empty when it makes none."
+    )
+    errors: list[Text] = Field(
+        default=[],
+        description="What the answer states that is wrong, one item each; not what it leaves out. Empty when "
+        "it states nothing wrong.",
+    )
+    feedback: Text = Field(
+        description="To the learner, one or two sentences: what the answer gets right and what it leaves out, "
+        "without writing the full answer for them."
+    )
+
+
+Judge = Callable[[OpenQuestion, str], "OpenVerdict | None"]  # None: no model could mark the answer
 
 
 class CodingProblem(BaseModel):
@@ -132,6 +189,8 @@ class Checkpoint(BaseModel):
     generated_by: str  # which model, or who, wrote the questions
     reviewed_by: str | None = None
     questions: list[CheckpointQuestion]
+    # Explained in the learner's own words; one per attempt, marked by a model against its rubric.
+    open_questions: list[OpenQuestion] = []
     # For modules that teach programming: solved after the questions, before the module counts as passed.
     problem: CodingProblem | None = None
     # More problems, each for another topic, so a learner who skips the first problem's topic gets one on a
@@ -144,7 +203,8 @@ class Checkpoint(BaseModel):
             raise ValueError(
                 f"A checkpoint needs at least {QUESTIONS_PER_ATTEMPT} questions"
             )
-        if len({question.id for question in self.questions}) != len(self.questions):
+        ids = [question.id for question in (*self.questions, *self.open_questions)]
+        if len(set(ids)) != len(ids):
             raise ValueError("Question ids repeat")
         return self
 
@@ -162,14 +222,34 @@ class Checkpoint(BaseModel):
             questions[i] for i in range(longest) for questions in by_topic.values() if i < len(questions)
         ]
 
+    @property
+    def choice_count(self) -> int:
+        """Multiple-choice questions per attempt: five, or four beside an open question."""
+        return QUESTIONS_PER_ATTEMPT - (OPEN_PER_ATTEMPT if self.open_questions else 0)
+
     def questions_for_attempt(
         self, attempt: int, skipped: frozenset[str] = frozenset()
     ) -> list[CheckpointQuestion]:
-        """Five questions per attempt; the next attempt takes the next five, round the pool."""
+        """The attempt's multiple-choice questions; the next attempt takes the next ones, round the pool."""
         pool = self.pool(skipped)
-        start = (attempt * QUESTIONS_PER_ATTEMPT) % len(pool)
+        count = self.choice_count
+        start = (attempt * count) % len(pool)
         rotated = pool[start:] + pool[:start]
-        return rotated[:QUESTIONS_PER_ATTEMPT]
+        return rotated[:count]
+
+    def open_for_attempt(
+        self, attempt: int, skipped: frozenset[str] = frozenset()
+    ) -> OpenQuestion | None:
+        """The attempt's open question, from the topics the learner does not skip, topic by topic in turn."""
+        kept = [q for q in self.open_questions if q.topic not in skipped] or list(self.open_questions)
+        if not kept:
+            return None
+        by_topic: dict[str, list[OpenQuestion]] = {}
+        for question in kept:
+            by_topic.setdefault(question.topic, []).append(question)
+        longest = max(len(questions) for questions in by_topic.values())
+        order = [qs[i] for i in range(longest) for qs in by_topic.values() if i < len(qs)]
+        return order[attempt % len(order)]
 
     def problem_for(
         self, skipped: frozenset[str] = frozenset(), skimmed: frozenset[str] = frozenset()
@@ -202,8 +282,9 @@ class Checkpoint(BaseModel):
         return order
 
     def asked(self, attempt: int, skipped: frozenset[str] = frozenset()) -> list[AskedQuestion]:
-        """The attempt's questions as the learner sees them: shuffled options, no answer."""
-        return [
+        """The attempt's questions as the learner sees them: shuffled options, no answer; the open question
+        last, with neither its rubric nor its model answer."""
+        asked = [
             AskedQuestion(
                 id=question.id,
                 topic=question.topic,
@@ -214,24 +295,75 @@ class Checkpoint(BaseModel):
             )
             for question in self.questions_for_attempt(attempt, skipped)
         ]
+        if (open_question := self.open_for_attempt(attempt, skipped)) is not None:
+            asked.append(
+                AskedQuestion(
+                    id=open_question.id,
+                    topic=open_question.topic,
+                    text=open_question.text,
+                    options=[],
+                    kind="open",
+                )
+            )
+        return asked
 
     def grade(
-        self, attempt: int, answers: dict[str, int], skipped: frozenset[str] = frozenset()
+        self,
+        attempt: int,
+        answers: dict[str, int],
+        skipped: frozenset[str] = frozenset(),
+        open_answers: dict[str, str] | None = None,
+        judge: Judge | None = None,
     ) -> Grade:
-        """`answers` holds the position of each chosen option as shown. A failed attempt says which
-        answers were wrong and what to review, but not the right answers."""
+        """`answers` holds the position of each chosen option as shown; `open_answers` the text of the open
+        question, which `judge` marks against its rubric. A failed attempt says which answers were wrong and
+        what to review, but not the right answers. Without a judge, or when it cannot mark the answer, the open
+        question is left out and one fewer right answer passes."""
         asked = self.questions_for_attempt(attempt, skipped)
         if set(answers) != {question.id for question in asked}:
             raise ValueError("Answer exactly the questions of this attempt")
         if any(not 0 <= shown <= 3 for shown in answers.values()):
             raise ValueError("Each answer is the position of one of four options")
+        open_question = self.open_for_attempt(attempt, skipped)
+        open_answers = open_answers or {}
+        if set(open_answers) - ({open_question.id} if open_question else set()):
+            raise ValueError("Answer exactly the questions of this attempt")
         correct = {
             question.id: self.order_of(attempt, question.id)[answers[question.id]]
             == question.answer
             for question in asked
         }
+        open_feedback: list[QuestionFeedback] = []
+        ungraded = 0
+        if open_question is not None:
+            text = open_answers.get(open_question.id, "").strip()[:MAX_OPEN_ANSWER]
+            verdict = judge(open_question, text) if text and judge else None
+            if text and verdict is None:
+                ungraded = 1  # no model could mark it: left out of this attempt
+            met = sorted({n for n in verdict.points_met if 1 <= n <= len(open_question.rubric)}) if verdict else []
+            # Enough of the rubric, and nothing stated wrong: a confident wrong key idea does not pass on the rest.
+            right = verdict is not None and len(met) >= open_question.required and not verdict.errors
+            if not ungraded:
+                correct[open_question.id] = right
+            open_feedback.append(
+                QuestionFeedback(
+                    id=open_question.id,
+                    topic=open_question.topic,
+                    kind="open",
+                    correct=right,
+                    graded=not ungraded,
+                    comment=(
+                        verdict.feedback if verdict
+                        else "No answer." if not text
+                        else "Your answer could not be marked right now, so this attempt is graded without it."
+                    ),
+                )
+            )
         score = sum(correct.values())
-        passed = score >= PASS_MARK
+        passed = score >= PASS_MARK - ungraded
+        for item in open_feedback:  # the model answer, like the explanations, only after a pass
+            if passed and open_question is not None:
+                item.explanation = open_question.model_answer
         feedback = [
             QuestionFeedback(
                 id=question.id,
@@ -245,16 +377,16 @@ class Checkpoint(BaseModel):
                 explanation=question.explanation if passed else None,
             )
             for question in asked
-        ]
-        review = [question.topic for question in asked if not correct[question.id]]
+        ] + open_feedback
+        review = [item.topic for item in feedback if item.graded and not item.correct]
         return Grade(
             attempt=attempt,
             score=score,
-            total=len(asked),
+            total=len(correct),
             passed=passed,
             # Every answer right at the first try: the learner may not need the modules that follow
             # in full either.
-            effortless=attempt == 0 and score == len(asked),
+            effortless=attempt == 0 and score == len(correct) and not ungraded,
             review_topics=list(dict.fromkeys(review)),
             feedback=feedback,
             problem_pending=passed and self.problem_for(skipped) is not None,
@@ -267,16 +399,21 @@ class AskedQuestion(BaseModel):
     id: str
     topic: str
     text: str
-    options: list[str]
+    options: list[str]  # none for an open question
+    kind: Literal["choice", "open"] = "choice"
 
 
 class QuestionFeedback(BaseModel):
     id: str
     topic: str
     correct: bool
-    # Shown only after a pass: the position of the right option as the learner saw it, and why.
+    kind: Literal["choice", "open"] = "choice"
+    graded: bool = True  # False: an open answer no model could mark, left out of the score
+    # Shown only after a pass: the position of the right option as the learner saw it, and why (for an open
+    # question, a full answer).
     answer: int | None = None
     explanation: str | None = None
+    comment: str | None = None  # an open answer: what it gets right and what it leaves out
 
 
 class Grade(BaseModel):
@@ -399,6 +536,37 @@ class TopicQuestions(BaseModel):
     questions: list[CheckpointQuestion]
 
 
+class GeneratedOpenQuestions(BaseModel):
+    questions: list[OpenQuestion]
+
+
+class OpenAnswerGrader:
+    """Marks an open answer against its question's rubric with a model. The answer is data: it is shown to the
+    model inside tags, and what comes back is only the numbers of the rubric points it makes, which code
+    checks; whether that is enough to count is decided by the question's `required`, not by the model."""
+
+    def __init__(self, llm: LLMClient) -> None:
+        self._llm = llm
+
+    def __call__(self, question: OpenQuestion, answer: str) -> OpenVerdict | None:
+        rubric = "\n".join(f"{number}. {point}" for number, point in enumerate(question.rubric, start=1))
+        # The learner cannot close the tag early and write instructions after it.
+        answer = answer[:MAX_OPEN_ANSWER].replace("</answer>", "")
+        prompt = (
+            f"Topic: {question.topic}\nQuestion: {question.text}\n\nRubric:\n{rubric}\n\n"
+            f"<answer>\n{answer}\n</answer>"
+        )
+
+        def check(verdict: OpenVerdict) -> None:
+            if any(not 1 <= n <= len(question.rubric) for n in verdict.points_met):
+                raise UnusableAnswer(f"Rubric points are numbered 1 to {len(question.rubric)}")
+
+        try:
+            return self._llm.ask(prompts.load("open_grade"), prompt, OpenVerdict, check=check)
+        except LLMUnavailable:
+            return None
+
+
 PROBLEM_TRIES = 3  # a problem whose checks fail is asked for again, this many times in all
 
 
@@ -483,6 +651,36 @@ class CheckpointGenerator:
                 return None
             return response.problem.model_copy(update={"topic": topic})
         raise UnusableAnswer(f"No usable problem on {topic}: {last}")
+
+    def open_questions(self, module: Module, existing: Checkpoint) -> list[OpenQuestion]:
+        """OPEN_PER_TOPIC open questions on each of the module's topics (on the module as a whole when it has
+        none), with ids o1, o2, ... Raises LLMUnavailable without a usable answer."""
+        titles = [topic.title for topic in module.topics] or [module.full_title]
+        prompt = (
+            f"{module_brief(module)}\nWrite {OPEN_PER_TOPIC} open questions on each of these topics, giving the "
+            "topic exactly as written:\n" + "\n".join(f"- {title}" for title in titles)
+        )
+
+        def topic_of(question: OpenQuestion) -> str | None:
+            return _module_topic(question.topic, titles)
+
+        def check(response: GeneratedOpenQuestions) -> None:
+            if unknown := {q.topic for q in response.questions if topic_of(q) is None}:
+                raise UnusableAnswer(f"Topics the module does not have: {', '.join(sorted(unknown))}")
+            counts = {title: 0 for title in titles}
+            for question in response.questions:
+                counts[topic_of(question) or ""] += 1
+            if short := [title for title, n in counts.items() if n < OPEN_PER_TOPIC]:
+                raise UnusableAnswer(f"{OPEN_PER_TOPIC} questions are needed on: {', '.join(short)}")
+            if any(missing_code(q.text) for q in response.questions):
+                raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
+
+        response = self._llm.ask(prompts.load("open_questions"), prompt, GeneratedOpenQuestions, check=check)
+        kept: list[OpenQuestion] = []
+        for title in titles:
+            on_topic = [q for q in response.questions if topic_of(q) == title][:OPEN_PER_TOPIC]
+            kept += [q.model_copy(update={"topic": title}) for q in on_topic]
+        return [q.model_copy(update={"id": f"o{number}"}) for number, q in enumerate(kept, start=1)]
 
     def generate(self, module: Module, curriculum_version: str) -> Checkpoint:
         response = self._llm.ask(

@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/math-for-ai
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Linear algebra
@@ -188,6 +188,63 @@ questions:
   answer: 1
   explanation: With sufficiently large independent random samples, the distribution of sample means is generally
     approximately bell-shaped and centered near the population mean, even when individual delivery times are skewed.
+open_questions:
+- id: o1
+  topic: Linear algebra
+  text: You try to multiply a matrix of example data by a vector of weights, but the operation fails because the
+    inner dimensions do not match. How would you use the shapes to find the problem, and what would you check before
+    changing the data or weights?
+  rubric:
+  - Explains that the number of columns in the data matrix must equal the number of entries in the weight vector.
+  - Checks whether the data's feature arrangement or the weight vector's shape is incorrect before changing values.
+  - Explains that the resulting values correspond to the examples after the shapes are made compatible.
+  required: 2
+  model_answer: If the data matrix has one column per feature, its column count must match the number of weights.
+    I would check that the data and weights use the same feature order and that neither has an unintended extra
+    dimension. Once the shapes match, multiplying them produces a result for each example.
+- id: o2
+  topic: Linear algebra
+  text: Suppose you have several examples, each described by the same set of measurements, and want to apply the
+    same weights to every example. How would arranging the measurements in a matrix help, and what does multiplying
+    by the weights do?
+  rubric:
+  - Explains that the matrix can organize examples and their measurements consistently in rows and columns.
+  - Explains that multiplying by the weights combines each example's measurements into a score or output.
+  - Notes that using a matrix allows the same operation to be applied to multiple examples together.
+  required: 2
+  model_answer: I would put each example in a row and each measurement in a column, so the same column always represents
+    the same measurement. Multiplying this matrix by a matching vector of weights combines the measurements into
+    one score for each example. The matrix operation applies that calculation to all the examples at once.
+- id: o3
+  topic: Probability & statistics
+  text: You take many samples from a population and calculate the mean for each sample. How would the distribution
+    of those means help you understand how much a sample mean can vary, and how would that help you interpret a
+    confidence interval?
+  rubric:
+  - Explains that sample means vary from sample to sample, forming a sampling distribution.
+  - Connects less variation in the sampling distribution with greater precision in estimating the population mean.
+  - Explains that a confidence interval gives a range of plausible values for the population mean based on the sample.
+  required: 2
+  model_answer: Different samples can produce different means, and the distribution of those means shows how much
+    the estimate tends to vary. If that distribution is less spread out, the sample mean is generally more precise.
+    A confidence interval uses the sample to give a range of plausible values for the population mean, rather than
+    claiming the sample mean is exact.
+- id: o4
+  topic: Probability & statistics
+  text: A team wants to check whether the average time for a process differs from a stated target. How would you
+    set up and interpret a one-sample significance test, and what would a statistically significant result let you
+    conclude?
+  rubric:
+  - Identifies the stated target as the value used in the null hypothesis for the population mean.
+  - Explains that the test assesses how surprising the observed sample result would be if the null hypothesis were
+    true.
+  - States that a significant result is evidence against the null hypothesis, not proof that a particular alternative
+    is true.
+  required: 2
+  model_answer: I would use the stated target as the null hypothesis for the population mean and compare it with
+    the sample result. The test assesses how likely a result at least this unusual would be if the target were actually
+    the population mean. A significant result is evidence against that null hypothesis, but it does not prove exactly
+    what the true mean is.
 problem:
   title: One-Sample Z Test
   prompt: 'Write `one_sample_z(data, null_mean, population_sd, alpha)` to summarize a sample and perform a two-sided

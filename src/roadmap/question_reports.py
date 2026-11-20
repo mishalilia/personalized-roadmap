@@ -7,8 +7,6 @@ learner and question, the latest replacing the earlier. Reviewers see the open o
 
 from __future__ import annotations
 
-import sqlite3
-import threading
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -17,6 +15,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, StringConstraints
 
+from .database import Database, as_database
+
 MAX_COMMENT = 1000
 
 
@@ -24,6 +24,7 @@ class ReportReason(StrEnum):
     WRONG_ANSWER = "wrong_answer"  # the answer counted as right is wrong, or another one is right too
     UNCLEAR = "unclear"  # the question or its options can be read more than one way
     OFF_TOPIC = "off_topic"  # the module does not teach what the question asks
+    WRONG_MARK = "wrong_mark"  # an open answer marked wrong that the learner thinks is right; the comment has it
     OTHER = "other"
 
 
@@ -47,15 +48,12 @@ class QuestionReport(BaseModel):
 
 
 class QuestionReportStore:
-    """Reports in one SQLite table, beside the accounts. Thread-safe for the API's worker threads."""
+    """Reports in one table, beside the accounts (roadmap.database). Thread-safe for the API's worker threads."""
 
-    def __init__(self, file: Path) -> None:
-        if str(file) != ":memory:":
-            file.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(file, check_same_thread=False)
-        self._lock = threading.Lock()
-        with self._lock, self._db:
-            self._db.execute(
+    def __init__(self, database: Database | Path | str) -> None:
+        self._db = as_database(database)
+        with self._db.transaction() as tx:
+            tx.execute(
                 "CREATE TABLE IF NOT EXISTS question_reports ("
                 " id TEXT PRIMARY KEY, account_id TEXT NOT NULL, module_id TEXT NOT NULL,"
                 " curriculum_version TEXT NOT NULL, question_id TEXT NOT NULL, reason TEXT NOT NULL,"
@@ -80,8 +78,8 @@ class QuestionReportStore:
             comment=report.comment,
             reported_at=datetime.now(UTC),
         )
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "INSERT INTO question_reports (id, account_id, module_id, curriculum_version, question_id,"
                 " reason, comment, reported_at, resolved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)"
                 " ON CONFLICT (account_id, curriculum_version, module_id, question_id) DO UPDATE SET"
@@ -102,8 +100,8 @@ class QuestionReportStore:
 
     def listed(self, limit: int = 100) -> list[QuestionReport]:
         """Open reports first, newest first within each group."""
-        with self._lock:
-            rows = self._db.execute(
+        with self._db.transaction() as tx:
+            rows = tx.execute(
                 "SELECT id, module_id, curriculum_version, question_id, reason, comment, reported_at,"
                 " resolved FROM question_reports ORDER BY resolved, reported_at DESC LIMIT ?",
                 (limit,),
@@ -124,8 +122,8 @@ class QuestionReportStore:
 
     def set_resolved(self, report_id: str, resolved: bool) -> bool:
         """False when there is no such report."""
-        with self._lock, self._db:
-            changed = self._db.execute(
+        with self._db.transaction() as tx:
+            changed = tx.execute(
                 "UPDATE question_reports SET resolved = ? WHERE id = ?",
                 (int(resolved), report_id),
             ).rowcount

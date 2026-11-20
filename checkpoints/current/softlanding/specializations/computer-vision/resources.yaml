@@ -1,8 +1,8 @@
 module_id: softlanding/specializations/computer-vision/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q24
   topic: Core Computer Vision & Deep Learning
@@ -591,6 +591,172 @@ questions:
   explanation: A detection must satisfy both the class match and the required localization overlap to count as a
     true positive. A prediction that fails the IoU threshold is a false positive, and the unmatched ground truth
     contributes a false negative.
+open_questions:
+- id: o1
+  topic: Core Computer Vision & Deep Learning
+  text: Why can a CNN recognize increasingly complex visual patterns as information passes through its layers, rather
+    than needing a person to specify every feature? Explain in 2–5 sentences.
+  rubric:
+  - Explains that early layers can detect simple patterns such as edges or textures.
+  - Explains that later layers combine simpler features into more complex or meaningful representations.
+  - Connects learned features to the model’s ability to perform a vision task.
+  required: 2
+  model_answer: Early CNN layers can learn simple patterns such as edges and textures from image pixels. Later layers
+    combine those patterns into more complex features, such as object parts. Because training adjusts the filters
+    to help with the task, people do not have to hand-design every feature.
+- id: o2
+  topic: Core Computer Vision & Deep Learning
+  text: You have a small labeled image dataset and a model pretrained on a much larger image dataset. How would
+    transfer learning help, and what might you change during fine-tuning? Explain in 2–5 sentences.
+  rubric:
+  - Explains that a pretrained model can provide useful visual features learned from its earlier training.
+  - Explains that adapting the model can require changing its task-specific output layer.
+  - Notes that fine-tuning adjusts some or all model weights using the new dataset.
+  required: 2
+  model_answer: The pretrained model already has visual features that may be useful for the new images, so training
+    can start from a stronger point than random initialization. I would replace or adapt its output layer to match
+    the new task. During fine-tuning, I would train that layer and, if appropriate, some or all of the earlier layers
+    on the labeled images.
+- id: o3
+  topic: Hands-On Deep Learning with PyTorch
+  text: A PyTorch model makes predictions, but its parameters do not change after each training step. How would
+    you investigate the training loop, and why could a missing backward pass or optimizer step cause this? Explain
+    in 2–5 sentences.
+  rubric:
+  - Explains that the loss should be computed from the model’s predictions and targets.
+  - Explains that the backward pass uses autograd to calculate gradients for parameters.
+  - Explains that the optimizer step uses those gradients to update parameters.
+  required: 2
+  model_answer: I would check that the loop computes a loss from the predictions and targets. The backward pass
+    asks autograd to calculate gradients that indicate how the parameters contributed to the loss. The optimizer
+    step uses those gradients to update the parameters, so leaving out either step prevents the expected learning
+    update.
+- id: o4
+  topic: Hands-On Deep Learning with PyTorch
+  text: A model runs on your GPU during training, but evaluation fails because the input tensors are on the CPU.
+    How would you fix the issue, and what should you check when saving the trained model for later use? Explain
+    in 2–5 sentences.
+  rubric:
+  - Explains that the model and its input tensors must be placed on the same device for computation.
+  - Explains that evaluation inputs should also be moved to the chosen device.
+  - Mentions saving the trained weights or model state so they can be loaded and reused.
+  required: 2
+  model_answer: I would move the evaluation inputs to the same device as the model, such as the GPU, because PyTorch
+    operations require compatible devices. I would also check that the model itself is on that device during evaluation.
+    To reuse the trained model later, I would save its learned state and load it into the appropriate model structure.
+- id: o5
+  topic: Object Detection Models & Architectures
+  text: Why does a model that classifies one whole image need a different approach to detect several objects in
+    that image? Explain what the detector must predict, in 2–5 sentences.
+  rubric:
+  - Explains that image classification assigns a label to an image, while detection handles individual objects within
+    it.
+  - Names both object categories and locations, such as bounding boxes, as detection outputs.
+  - Explains that one image can contain multiple objects and therefore multiple predictions.
+  required: 2
+  model_answer: Image classification typically assigns a label to the whole image, but detection must handle the
+    objects within the image individually. A detector predicts a category and a location, often represented by a
+    bounding box, for each object. Since one image can contain several objects, it may need to produce several such
+    predictions.
+- id: o6
+  topic: Object Detection Models & Architectures
+  text: Two detectors find the same object, but one predicts a box that overlaps the labeled box only slightly.
+    How would IoU help you judge the predictions, and why might precision and recall provide additional information?
+    Explain in 2–5 sentences.
+  rubric:
+  - Explains that IoU measures overlap between a predicted box and a labeled box.
+  - Connects higher overlap to a better localized box, with an appropriate threshold potentially determining a match.
+  - Explains that precision and recall describe different aspects of detection results, such as false positives
+    and missed objects.
+  required: 2
+  model_answer: IoU compares the area shared by the predicted and labeled boxes with the area covered by their union,
+    so low overlap gives a low IoU. A detector may count a prediction as a correct match only if its IoU reaches
+    a chosen threshold. Precision helps show how many reported detections are correct, while recall helps show how
+    many labeled objects were found.
+- id: o7
+  topic: Single-Stage Detectors (YOLO Family)
+  text: Why can YOLO make detections quickly by predicting from a grid in one pass, and what trade-off might this
+    create compared with a slower detection approach? Explain in 2–5 sentences.
+  rubric:
+  - Explains that YOLO predicts detections directly in a single pass rather than first generating separate region
+    proposals.
+  - Connects avoiding a separate proposal stage to faster inference.
+  - Names a possible speed–accuracy trade-off, such as reduced precision or difficulty with some objects.
+  required: 2
+  model_answer: YOLO predicts object locations and classes directly from the image in one pass, rather than first
+    proposing regions and then processing them separately. Skipping that separate proposal stage can make inference
+    faster. The trade-off is that this fast approach may be less precise or may struggle with some objects compared
+    with a slower approach.
+- id: o8
+  topic: Single-Stage Detectors (YOLO Family)
+  text: A YOLO detector often predicts boxes that are systematically too wide, even when it identifies the correct
+    objects. How do grid-based prediction, anchors, and box regression relate to the problem, and what would the
+    model need to learn? Explain in 2–5 sentences.
+  rubric:
+  - Explains that the grid organizes where predictions are made in the image.
+  - Explains that anchors provide reference box shapes or sizes for predictions.
+  - Explains that box regression learns adjustments to predicted boxes so they better match object locations and
+    dimensions.
+  required: 2
+  model_answer: The grid determines which image regions produce predictions, while anchors provide reference shapes
+    and sizes for boxes. Box regression learns offsets that adjust those reference boxes to fit the objects. If
+    the boxes are consistently too wide, the model needs to learn adjustments that make their predicted widths better
+    match the labeled boxes.
+- id: o9
+  topic: Practical Object Detection (YOLOv11)
+  text: A YOLOv11 training run produces very few correct detections, and you suspect the labels may be at fault.
+    What would you inspect in the dataset and annotations, and why? Explain in 2–5 sentences.
+  rubric:
+  - Explains that annotations should include the objects and categories the model is expected to detect.
+  - Explains that boxes and class labels should be accurate and use the expected annotation format.
+  - Connects missing or incorrect annotations to poor learning or misleading evaluation results.
+  required: 2
+  model_answer: I would check that the expected objects are annotated with the correct class labels and that the
+    boxes tightly and accurately mark them. I would also verify that the annotations use the format the training
+    pipeline expects. Missing or incorrect labels can teach the model the wrong targets and can also make its evaluation
+    misleading.
+- id: o10
+  topic: Practical Object Detection (YOLOv11)
+  text: Your YOLOv11 model has a strong evaluation score but gives unreliable detections when used in a real application.
+    What would you check in the inference pipeline and deployment setup, and why? Explain in 2–5 sentences.
+  rubric:
+  - Suggests checking that inference preprocessing matches what the model expects or what was used during training.
+  - Suggests checking whether the deployed model and inference configuration are the intended ones.
+  - Connects testing on representative real inputs or deployment constraints to identifying reliability problems.
+  required: 2
+  model_answer: I would verify that images are preprocessed as the model expects and that the deployed weights and
+    inference settings are the intended ones. I would test the pipeline on images representative of the real application,
+    since they may differ from the evaluation data. I would also check practical constraints such as latency and
+    available hardware, which can affect how the model behaves in deployment.
+- id: o11
+  topic: Evaluation Metrics for Object Detection
+  text: Two detection models have similar average precision, but one makes many extra detections while the other
+    misses more objects. How can precision and recall help explain this difference, and why is looking at just one
+    number limiting? Explain in 2–5 sentences.
+  rubric:
+  - Explains that low precision can reflect many incorrect or extra detections.
+  - Explains that low recall can reflect missed objects.
+  - Explains that average precision summarizes performance across precision–recall behavior, so one summary value
+    may hide different error patterns.
+  required: 2
+  model_answer: Precision helps reveal whether many of the model’s detections are incorrect, while recall helps
+    reveal whether it misses labeled objects. A model that reports too many extra boxes may have lower precision,
+    while one that misses objects may have lower recall. Average precision summarizes performance across precision
+    and recall behavior, but similar summary values can still conceal different error patterns.
+- id: o12
+  topic: Evaluation Metrics for Object Detection
+  text: A team compares two detectors using mAP, but the models behave differently on small objects and large objects.
+    What should the team consider about the evaluation setup before choosing a model, and why? Explain in 2–5 sentences.
+  rubric:
+  - Explains that mAP depends on how detections are matched to labeled boxes, including the IoU threshold or thresholds.
+  - Notes that the evaluation data and the types of objects it contains affect the reported score.
+  - Explains that a single overall score may not show performance differences for particular object sizes or use
+    cases.
+  required: 2
+  model_answer: The team should check which IoU threshold or thresholds are used to decide whether a predicted box
+    matches a labeled box, since that affects mAP. It should also consider whether the evaluation data represents
+    the objects and conditions that matter in the intended application. An overall mAP can hide differences by object
+    size, so the team should examine performance on the relevant kinds of objects before choosing.
 problem:
   title: Calculate Box IoU
   prompt: 'Write `intersection_over_union(box_a, box_b)` to calculate the Intersection over Union (IoU) of two bounding
