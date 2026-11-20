@@ -71,7 +71,13 @@ from .events import EventKind, EventLog, Report
 from .google import FLOW_SECONDS, GoogleError, GoogleSignIn
 from .level import LevelAssessment
 from .llm import LLMClient, LLMUnavailable
-from .onboarding import ChoiceAnswer, LearnerProfile, Option, answer_texts, load_profiles
+from .onboarding import (
+    ChoiceAnswer,
+    LearnerProfile,
+    Option,
+    answer_texts,
+    load_profiles,
+)
 from .path import Choice, LearningPath, PathItem, PathStateError, Progress, TopicChoice
 from .path_chat import CHATS_PER_DAY, ChatReply, ChatRequest, PathAssistant
 from .project_files import (
@@ -107,7 +113,9 @@ Text = Annotated[str, StringConstraints(max_length=MAX_ANSWER_LENGTH)]
 class ChoiceAnswerIn(BaseModel):
     """An answer to a choice question: the options' ids and, optionally, details in the learner's words."""
 
-    choices: Annotated[list[Annotated[str, StringConstraints(max_length=40)]], Field(max_length=12)] = []
+    choices: Annotated[
+        list[Annotated[str, StringConstraints(max_length=40)]], Field(max_length=12)
+    ] = []
     details: Text = ""
 
 
@@ -201,7 +209,9 @@ class ReviewedQuestion(BaseModel):
     topic: str
     text: str
     options: list[str]
-    answer: int | None  # the position of the right option, as shown; None for an open question
+    answer: (
+        int | None
+    )  # the position of the right option, as shown; None for an open question
     explanation: str
     kind: Literal["choice", "open"] = "choice"
 
@@ -216,15 +226,21 @@ class ProblemOut(BaseModel):
     tests: str
     packages: list[str]
     topic: str | None = None  # the module's topic it practises
-    topic_anchor: str | None = None  # that topic's heading id on the module page, when it has one
+    topic_anchor: str | None = (
+        None  # that topic's heading id on the module page, when it has one
+    )
 
 
 class ReportedQuestion(QuestionReport):
     """A report as reviewers see it: with the question in full, its answer key and explanation."""
 
     module_title: str
-    question: CheckpointQuestion | None  # None when the checkpoint no longer has this question
-    open_question: OpenQuestion | None = None  # instead, for an open question: with its rubric
+    question: (
+        CheckpointQuestion | None
+    )  # None when the checkpoint no longer has this question
+    open_question: OpenQuestion | None = (
+        None  # instead, for an open question: with its rubric
+    )
 
 
 class ResolveRequest(BaseModel):
@@ -235,7 +251,9 @@ class AttemptRequest(BaseModel):
     attempt: int = Field(ge=0)
     answers: dict[str, int]  # question id -> position of the chosen option, as shown
     # The open question's id -> the learner's answer in their own words.
-    open_answers: dict[str, Annotated[str, StringConstraints(max_length=MAX_OPEN_ANSWER)]] = {}
+    open_answers: dict[
+        str, Annotated[str, StringConstraints(max_length=MAX_OPEN_ANSWER)]
+    ] = {}
 
 
 class AttemptResponse(BaseModel):
@@ -245,7 +263,9 @@ class AttemptResponse(BaseModel):
 
 class ModuleAction(BaseModel):
     module_id: str
-    topic: str | None = None  # for accepting or declining a suggestion about one of the module's topics
+    topic: str | None = (
+        None  # for accepting or declining a suggestion about one of the module's topics
+    )
 
 
 class ChoiceRequest(BaseModel):
@@ -407,7 +427,11 @@ def create_app(
         return path.model_copy(
             update={
                 "items": [
-                    _settled(item.model_copy(update={"module": modules.get(item.module.id, item.module)}))
+                    _settled(
+                        item.model_copy(
+                            update={"module": modules.get(item.module.id, item.module)}
+                        )
+                    )
                     for item in path.items
                 ]
             }
@@ -464,7 +488,6 @@ def create_app(
                 )
         return await call_next(request)
 
-
     def info(edition: Edition) -> CurriculumInfo:
         curriculum = edition.roadmap.curriculum
         return CurriculumInfo(
@@ -480,7 +503,11 @@ def create_app(
             texts = answer_texts(
                 newest.roadmap.questions,
                 {
-                    key: value if isinstance(value, str) else ChoiceAnswer(**value.model_dump())
+                    key: (
+                        value
+                        if isinstance(value, str)
+                        else ChoiceAnswer(**value.model_dump())
+                    )
                     for key, value in answers.items()
                 },
             )
@@ -806,14 +833,22 @@ def create_app(
         """The learner marks a topic of a module they study as finished, or takes the mark back."""
         return change(
             signed_in(request),
-            lambda path: path.with_topic_finished(body.module_id, body.topic, body.finished),
+            lambda path: path.with_topic_finished(
+                body.module_id, body.topic, body.finished
+            ),
         )
 
-    def topics_of(request: Request, module_id: str) -> tuple[frozenset[str], frozenset[str]]:
+    def topics_of(
+        request: Request, module_id: str
+    ) -> tuple[frozenset[str], frozenset[str]]:
         """The topics the signed-in learner skips and skims in a module; none for anyone else."""
         account = account_of(request)
         path = store.path_of(account) if account else None
-        item = next((i for i in path.items if i.module.id == module_id), None) if path else None
+        item = (
+            next((i for i in path.items if i.module.id == module_id), None)
+            if path
+            else None
+        )
         if item is None:
             return frozenset(), frozenset()
         return item.skipped_topics, item.skimmed_topics
@@ -864,7 +899,9 @@ def create_app(
         account = store.account_by_public_link(token) if len(token) <= 64 else None
         path = store.path_of(account) if account else None
         if path is None:
-            raise HTTPException(404, "This link does not exist or its owner removed it.")
+            raise HTTPException(
+                404, "This link does not exist or its owner removed it."
+            )
         edition = edition_of(path)
         finished = []
         for item in path.items:
@@ -881,7 +918,9 @@ def create_app(
                     title=item.module.full_title,
                     url=item.module.url,
                     how=how,
-                    score=None if how in ("project", "marked_done") else item.last_score,
+                    score=(
+                        None if how in ("project", "marked_done") else item.last_score
+                    ),
                     attempts=item.attempts,
                 )
             )
@@ -914,7 +953,10 @@ def create_app(
 
     @app.post("/me/attempts/{module_id:path}")
     def attempt(
-        module_id: str, body: AttemptRequest, request: Request, background: BackgroundTasks
+        module_id: str,
+        body: AttemptRequest,
+        request: Request,
+        background: BackgroundTasks,
     ) -> AttemptResponse:
         """Grades an attempt against the stored path: locked modules, a "prove" turned into "study", skimmed
         topics answered wrong turned into study. Suggestions for the rest of the path, after an easy pass or a
@@ -934,7 +976,9 @@ def create_app(
             # An open answer is marked by a model; over the quota, or without a model, it is left out of the
             # attempt (Checkpoint.grade) rather than holding the learner up.
             judge = None
-            if edition.roadmap.llm is not None and any(text.strip() for text in body.open_answers.values()):
+            if edition.roadmap.llm is not None and any(
+                text.strip() for text in body.open_answers.values()
+            ):
                 try:
                     within_quota(request)
                     judge = OpenAnswerGrader(edition.roadmap.llm)
@@ -959,7 +1003,9 @@ def create_app(
                 except HTTPException:
                     suggest = False
             grades.append(grade)
-            result = edition.roadmap.after_checkpoint(path, module_id, grade, suggest=False)
+            result = edition.roadmap.after_checkpoint(
+                path, module_id, grade, suggest=False
+            )
             if suggest and edition.roadmap.wants_suggestions(grade):
                 key = f"{module_id}:{result.item(module_id).attempts}"
                 result = result.model_copy(update={"suggestions_pending": key})
@@ -969,7 +1015,9 @@ def create_app(
         account = signed_in(request)
         updated = change(account, graded)
         for roadmap, snapshot, key in later:
-            background.add_task(suggest_later, account, roadmap, snapshot, module_id, grades[0], key)
+            background.add_task(
+                suggest_later, account, roadmap, snapshot, module_id, grades[0], key
+            )
         record(
             updated,
             {
@@ -982,15 +1030,24 @@ def create_app(
         return AttemptResponse(grade=grades[0], path=updated)
 
     def suggest_later(
-        account: Account, roadmap: Roadmap, snapshot: LearningPath, module_id: str, grade: Grade, key: str
+        account: Account,
+        roadmap: Roadmap,
+        snapshot: LearningPath,
+        module_id: str,
+        grade: Grade,
+        key: str,
     ) -> None:
         try:
             proposals = roadmap.suggestions_after(snapshot, module_id, grade)
-        except Exception:  # the result is already saved; without suggestions the path stays as it is
+        except (
+            Exception
+        ):  # the result is already saved; without suggestions the path stays as it is
             logger.exception("Suggestions after the checkpoint of %s failed", module_id)
             proposals = []
         try:
-            store.change_path(account, lambda path: path.with_suggestions(key, proposals))
+            store.change_path(
+                account, lambda path: path.with_suggestions(key, proposals)
+            )
         except LookupError:
             pass  # the learner started over meanwhile
 
@@ -1002,7 +1059,12 @@ def create_app(
 
         def solved_in(path: LearningPath) -> LearningPath:
             item = path.item(module_id)
-            if checkpoint_of(edition_of(path), module_id).problem_for(item.skipped_topics) is None:
+            if (
+                checkpoint_of(edition_of(path), module_id).problem_for(
+                    item.skipped_topics
+                )
+                is None
+            ):
                 raise HTTPException(404, f"No coding problem for '{module_id}'")
             return path.with_problem_solved(module_id)
 
@@ -1027,7 +1089,8 @@ def create_app(
             raise HTTPException(503, "The assistant is not available right now.")
         if not chats.allow(account.id):
             raise HTTPException(
-                429, f"You have asked {CHATS_PER_DAY} questions today. Ask again tomorrow."
+                429,
+                f"You have asked {CHATS_PER_DAY} questions today. Ask again tomorrow.",
             )
         # Code for the page's coding problem: the problem goes with it, never its reference solution.
         problem = None
@@ -1108,14 +1171,35 @@ def create_app(
         for report in reports.listed():
             edition = by_version.get(report.curriculum_version)
             checkpoint = edition.checkpoints.get(report.module_id) if edition else None
-            question = next(
-                (q for q in checkpoint.questions if q.id == report.question_id), None
-            ) if checkpoint else None
-            open_question = next(
-                (q for q in checkpoint.open_questions if q.id == report.question_id), None
-            ) if checkpoint else None
+            question = (
+                next(
+                    (q for q in checkpoint.questions if q.id == report.question_id),
+                    None,
+                )
+                if checkpoint
+                else None
+            )
+            open_question = (
+                next(
+                    (
+                        q
+                        for q in checkpoint.open_questions
+                        if q.id == report.question_id
+                    ),
+                    None,
+                )
+                if checkpoint
+                else None
+            )
             module = (
-                next((m for m in edition.roadmap.curriculum.modules if m.id == report.module_id), None)
+                next(
+                    (
+                        m
+                        for m in edition.roadmap.curriculum.modules
+                        if m.id == report.module_id
+                    ),
+                    None,
+                )
                 if edition
                 else None
             )
@@ -1151,7 +1235,8 @@ def create_app(
         account = signed_in(request)
         if not uploads.allow(account.id) or not ai_reviews.allow(account.id):
             raise HTTPException(
-                429, f"You can submit a project {REVIEWS_PER_DAY} times a day. Try again tomorrow."
+                429,
+                f"You can submit a project {REVIEWS_PER_DAY} times a day. Try again tomorrow.",
             )
         try:
             checked_link = check_link(link)
@@ -1329,11 +1414,15 @@ def create_app(
 
     @app.post("/me/path/accept")
     def accept(body: ModuleAction, request: Request) -> LearningPath:
-        return change(signed_in(request), lambda path: path.accept(body.module_id, body.topic))
+        return change(
+            signed_in(request), lambda path: path.accept(body.module_id, body.topic)
+        )
 
     @app.post("/me/path/decline")
     def decline(body: ModuleAction, request: Request) -> LearningPath:
-        return change(signed_in(request), lambda path: path.decline(body.module_id, body.topic))
+        return change(
+            signed_in(request), lambda path: path.decline(body.module_id, body.topic)
+        )
 
     # Checkpoints
 
@@ -1350,12 +1439,17 @@ def create_app(
     @app.get("/me/checkpoints/{module_id:path}/passed")
     def passed_questions(module_id: str, request: Request) -> list[ReviewedQuestion]:
         """The questions of the attempt that passed, with their answers, to look back at while solving the
-        coding problem or after. Only once the learner passed: before, the answers stay hidden."""
+        coding problem or after. Only once the learner passed: before, the answers stay hidden.
+        """
         path = store.path_of(signed_in(request))
         if path is None:
             raise HTTPException(404, "You have no path yet.")
         item = next((i for i in path.items if i.module.id == module_id), None)
-        if item is None or item.progress not in (Progress.PRACTICE, Progress.PASSED) or not item.attempts:
+        if (
+            item is None
+            or item.progress not in (Progress.PRACTICE, Progress.PASSED)
+            or not item.attempts
+        ):
             raise HTTPException(409, "Pass this checkpoint first.")
         checkpoint = checkpoint_of(edition_of(path), module_id)
         attempt = item.attempts - 1
@@ -1372,7 +1466,9 @@ def create_app(
                     explanation=question.explanation,
                 )
             )
-        if (open_question := checkpoint.open_for_attempt(attempt, item.skipped_topics)) is not None:
+        if (
+            open_question := checkpoint.open_for_attempt(attempt, item.skipped_topics)
+        ) is not None:
             reviewed.append(
                 ReviewedQuestion(
                     id=open_question.id,
@@ -1402,10 +1498,14 @@ def create_app(
         )
 
     @app.get("/problems/{module_id:path}")
-    def problem(module_id: str, request: Request, version: str | None = None) -> ProblemOut:
+    def problem(
+        module_id: str, request: Request, version: str | None = None
+    ) -> ProblemOut:
         """The coding problem; for a signed-in learner, on a topic they study."""
         edition = edition_named(version)
-        found = checkpoint_of(edition, module_id).problem_for(*topics_of(request, module_id))
+        found = checkpoint_of(edition, module_id).problem_for(
+            *topics_of(request, module_id)
+        )
         if found is None:
             raise HTTPException(404, f"No coding problem for '{module_id}'")
         module = next(
@@ -1496,8 +1596,8 @@ class ApiSettings(Settings):
     api_rate_window: int = 3600  # seconds
     api_report_token: str | None = None  # opens GET /report; no report without it
     # PostgreSQL for accounts, paths, submissions, question reports and shared progress, such as
-    # postgresql://roadmap:password@db:5432/roadmap. Without it they are kept in SQLite files (below), which suits
-    # tests and trying the API out on one machine.
+    # postgresql://roadmap:password@db:5432/roadmap.  # pragma: allowlist secret
+    # Without it they are kept in SQLite files (below), which suits tests and trying the API out on one machine.
     database_url: SecretStr | None = None
     # Accounts and their paths, without DATABASE_URL; data/accounts.sqlite unless set.
     api_accounts_file: Path | None = None
@@ -1568,11 +1668,15 @@ def _app() -> FastAPI:
     core = logging.getLogger("roadmap")
     if not core.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
         core.addHandler(handler)
         core.setLevel(logging.INFO)
     database = (
-        Database.open(settings.database_url.get_secret_value()) if settings.database_url else None
+        Database.open(settings.database_url.get_secret_value())
+        if settings.database_url
+        else None
     )
     return create_app(
         editions=load_editions(settings),
@@ -1584,7 +1688,9 @@ def _app() -> FastAPI:
         accounts=AccountStore(database or settings.accounts_file),
         secure_cookies=settings.api_cookie_secure,
         google=settings.google,
-        submissions=SubmissionStore(database or settings.accounts_file, settings.uploads_dir),
+        submissions=SubmissionStore(
+            database or settings.accounts_file, settings.uploads_dir
+        ),
         reviewers=settings.reviewers,
         question_reports=QuestionReportStore(database or settings.accounts_file),
         github_token=(

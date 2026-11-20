@@ -276,9 +276,12 @@ _NOT_A_TOPIC = (
 
 def _topics(body: str) -> list[Topic]:
     """The page's second-level headings with the bullet points under them, as plain text. A "Curriculum"
-    section split into third-level headings, as on a specialization's resources page, gives those headings."""
+    section split into third-level headings, as on a specialization's resources page, gives those headings.
+    """
     text = _CODE_BLOCK.sub("", body)
-    headings = [match for match in _HEADING.finditer(text) if len(match.group(1)) in (2, 3)]
+    headings = [
+        match for match in _HEADING.finditer(text) if len(match.group(1)) in (2, 3)
+    ]
     topics = []
     for index, match in enumerate(headings):
         level = len(match.group(1))
@@ -286,7 +289,11 @@ def _topics(body: str) -> list[Topic]:
         parent = _parent_title(headings, index)
         if level == 3 and parent != "curriculum":
             continue
-        if level == 2 and title.lower() == "curriculum" and _has_subtopics(headings, index):
+        if (
+            level == 2
+            and title.lower() == "curriculum"
+            and _has_subtopics(headings, index)
+        ):
             continue
         if not title or any(word in title.lower() for word in _NOT_A_TOPIC):
             continue

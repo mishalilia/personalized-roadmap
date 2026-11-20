@@ -177,7 +177,8 @@ class PathItem(BaseModel):
 class Proposal(BaseModel):
     """A change to a module the learner has not started, suggested after a checkpoint; the learner accepts or
     declines it. Lighter after a checkpoint passed without a mistake, heavier after a failed one. It changes
-    either the module's choice or, for a module the learner studies, how they take one of its topics."""
+    either the module's choice or, for a module the learner studies, how they take one of its topics.
+    """
 
     module_id: str
     choice: Choice | None = None  # the module's new choice; None for a topic
@@ -188,10 +189,18 @@ class Proposal(BaseModel):
 
     @model_validator(mode="after")
     def _a_module_or_a_topic(self) -> "Proposal":
-        for_topic = self.topic is not None and self.topic_choice is not None and self.choice is None
-        for_module = self.choice is not None and self.topic is None and self.topic_choice is None
+        for_topic = (
+            self.topic is not None
+            and self.topic_choice is not None
+            and self.choice is None
+        )
+        for_module = (
+            self.choice is not None and self.topic is None and self.topic_choice is None
+        )
         if for_topic == for_module:
-            raise ValueError("A proposal changes either the module's choice or one of its topics")
+            raise ValueError(
+                "A proposal changes either the module's choice or one of its topics"
+            )
         return self
 
     def concerns(self, module_id: str, topic: str | None) -> bool:
@@ -256,8 +265,13 @@ class LearningPath(BaseModel):
         if module_id not in {item.module.id for item in self.items}:
             raise KeyError(f"The path has no module '{module_id}'")
         current = self.item(module_id)
-        if choice is not current.choice and current.progress in (Progress.PASSED, Progress.DONE):
-            raise PathStateError("This module is finished: its decision no longer changes")
+        if choice is not current.choice and current.progress in (
+            Progress.PASSED,
+            Progress.DONE,
+        ):
+            raise PathStateError(
+                "This module is finished: its decision no longer changes"
+            )
         items = [
             item.chosen(choice) if item.module.id == module_id else item
             for item in self.items
@@ -267,9 +281,12 @@ class LearningPath(BaseModel):
             update={"items": items, "confirmed_at": None, "proposals": proposals}
         )
 
-    def with_topic(self, module_id: str, topic: str, choice: TopicChoice) -> "LearningPath":
+    def with_topic(
+        self, module_id: str, topic: str, choice: TopicChoice
+    ) -> "LearningPath":
         """The learner's own decision for a topic of a module they study: study it in full, skim it, or skip
-        it, which leaves it out of the checkpoint. The path stays confirmed: the learner decided it."""
+        it, which leaves it out of the checkpoint. The path stays confirmed: the learner decided it.
+        """
         item = self.item(module_id)
         order = [candidate.title for candidate in item.module.topics]
         if topic not in order:
@@ -277,7 +294,9 @@ class LearningPath(BaseModel):
         if item.choice is not Choice.STUDY:
             raise PathStateError("Only a module you study has topics to skim or skip")
         if item.module.is_project:
-            raise PathStateError("A project is done in full: its parts cannot be skimmed or skipped")
+            raise PathStateError(
+                "A project is done in full: its parts cannot be skimmed or skipped"
+            )
         if item.progress in (Progress.PASSED, Progress.DONE):
             raise PathStateError("This module is finished")
         skipped = {marked.topic for marked in item.skip_topics} - {topic}
@@ -287,37 +306,58 @@ class LearningPath(BaseModel):
         def kept(marks: list[SkimTopic], wanted: bool, reason: str) -> list[SkimTopic]:
             others = [marked for marked in marks if marked.topic != topic]
             if wanted:
-                already = next((marked for marked in marks if marked.topic == topic), None)
-                others.append(already or SkimTopic(topic=topic, reason=reason, chosen=True))
+                already = next(
+                    (marked for marked in marks if marked.topic == topic), None
+                )
+                others.append(
+                    already or SkimTopic(topic=topic, reason=reason, chosen=True)
+                )
             return sorted(others, key=lambda marked: order.index(marked.topic))
 
         return self._replace(
             item.model_copy(
                 update={
-                    "skim": kept(item.skim, choice is TopicChoice.SKIM, "You chose to skim it."),
+                    "skim": kept(
+                        item.skim, choice is TopicChoice.SKIM, "You chose to skim it."
+                    ),
                     "skip_topics": kept(
-                        item.skip_topics, choice is TopicChoice.SKIP, "You chose to skip it."
+                        item.skip_topics,
+                        choice is TopicChoice.SKIP,
+                        "You chose to skip it.",
                     ),
                     # A topic left out is not one to finish.
                     "finished_topics": [
-                        t for t in item.finished_topics if not (t == topic and choice is TopicChoice.SKIP)
+                        t
+                        for t in item.finished_topics
+                        if not (t == topic and choice is TopicChoice.SKIP)
                     ],
                 }
             )
         )
 
-    def with_topic_finished(self, module_id: str, topic: str, finished: bool) -> "LearningPath":
+    def with_topic_finished(
+        self, module_id: str, topic: str, finished: bool
+    ) -> "LearningPath":
         """The learner marks a topic of a module they study as finished, or takes the mark back. It is their own
-        tally of where they are in the module; the module is still passed by its checkpoint."""
+        tally of where they are in the module; the module is still passed by its checkpoint.
+        """
         item = self._check_open(module_id)
         order = [candidate.title for candidate in item.module.topics]
         if topic not in order:
             raise KeyError(f"'{module_id}' has no topic '{topic}'")
         if item.choice is not Choice.STUDY or item.module.is_project:
-            raise PathStateError("Only the topics of a module you study can be marked as finished")
+            raise PathStateError(
+                "Only the topics of a module you study can be marked as finished"
+            )
         if finished and topic in item.skipped_topics:
-            raise PathStateError("This topic is skipped: study it to mark it as finished")
-        done = (set(item.finished_topics) | {topic}) if finished else (set(item.finished_topics) - {topic})
+            raise PathStateError(
+                "This topic is skipped: study it to mark it as finished"
+            )
+        done = (
+            (set(item.finished_topics) | {topic})
+            if finished
+            else (set(item.finished_topics) - {topic})
+        )
         return self._replace(
             item.model_copy(update={"finished_topics": [t for t in order if t in done]})
         )
@@ -342,7 +382,9 @@ class LearningPath(BaseModel):
             part = share[item.choice]
             if item.choice is Choice.STUDY and item.module.topics:
                 # A skipped topic takes no time, a skimmed one about half.
-                left_out = len(item.skipped_topics) + 0.5 * len(item.skimmed_topics - item.skipped_topics)
+                left_out = len(item.skipped_topics) + 0.5 * len(
+                    item.skimmed_topics - item.skipped_topics
+                )
                 part *= 1 - left_out / len(item.module.topics)
             path_low += hours.low * part
             path_high += hours.high * part
@@ -433,23 +475,36 @@ class LearningPath(BaseModel):
             relearn = [
                 marked
                 for marked in item.skim
-                if any(same_topic(marked.topic, missed) for missed in missed_topics or [])
+                if any(
+                    same_topic(marked.topic, missed) for missed in missed_topics or []
+                )
             ]
             if relearn:
-                update["skim"] = [marked for marked in item.skim if marked not in relearn]
+                update["skim"] = [
+                    marked for marked in item.skim if marked not in relearn
+                ]
                 topics = ", ".join(marked.topic for marked in relearn)
                 update["adjustment"] = (
-                    update.get("adjustment", "") + f" Changed to study in full: {topics}, which you skimmed"
+                    update.get("adjustment", "")
+                    + f" Changed to study in full: {topics}, which you skimmed"
                     " and got wrong in the checkpoint."
                 ).strip()
-        elif passed and item.adjustment and item.adjustment.startswith("Changed to study"):
+        elif (
+            passed
+            and item.adjustment
+            and item.adjustment.startswith("Changed to study")
+        ):
             # The advice to study and try again is done with; say how it ended.
             update["adjustment"] = (
                 "Changed to study after the checkpoint showed gaps; "
                 f"passed on attempt {item.attempts + 1} ({score}/{total})."
             )
         # Suggestions from an earlier checkpoint go once this one is taken: the new result supersedes them.
-        proposals = [] if not passed else [p for p in self.proposals if p.module_id != module_id]
+        proposals = (
+            []
+            if not passed
+            else [p for p in self.proposals if p.module_id != module_id]
+        )
         return self._replace(item.model_copy(update=update), proposals=proposals)
 
     def with_problem_solved(self, module_id: str) -> "LearningPath":
@@ -520,9 +575,10 @@ class LearningPath(BaseModel):
 
     def with_proposals(self, proposals: list["Proposal"]) -> "LearningPath":
         """Keeps only proposals for modules the learner has not started that go the proposal's way: lighter
-        after an easy pass, heavier after a failure, and never bringing back a module the path skips. A lighter one never touches a locked module; a heavier one
-        may, since it is locked by the failure that brought the proposal. A topic proposal is kept only for a
-        module to study, and not when the same module's choice is proposed to change."""
+        after an easy pass, heavier after a failure, and never bringing back a module the path skips. A lighter
+        one never touches a locked module; a heavier one may, since it is locked by the failure that brought the
+        proposal. A topic proposal is kept only for a module to study, and not when the same module's choice is
+        proposed to change."""
         kept: list[Proposal] = []
         moved = {p.module_id for p in proposals if p.topic is None}
         for proposal in proposals:
@@ -532,7 +588,10 @@ class LearningPath(BaseModel):
                 continue
             if item.progress is not Progress.NOT_STARTED:
                 continue
-            if not proposal.after_failure and proposal.module_id in self.locked_module_ids:
+            if (
+                not proposal.after_failure
+                and proposal.module_id in self.locked_module_ids
+            ):
                 continue
             if proposal.topic is None:
                 assert proposal.choice is not None  # nosec B101: checked by the model
@@ -544,7 +603,9 @@ class LearningPath(BaseModel):
                 if proposal.after_failure and item.choice is Choice.SKIP:
                     continue
             else:
-                assert proposal.topic_choice is not None  # nosec B101: checked by the model
+                assert (
+                    proposal.topic_choice is not None
+                )  # nosec B101: checked by the model
                 titles = [t.title for t in item.module.topics]
                 if (
                     proposal.module_id in moved
@@ -563,12 +624,19 @@ class LearningPath(BaseModel):
         """The suggestions worked out after the checkpoint `key` names; ignored if the path has moved on."""
         if self.suggestions_pending != key:
             return self
-        return self.with_proposals(proposals).model_copy(update={"suggestions_pending": None})
+        return self.with_proposals(proposals).model_copy(
+            update={"suggestions_pending": None}
+        )
 
     def _proposal(self, module_id: str, topic: str | None) -> "Proposal":
-        proposal = next((p for p in self.proposals if p.concerns(module_id, topic)), None)
+        proposal = next(
+            (p for p in self.proposals if p.concerns(module_id, topic)), None
+        )
         if proposal is None:
-            raise PathStateError(f"No suggestion for '{module_id}'" + (f", topic '{topic}'" if topic else ""))
+            raise PathStateError(
+                f"No suggestion for '{module_id}'"
+                + (f", topic '{topic}'" if topic else "")
+            )
         return proposal
 
     def accept(self, module_id: str, topic: str | None = None) -> "LearningPath":
@@ -583,12 +651,16 @@ class LearningPath(BaseModel):
             item = changed.item(module_id).model_copy(update={"adjustment": note})
             return changed._replace(item, proposals=rest)
         assert proposal.choice is not None  # nosec B101: checked by the model
-        item = self.item(module_id).model_copy(update={"choice": proposal.choice, "adjustment": note})
+        item = self.item(module_id).model_copy(
+            update={"choice": proposal.choice, "adjustment": note}
+        )
         return self._replace(item, proposals=rest)
 
     def decline(self, module_id: str, topic: str | None = None) -> "LearningPath":
         proposal = self._proposal(module_id, topic)
-        return self.model_copy(update={"proposals": [p for p in self.proposals if p is not proposal]})
+        return self.model_copy(
+            update={"proposals": [p for p in self.proposals if p is not proposal]}
+        )
 
 
 class PathStateError(ValueError):

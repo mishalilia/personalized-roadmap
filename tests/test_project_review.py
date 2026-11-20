@@ -455,5 +455,8 @@ def test_the_assistant_sees_why_a_project_came_back(site):
     assert reply.status_code == 200, reply.text
     sent = llm.prompts[-1]
     assert "State: sent back" in sent and "Feedback: Add tests." in sent
-    assert "Missing to pass: Testing (not counted: the quoted evidence is not in their files)" in sent
+    assert (
+        "Missing to pass: Testing (not counted: the quoted evidence is not in their files)"
+        in sent
+    )
     assert "archive detector.tar.gz" in sent

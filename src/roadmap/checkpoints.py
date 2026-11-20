@@ -43,20 +43,30 @@ PASS_MARK = 4  # correct answers out of QUESTIONS_PER_ATTEMPT
 GENERATED_QUESTIONS = 15
 # Each topic's own pool: a learner who skips the module's other topics still gets other questions at a retake.
 QUESTIONS_PER_TOPIC = 8
-OPEN_PER_ATTEMPT = 1  # of the QUESTIONS_PER_ATTEMPT, when the checkpoint has open questions
-OPEN_PER_TOPIC = 2  # open questions generated for each topic, so a retake asks another one
+OPEN_PER_ATTEMPT = (
+    1  # of the QUESTIONS_PER_ATTEMPT, when the checkpoint has open questions
+)
+OPEN_PER_TOPIC = (
+    2  # open questions generated for each topic, so a retake asks another one
+)
 MAX_OPEN_ANSWER = 2000  # characters
 
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 # A question that points at code ("this code prints...") must carry it: code of several lines, or a line of code
 # in backticks, such as `x = f(2)`.
-_POINTS_AT_CODE = re.compile(r"\b(this|the following) (code|snippet|script|program)\b", re.IGNORECASE)
+_POINTS_AT_CODE = re.compile(
+    r"\b(this|the following) (code|snippet|script|program)\b", re.IGNORECASE
+)
 _INLINE_CODE = re.compile(r"`[^`]*[=(:][^`]*`")
 
 
 def missing_code(text: str) -> bool:
     """True for a question that speaks of "this code" but shows none, so it cannot be answered."""
-    return bool(_POINTS_AT_CODE.search(text)) and "\n" not in text and not _INLINE_CODE.search(text)
+    return (
+        bool(_POINTS_AT_CODE.search(text))
+        and "\n" not in text
+        and not _INLINE_CODE.search(text)
+    )
 
 
 _NUMBERING = re.compile(r"^\s*\d+[.)]\s*")
@@ -113,7 +123,9 @@ class OpenQuestion(BaseModel):
     @model_validator(mode="after")
     def _attainable(self) -> OpenQuestion:
         if self.required > len(self.rubric):
-            raise ValueError(f"Question {self.id} requires more points than its rubric has")
+            raise ValueError(
+                f"Question {self.id} requires more points than its rubric has"
+            )
         return self
 
 
@@ -134,7 +146,9 @@ class OpenVerdict(BaseModel):
     )
 
 
-Judge = Callable[[OpenQuestion, str], "OpenVerdict | None"]  # None: no model could mark the answer
+Judge = Callable[
+    [OpenQuestion, str], "OpenVerdict | None"
+]  # None: no model could mark the answer
 
 
 class CodingProblem(BaseModel):
@@ -210,8 +224,11 @@ class Checkpoint(BaseModel):
 
     def pool(self, skipped: frozenset[str] = frozenset()) -> list[CheckpointQuestion]:
         """The questions of the topics the learner does not skip, taken topic by topic in turn, so that an
-        attempt spans the topics. With too few left for an attempt, the whole checkpoint."""
-        kept = [question for question in self.questions if question.topic not in skipped]
+        attempt spans the topics. With too few left for an attempt, the whole checkpoint.
+        """
+        kept = [
+            question for question in self.questions if question.topic not in skipped
+        ]
         if len(kept) < QUESTIONS_PER_ATTEMPT:
             kept = list(self.questions)
         by_topic: dict[str, list[CheckpointQuestion]] = {}
@@ -219,7 +236,10 @@ class Checkpoint(BaseModel):
             by_topic.setdefault(question.topic, []).append(question)
         longest = max(len(questions) for questions in by_topic.values())
         return [
-            questions[i] for i in range(longest) for questions in by_topic.values() if i < len(questions)
+            questions[i]
+            for i in range(longest)
+            for questions in by_topic.values()
+            if i < len(questions)
         ]
 
     @property
@@ -241,18 +261,24 @@ class Checkpoint(BaseModel):
         self, attempt: int, skipped: frozenset[str] = frozenset()
     ) -> OpenQuestion | None:
         """The attempt's open question, from the topics the learner does not skip, topic by topic in turn."""
-        kept = [q for q in self.open_questions if q.topic not in skipped] or list(self.open_questions)
+        kept = [q for q in self.open_questions if q.topic not in skipped] or list(
+            self.open_questions
+        )
         if not kept:
             return None
         by_topic: dict[str, list[OpenQuestion]] = {}
         for question in kept:
             by_topic.setdefault(question.topic, []).append(question)
         longest = max(len(questions) for questions in by_topic.values())
-        order = [qs[i] for i in range(longest) for qs in by_topic.values() if i < len(qs)]
+        order = [
+            qs[i] for i in range(longest) for qs in by_topic.values() if i < len(qs)
+        ]
         return order[attempt % len(order)]
 
     def problem_for(
-        self, skipped: frozenset[str] = frozenset(), skimmed: frozenset[str] = frozenset()
+        self,
+        skipped: frozenset[str] = frozenset(),
+        skimmed: frozenset[str] = frozenset(),
     ) -> CodingProblem | None:
         """The coding problem for a learner: on a topic they study in full if there is one, else on one they
         skim; none when every problem is on a topic they skip."""
@@ -281,7 +307,9 @@ class Checkpoint(BaseModel):
         random.Random(seed).shuffle(order)  # nosec B311: a display order, not a secret
         return order
 
-    def asked(self, attempt: int, skipped: frozenset[str] = frozenset()) -> list[AskedQuestion]:
+    def asked(
+        self, attempt: int, skipped: frozenset[str] = frozenset()
+    ) -> list[AskedQuestion]:
         """The attempt's questions as the learner sees them: shuffled options, no answer; the open question
         last, with neither its rubric nor its model answer."""
         asked = [
@@ -340,9 +368,23 @@ class Checkpoint(BaseModel):
             verdict = judge(open_question, text) if text and judge else None
             if text and verdict is None:
                 ungraded = 1  # no model could mark it: left out of this attempt
-            met = sorted({n for n in verdict.points_met if 1 <= n <= len(open_question.rubric)}) if verdict else []
+            met = (
+                sorted(
+                    {
+                        n
+                        for n in verdict.points_met
+                        if 1 <= n <= len(open_question.rubric)
+                    }
+                )
+                if verdict
+                else []
+            )
             # Enough of the rubric, and nothing stated wrong: a confident wrong key idea does not pass on the rest.
-            right = verdict is not None and len(met) >= open_question.required and not verdict.errors
+            right = (
+                verdict is not None
+                and len(met) >= open_question.required
+                and not verdict.errors
+            )
             if not ungraded:
                 correct[open_question.id] = right
             open_feedback.append(
@@ -353,15 +395,23 @@ class Checkpoint(BaseModel):
                     correct=right,
                     graded=not ungraded,
                     comment=(
-                        verdict.feedback if verdict
-                        else "No answer." if not text
-                        else "Your answer could not be marked right now, so this attempt is graded without it."
+                        verdict.feedback
+                        if verdict
+                        else (
+                            "No answer."
+                            if not text
+                            else "Your answer could not be marked right now, so this attempt is graded without it."
+                        )
                     ),
                 )
             )
         score = sum(correct.values())
         passed = score >= PASS_MARK - ungraded
-        for item in open_feedback:  # the model answer, like the explanations, only after a pass
+        for (
+            item
+        ) in (
+            open_feedback
+        ):  # the model answer, like the explanations, only after a pass
             if passed and open_question is not None:
                 item.explanation = open_question.model_answer
         feedback = [
@@ -408,12 +458,16 @@ class QuestionFeedback(BaseModel):
     topic: str
     correct: bool
     kind: Literal["choice", "open"] = "choice"
-    graded: bool = True  # False: an open answer no model could mark, left out of the score
+    graded: bool = (
+        True  # False: an open answer no model could mark, left out of the score
+    )
     # Shown only after a pass: the position of the right option as the learner saw it, and why (for an open
     # question, a full answer).
     answer: int | None = None
     explanation: str | None = None
-    comment: str | None = None  # an open answer: what it gets right and what it leaves out
+    comment: str | None = (
+        None  # an open answer: what it gets right and what it leaves out
+    )
 
 
 class Grade(BaseModel):
@@ -440,9 +494,7 @@ def verify_problem(problem: CodingProblem, timeout: float = 20) -> str | None:
         return error
     for number, wrong in enumerate(problem.wrong_solutions, start=1):
         if _run_tests(wrong, problem.tests, timeout) is None:
-            return (
-                f"wrong solution {number} passes the tests, so they miss a requirement:\n{wrong}"
-            )
+            return f"wrong solution {number} passes the tests, so they miss a requirement:\n{wrong}"
     return None
 
 
@@ -543,13 +595,17 @@ class GeneratedOpenQuestions(BaseModel):
 class OpenAnswerGrader:
     """Marks an open answer against its question's rubric with a model. The answer is data: it is shown to the
     model inside tags, and what comes back is only the numbers of the rubric points it makes, which code
-    checks; whether that is enough to count is decided by the question's `required`, not by the model."""
+    checks; whether that is enough to count is decided by the question's `required`, not by the model.
+    """
 
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
 
     def __call__(self, question: OpenQuestion, answer: str) -> OpenVerdict | None:
-        rubric = "\n".join(f"{number}. {point}" for number, point in enumerate(question.rubric, start=1))
+        rubric = "\n".join(
+            f"{number}. {point}"
+            for number, point in enumerate(question.rubric, start=1)
+        )
         # The learner cannot close the tag early and write instructions after it.
         answer = answer[:MAX_OPEN_ANSWER].replace("</answer>", "")
         prompt = (
@@ -559,15 +615,21 @@ class OpenAnswerGrader:
 
         def check(verdict: OpenVerdict) -> None:
             if any(not 1 <= n <= len(question.rubric) for n in verdict.points_met):
-                raise UnusableAnswer(f"Rubric points are numbered 1 to {len(question.rubric)}")
+                raise UnusableAnswer(
+                    f"Rubric points are numbered 1 to {len(question.rubric)}"
+                )
 
         try:
-            return self._llm.ask(prompts.load("open_grade"), prompt, OpenVerdict, check=check)
+            return self._llm.ask(
+                prompts.load("open_grade"), prompt, OpenVerdict, check=check
+            )
         except LLMUnavailable:
             return None
 
 
-PROBLEM_TRIES = 3  # a problem whose checks fail is asked for again, this many times in all
+PROBLEM_TRIES = (
+    3  # a problem whose checks fail is asked for again, this many times in all
+)
 
 
 class CheckpointGenerator:
@@ -577,7 +639,8 @@ class CheckpointGenerator:
 
     def generate_problem(self, module: Module, existing: Checkpoint) -> Checkpoint:
         """The checkpoint with a new coding problem and its questions as they were, for a problem whose
-        tests turned out too weak. Raises UnusableAnswer when no try gives a problem that passes the checks."""
+        tests turned out too weak. Raises UnusableAnswer when no try gives a problem that passes the checks.
+        """
         last: Exception | None = None
         for _ in range(PROBLEM_TRIES):
             try:
@@ -607,7 +670,12 @@ class CheckpointGenerator:
         asked = [q.text for q in existing.questions if q.topic == topic]
         prompt = (
             f"{module_brief(module)}\nTopic: {topic}\nWrite {count} new questions on this topic only."
-            + ("\nIts questions so far, not to repeat:\n" + "\n".join(f"- {text}" for text in asked) if asked else "")
+            + (
+                "\nIts questions so far, not to repeat:\n"
+                + "\n".join(f"- {text}" for text in asked)
+                if asked
+                else ""
+            )
         )
         known = {q.text.casefold() for q in existing.questions}
         titles = [t.title for t in module.topics]
@@ -616,16 +684,22 @@ class CheckpointGenerator:
             if any(_module_topic(q.topic, titles) != topic for q in response.questions):
                 raise UnusableAnswer(f"Every question must be on {topic}")
             if any(missing_code(q.text) for q in response.questions):
-                raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
+                raise UnusableAnswer(
+                    "A question speaks of code it does not show; put the code in the question"
+                )
 
-        response = self._llm.ask(prompts.load("topic_questions"), prompt, TopicQuestions, check=check)
+        response = self._llm.ask(
+            prompts.load("topic_questions"), prompt, TopicQuestions, check=check
+        )
         # A question that repeats one already there is left out; the caller asks again for what is missing.
         fresh: list[CheckpointQuestion] = []
         for question in response.questions:
             if question.text.casefold() not in known:
                 known.add(question.text.casefold())
                 fresh.append(question)
-        numbers = [int(q.id[1:]) for q in existing.questions if re.fullmatch(r"q\d+", q.id)]
+        numbers = [
+            int(q.id[1:]) for q in existing.questions if re.fullmatch(r"q\d+", q.id)
+        ]
         start = max(numbers, default=0) + 1
         return [
             q.model_copy(update={"id": f"q{start + i}", "topic": topic})
@@ -642,7 +716,9 @@ class CheckpointGenerator:
                     prompts.load("problem") + "\n\n" + prompts.load("topic_problem"),
                     f"{module_brief(module)}\nTopic: {topic}",
                     TopicProblem,
-                    check=lambda found: _check_topic_problem(found.problem, module, topic),
+                    check=lambda found: _check_topic_problem(
+                        found.problem, module, topic
+                    ),
                 )
             except LLMUnavailable as error:
                 last = error
@@ -652,7 +728,9 @@ class CheckpointGenerator:
             return response.problem.model_copy(update={"topic": topic})
         raise UnusableAnswer(f"No usable problem on {topic}: {last}")
 
-    def open_questions(self, module: Module, existing: Checkpoint) -> list[OpenQuestion]:
+    def open_questions(
+        self, module: Module, existing: Checkpoint
+    ) -> list[OpenQuestion]:
         """OPEN_PER_TOPIC open questions on each of the module's topics (on the module as a whole when it has
         none), with ids o1, o2, ... Raises LLMUnavailable without a usable answer."""
         titles = [topic.title for topic in module.topics] or [module.full_title]
@@ -666,21 +744,34 @@ class CheckpointGenerator:
 
         def check(response: GeneratedOpenQuestions) -> None:
             if unknown := {q.topic for q in response.questions if topic_of(q) is None}:
-                raise UnusableAnswer(f"Topics the module does not have: {', '.join(sorted(unknown))}")
+                raise UnusableAnswer(
+                    f"Topics the module does not have: {', '.join(sorted(unknown))}"
+                )
             counts = {title: 0 for title in titles}
             for question in response.questions:
                 counts[topic_of(question) or ""] += 1
             if short := [title for title, n in counts.items() if n < OPEN_PER_TOPIC]:
-                raise UnusableAnswer(f"{OPEN_PER_TOPIC} questions are needed on: {', '.join(short)}")
+                raise UnusableAnswer(
+                    f"{OPEN_PER_TOPIC} questions are needed on: {', '.join(short)}"
+                )
             if any(missing_code(q.text) for q in response.questions):
-                raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
+                raise UnusableAnswer(
+                    "A question speaks of code it does not show; put the code in the question"
+                )
 
-        response = self._llm.ask(prompts.load("open_questions"), prompt, GeneratedOpenQuestions, check=check)
+        response = self._llm.ask(
+            prompts.load("open_questions"), prompt, GeneratedOpenQuestions, check=check
+        )
         kept: list[OpenQuestion] = []
         for title in titles:
-            on_topic = [q for q in response.questions if topic_of(q) == title][:OPEN_PER_TOPIC]
+            on_topic = [q for q in response.questions if topic_of(q) == title][
+                :OPEN_PER_TOPIC
+            ]
             kept += [q.model_copy(update={"topic": title}) for q in on_topic]
-        return [q.model_copy(update={"id": f"o{number}"}) for number, q in enumerate(kept, start=1)]
+        return [
+            q.model_copy(update={"id": f"o{number}"})
+            for number, q in enumerate(kept, start=1)
+        ]
 
     def generate(self, module: Module, curriculum_version: str) -> Checkpoint:
         response = self._llm.ask(
@@ -704,7 +795,11 @@ class CheckpointGenerator:
             curriculum_version=curriculum_version,
             generated_by=self._model_name,
             questions=questions,
-            problem=_with_module_topic(response.problem, module) if response.problem else None,
+            problem=(
+                _with_module_topic(response.problem, module)
+                if response.problem
+                else None
+            ),
         )
 
 
@@ -717,7 +812,9 @@ def _check_generated(response: GeneratedQuestions, module: Module) -> None:
     if len(texts) != len(response.questions):
         raise UnusableAnswer("Questions repeat")
     if any(missing_code(question.text) for question in response.questions):
-        raise UnusableAnswer("A question speaks of code it does not show; put the code in the question")
+        raise UnusableAnswer(
+            "A question speaks of code it does not show; put the code in the question"
+        )
     # A failed attempt sends the learner back to these topics, so they must be the module's own.
     titles = [topic.title for topic in module.topics]
     unknown = {
@@ -735,15 +832,21 @@ def _check_problem(problem: CodingProblem, module: Module) -> None:
     """A problem is kept only if its reference solution passes, it comes with wrong solutions, and its
     tests reject each of them."""
     if len(problem.wrong_solutions) < 2:
-        raise UnusableAnswer("The problem needs at least two wrong solutions to check its tests")
+        raise UnusableAnswer(
+            "The problem needs at least two wrong solutions to check its tests"
+        )
     if error := verify_problem(problem):
         raise UnusableAnswer(f"The problem does not check out: {error}")
     titles = [topic.title for topic in module.topics]
     if titles and problem.topic and _module_topic(problem.topic, titles) is None:
-        raise UnusableAnswer(f"The problem's topic is not the module's: {problem.topic}")
+        raise UnusableAnswer(
+            f"The problem's topic is not the module's: {problem.topic}"
+        )
 
 
-def _check_topic_problem(problem: CodingProblem | None, module: Module, topic: str) -> None:
+def _check_topic_problem(
+    problem: CodingProblem | None, module: Module, topic: str
+) -> None:
     if problem is None:
         return
     _check_problem(problem, module)

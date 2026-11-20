@@ -54,7 +54,7 @@ class Database:
 
     @staticmethod
     def open(target: str | Path) -> Database:
-        """A PostgreSQL URL (postgresql://user:password@host:5432/name) or a SQLite file (":memory:" for one
+        """A PostgreSQL URL (postgresql://user:…@host:5432/name) or a SQLite file (":memory:" for one
         that lasts as long as the process)."""
         text = str(target)
         if text.startswith(("postgresql://", "postgres://")):
@@ -73,7 +73,8 @@ class Database:
     @contextmanager
     def held(self, key: str) -> Iterator[None]:
         """Holds `key` until the block ends: no other block holding the same key, in this process or (on
-        PostgreSQL) in another API process, runs meanwhile. For changes that take long, such as a model call."""
+        PostgreSQL) in another API process, runs meanwhile. For changes that take long, such as a model call.
+        """
         raise NotImplementedError
         yield  # pragma: no cover
 
@@ -99,7 +100,9 @@ class SqliteDatabase(Database):
 
     def columns(self, table: str) -> set[str]:
         with self.transaction() as tx:
-            return {row[1] for row in tx.execute(f"PRAGMA table_info({table})").fetchall()}
+            return {
+                row[1] for row in tx.execute(f"PRAGMA table_info({table})").fetchall()
+            }
 
     @contextmanager
     def held(self, key: str) -> Iterator[None]:
@@ -124,7 +127,9 @@ class PostgresDatabase(Database):
     kind = "postgres"
 
     def __init__(self, url: str, max_connections: int = 10) -> None:
-        from psycopg_pool import ConnectionPool  # only a PostgreSQL deployment needs the driver
+        from psycopg_pool import (
+            ConnectionPool,
+        )  # only a PostgreSQL deployment needs the driver
 
         # Each connection is checked before it is handed out, so one the server dropped is replaced.
         self._pool = ConnectionPool(
@@ -164,12 +169,16 @@ class PostgresDatabase(Database):
         # A session-level advisory lock on a connection kept for the block: it holds across API processes,
         # and the server lets it go if the process dies.
         with self._pool.connection() as connection:
-            connection.execute("SELECT pg_advisory_lock(hashtextextended(%s, 0))", (key,))
+            connection.execute(
+                "SELECT pg_advisory_lock(hashtextextended(%s, 0))", (key,)
+            )
             connection.commit()
             try:
                 yield
             finally:
-                connection.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (key,))
+                connection.execute(
+                    "SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (key,)
+                )
                 connection.commit()
 
 

@@ -62,7 +62,9 @@ def _stores_on_postgres(monkeypatch):
         with psycopg.connect(_POSTGRES_URL, autocommit=True) as connection:
             connection.execute(f"DROP SCHEMA IF EXISTS {schema} CASCADE")
             connection.execute(f"CREATE SCHEMA {schema}")
-        database = PostgresDatabase(f"{_POSTGRES_URL}?options=-csearch_path%3D{schema}", max_connections=4)
+        database = PostgresDatabase(
+            f"{_POSTGRES_URL}?options=-csearch_path%3D{schema}", max_connections=4
+        )
         opened[key if key != ":memory:" else schema] = database
         return database
 

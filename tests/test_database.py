@@ -22,7 +22,9 @@ def test_a_refused_write_is_an_integrity_error_and_the_database_goes_on(tmp_path
 
     # The failed transaction left nothing behind, not even its first row, and the next one works.
     with db.transaction() as tx:
-        tx.executemany("INSERT INTO things (name, size) VALUES (?, ?)", [("c", 3), ("d", 4)])
+        tx.executemany(
+            "INSERT INTO things (name, size) VALUES (?, ?)", [("c", 3), ("d", 4)]
+        )
         rows = tx.execute("SELECT name, size FROM things ORDER BY name").fetchall()
     assert [tuple(row) for row in rows] == [("a", 1), ("c", 3), ("d", 4)]
     assert db.columns("things") == {"name", "size"}

@@ -90,8 +90,7 @@ class AccountStore:
         self._db = as_database(database)
         # Applied to every path read back, such as bringing its modules up to date (see refresh_paths_with).
         self._refresh: Callable[[LearningPath], LearningPath] = lambda path: path
-        with self._db.transaction() as tx:
-            for statement in """
+        schema = """
                 CREATE TABLE IF NOT EXISTS accounts (
                     id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -108,10 +107,14 @@ class AccountStore:
                     token TEXT PRIMARY KEY,
                     account_id TEXT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
                     created_at TEXT NOT NULL);
-                """.split(";"):
+                """
+        with self._db.transaction() as tx:
+            for statement in schema.split(";"):
                 if statement.strip():
                     tx.execute(statement)
-        if "google_sub" not in self._db.columns("accounts"):  # databases made before sign-in with Google
+        if "google_sub" not in self._db.columns(
+            "accounts"
+        ):  # databases made before sign-in with Google
             with self._db.transaction() as tx:
                 tx.execute("ALTER TABLE accounts ADD COLUMN google_sub TEXT")
         with self._db.transaction() as tx:
@@ -256,9 +259,7 @@ class AccountStore:
         token = secrets.token_urlsafe(32)
         now = _now()
         with self._db.transaction() as tx:
-            tx.execute(
-                "DELETE FROM sessions WHERE expires_at <= ?", (now.isoformat(),)
-            )
+            tx.execute("DELETE FROM sessions WHERE expires_at <= ?", (now.isoformat(),))
             tx.execute(
                 "INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?, ?, ?)",
                 (
@@ -275,7 +276,8 @@ class AccountStore:
         self, refresh: Callable[[LearningPath], LearningPath]
     ) -> None:
         """A path keeps a copy of its modules from when it was planned; `refresh` replaces them with the
-        modules as the course is read now, so what the site shows of them follows the course."""
+        modules as the course is read now, so what the site shows of them follows the course.
+        """
         self._refresh = refresh
 
     def path_of(self, account: Account) -> LearningPath | None:
@@ -288,9 +290,7 @@ class AccountStore:
     def save_path(self, account: Account, path: LearningPath | None) -> None:
         with self._db.transaction() as tx:
             if path is None:
-                tx.execute(
-                    "DELETE FROM paths WHERE account_id = ?", (account.id,)
-                )
+                tx.execute("DELETE FROM paths WHERE account_id = ?", (account.id,))
             else:
                 tx.execute(
                     "INSERT INTO paths (account_id, path, updated_at) VALUES (?, ?, ?)"
@@ -330,7 +330,8 @@ class AccountStore:
 
     def make_public_link(self, account: Account) -> str:
         """A new link token for the account; a link it had before stops working. The token is kept as it
-        is, not hashed: it opens nothing but a read-only page, and the learner may want to copy it again."""
+        is, not hashed: it opens nothing but a read-only page, and the learner may want to copy it again.
+        """
         token = secrets.token_urlsafe(16)
         with self._db.transaction() as tx:
             tx.execute("DELETE FROM public_links WHERE account_id = ?", (account.id,))

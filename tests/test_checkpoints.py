@@ -292,7 +292,10 @@ def test_the_tests_must_reject_every_wrong_solution():
     caught = CodingProblem.model_validate(LONGEST | {"wrong_solutions": [NO_MAXIMUM]})
     weak = CodingProblem.model_validate(
         LONGEST
-        | {"tests": "assert longest([]) == 0\nassert longest([1, 2, 3]) == 3", "wrong_solutions": [NO_MAXIMUM]}
+        | {
+            "tests": "assert longest([]) == 0\nassert longest([1, 2, 3]) == 3",
+            "wrong_solutions": [NO_MAXIMUM],
+        }
     )
 
     assert verify_problem(caught) is None
@@ -304,8 +307,17 @@ def test_a_new_problem_keeps_the_questions_and_is_asked_again_while_its_tests_ar
 ):
     terminal = curriculum.modules[0]
     existing = checkpoint(terminal.id, count=10)
-    weak = {"problem": LONGEST | {"tests": "assert longest([]) == 0", "wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return 0"]}}
-    strong = {"problem": LONGEST | {"wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return len(nums)"]}}
+    weak = {
+        "problem": LONGEST
+        | {
+            "tests": "assert longest([]) == 0",
+            "wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return 0"],
+        }
+    }
+    strong = {
+        "problem": LONGEST
+        | {"wrong_solutions": [NO_MAXIMUM, "def longest(nums):\n    return len(nums)"]}
+    }
     llm = FakeLLM(weak, strong)
 
     found = CheckpointGenerator(llm, "some-model").generate_problem(terminal, existing)
@@ -320,19 +332,35 @@ def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
 
     def q(n, topic):
         return CheckpointQuestion(
-            id=f"q{n}", topic=topic, text=f"Question {n}?", options=["a", "b", "c", "d"], answer=1,
+            id=f"q{n}",
+            topic=topic,
+            text=f"Question {n}?",
+            options=["a", "b", "c", "d"],
+            answer=1,
             explanation="Because.",
         )
 
-    questions = [q(n, "A") for n in range(1, 9)] + [q(n, "B") for n in range(9, 17)] + [q(17, "C")]
+    questions = (
+        [q(n, "A") for n in range(1, 9)]
+        + [q(n, "B") for n in range(9, 17)]
+        + [q(17, "C")]
+    )
     problem = CodingProblem(
-        title="On A", prompt="Do A.", starter_code="def f(): ...", tests="assert f() == 1",
-        solution="def f(): return 1", topic="A",
+        title="On A",
+        prompt="Do A.",
+        starter_code="def f(): ...",
+        tests="assert f() == 1",
+        solution="def f(): return 1",
+        topic="A",
     )
     on_b = problem.model_copy(update={"title": "On B", "topic": "B"})
     checkpoint = Checkpoint(
-        module_id="m", curriculum_version="v", generated_by="test", questions=questions,
-        problem=problem, problems=[on_b],
+        module_id="m",
+        curriculum_version="v",
+        generated_by="test",
+        questions=questions,
+        problem=problem,
+        problems=[on_b],
     )
 
     first = checkpoint.questions_for_attempt(0)
@@ -340,13 +368,17 @@ def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
     only_b = checkpoint.questions_for_attempt(0, frozenset({"A", "C"}))
     assert {x.topic for x in only_b} == {"B"}
     retake = {x.id for x in checkpoint.questions_for_attempt(1, frozenset({"A", "C"}))}
-    assert len(retake - {x.id for x in only_b}) >= 3  # a topic's pool of 8 gives a retake mostly new questions
+    assert (
+        len(retake - {x.id for x in only_b}) >= 3
+    )  # a topic's pool of 8 gives a retake mostly new questions
     # Too few questions left for an attempt: the whole checkpoint.
     assert len(checkpoint.questions_for_attempt(0, frozenset({"A", "B"}))) == 5
 
     assert checkpoint.problem_for().title == "On A"
     assert checkpoint.problem_for(frozenset({"A"})).title == "On B"
-    assert checkpoint.problem_for(skimmed=frozenset({"A"})).title == "On B"  # studied in full comes first
+    assert (
+        checkpoint.problem_for(skimmed=frozenset({"A"})).title == "On B"
+    )  # studied in full comes first
     assert checkpoint.problem_for(frozenset({"A", "B"})) is None
     grade = checkpoint.grade(0, {x.id: 0 for x in only_b}, frozenset({"A", "C"}))
     assert grade.total == 5
@@ -355,7 +387,9 @@ def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
 def test_a_question_that_speaks_of_code_must_show_it():
     from roadmap.checkpoints import missing_code
 
-    assert missing_code("This code prints `4` instead of `9`. Where would a print help?")
+    assert missing_code(
+        "This code prints `4` instead of `9`. Where would a print help?"
+    )
     assert not missing_code("What does this code print? `values = [1, 2]`")
     assert not missing_code("What does this code print?\n```python\nprint(1)\n```")
     assert not missing_code("Which line of a script reads the file?")

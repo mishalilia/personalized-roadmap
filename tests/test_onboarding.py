@@ -28,23 +28,36 @@ def test_example_profiles_answer_every_question_with_the_questions_options(quest
     assert [profile.id for profile in profiles] == ["p1", "p2", "p3"]
     for profile in profiles:
         assert set(profile.answers) == {question.id for question in questions}
-        assert all(answer_texts(questions, profile.answers).values())  # every option exists
+        assert all(
+            answer_texts(questions, profile.answers).values()
+        )  # every option exists
 
 
 def test_choices_reach_the_model_as_text_with_the_learners_own_words(questions):
     texts = answer_texts(
         questions,
         {
-            "tools": ChoiceAnswer(choices=["git", "sql"], details="SQL for weekly reports"),
+            "tools": ChoiceAnswer(
+                choices=["git", "sql"], details="SQL for weekly reports"
+            ),
             "code_check": ChoiceAnswer(choices=["a"]),
             "math": ChoiceAnswer(),
             "goal": "Speech recognition for Uzbek",
         },
     )
-    assert texts["tools"] == "Chose: Git; SQL. In their own words: SQL for weekly reports"
-    assert texts["code_check"] == "Picked: ann bob (wrong; the right answer is bob ann)."
+    assert (
+        texts["tools"] == "Chose: Git; SQL. In their own words: SQL for weekly reports"
+    )
+    assert (
+        texts["code_check"] == "Picked: ann bob (wrong; the right answer is bob ann)."
+    )
     assert texts["math"] == "" and texts["goal"] == "Speech recognition for Uzbek"
-    assert "(right)" in answer_texts(questions, {"code_check": ChoiceAnswer(choices=["b"])})["code_check"]
+    assert (
+        "(right)"
+        in answer_texts(questions, {"code_check": ChoiceAnswer(choices=["b"])})[
+            "code_check"
+        ]
+    )
     # The model sees the code the question is about.
     assert "sorted(scores, key=scores.get" in format_answers(questions, texts)
 

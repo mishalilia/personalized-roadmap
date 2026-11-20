@@ -25,7 +25,9 @@ MAX_TURNS = 8  # earlier turns sent with a question
 MAX_CODE = 6000
 MAX_ERROR = 1000
 MAX_PAGE_ERROR = 500
-CHATS_PER_DAY = 40  # a question sends the path and a module's outline, a few thousand tokens
+CHATS_PER_DAY = (
+    40  # a question sends the path and a module's outline, a few thousand tokens
+)
 
 Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUESTION)
@@ -48,12 +50,19 @@ class ChatRequest(BaseModel):
     history: list[ChatTurn] = Field(default=[], max_length=MAX_TURNS)
     # The module whose page the learner is reading, if any, and the heading of the part on their screen.
     module_id: str | None = None
-    section: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    section: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None
+    ) = None
     # The learner's code for the module's coding problem and the error its tests gave, when they ask about it.
     code: Annotated[str, StringConstraints(max_length=MAX_CODE)] | None = None
     error: Annotated[str, StringConstraints(max_length=MAX_ERROR)] | None = None
     # The last error message the site showed the learner, in the last minutes, such as a refused upload.
-    page_error: Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_PAGE_ERROR)] | None = None
+    page_error: (
+        Annotated[
+            str, StringConstraints(strip_whitespace=True, max_length=MAX_PAGE_ERROR)
+        ]
+        | None
+    ) = None
 
 
 class ModelAnswer(BaseModel):
@@ -157,7 +166,11 @@ def prompt(
     for submission in submissions or []:
         parts += ["", *_submission(submission)]
     if request.page_error:
-        parts += ["", "# An error message the site showed them in the last minutes", request.page_error]
+        parts += [
+            "",
+            "# An error message the site showed them in the last minutes",
+            request.page_error,
+        ]
     if request.history:
         parts += ["", "# The conversation so far"]
         parts += [
@@ -246,7 +259,9 @@ def _submission(submission: Submission) -> list[str]:
         lines.append(f"Feedback: {submission.review_comment}")
     review = submission.ai_review
     if review is not None:
-        lines.append(f"The review read {review.files_read} of the {review.files_listed} files in the project.")
+        lines.append(
+            f"The review read {review.files_read} of the {review.files_listed} files in the project."
+        )
         passing = next((level for level in review.levels if level.passing), None)
         for criterion in passing.criteria if passing else []:
             if criterion.counts:
@@ -256,10 +271,13 @@ def _submission(submission: Submission) -> list[str]:
             elif criterion.output_missing:
                 why = "not counted: only their own words show it, no output of their program"
             else:
-                why = {"not_met": "not met", "unverified": "not shown by any program output"}.get(
-                    criterion.verdict.value, criterion.verdict.value
-                )
-            lines.append(f"- Missing to pass: {criterion.name} ({why}): {criterion.comment}")
+                why = {
+                    "not_met": "not met",
+                    "unverified": "not shown by any program output",
+                }.get(criterion.verdict.value, criterion.verdict.value)
+            lines.append(
+                f"- Missing to pass: {criterion.name} ({why}): {criterion.comment}"
+            )
     return lines
 
 

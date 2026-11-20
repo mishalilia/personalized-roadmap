@@ -17,9 +17,8 @@ def test_neither_passwords_nor_session_tokens_are_stored_as_they_are(tmp_path: P
     account, token = store.sign_up("a@example.com", PASSWORD)
 
     with store._db.transaction() as tx:  # everything kept, whichever database keeps it
-        content = repr(
-            [tx.execute(f"SELECT * FROM {table}").fetchall() for table in ("accounts", "sessions")]
-        )
+        queries = [f"SELECT * FROM {t}" for t in ("accounts", "sessions")]  # nosec B608
+        content = repr([tx.execute(query).fetchall() for query in queries])
     assert PASSWORD not in content and token not in content
     assert store.account_for(token) == account
     assert store.account_for("forged token") is None

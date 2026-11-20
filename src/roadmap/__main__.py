@@ -237,7 +237,9 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
         _topic_pools(generator, store, [modules[module_id] for module_id in wanted])
         return
     if args.open_questions:
-        _open_questions(generator, store, [modules[module_id] for module_id in wanted], args.force)
+        _open_questions(
+            generator, store, [modules[module_id] for module_id in wanted], args.force
+        )
         return
     for module_id in wanted:
         existing = store.load(module_id)
@@ -269,11 +271,16 @@ def _new_problems(
         except (LLMUnavailable, UnusableAnswer) as error:
             print(f"Kept the old problem for {module.id}: {error}")
             continue
-        print(f"New problem for {module.id} written to {store.save(checkpoint)}: review it")
+        print(
+            f"New problem for {module.id} written to {store.save(checkpoint)}: review it"
+        )
 
 
 def _open_questions(
-    generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module], force: bool
+    generator: CheckpointGenerator,
+    store: CheckpointStore,
+    modules: list[Module],
+    force: bool,
 ) -> None:
     """Open questions for checkpoints that have none (with --force, new ones for all). The checkpoint becomes a
     draft again: a person reviews the questions and their rubrics."""
@@ -287,35 +294,52 @@ def _open_questions(
             print(f"No open questions for {module.id}: {error}")
             continue
         checkpoint = checkpoint.model_copy(
-            update={"open_questions": added, "status": Status.DRAFT, "reviewed_by": None}
+            update={
+                "open_questions": added,
+                "status": Status.DRAFT,
+                "reviewed_by": None,
+            }
         )
-        print(f"{len(added)} open questions for {module.id} written to {store.save(checkpoint)}: review them")
+        print(
+            f"{len(added)} open questions for {module.id} written to {store.save(checkpoint)}: review them"
+        )
 
 
 def _topic_pools(
     generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module]
 ) -> None:
     """For modules with several topics: questions until each topic has its own pool, and a coding problem on
-    each topic that can be practised in code, for checkpoints that have a problem. What is added is a draft."""
+    each topic that can be practised in code, for checkpoints that have a problem. What is added is a draft.
+    """
     for module in modules:
         checkpoint = store.load(module.id)
         if checkpoint is None or len(module.topics) < 2:
             continue
         changed = False
         for topic in (t.title for t in module.topics):
-            for _ in range(3):  # repeats are left out, so ask again for what is still missing
+            for _ in range(
+                3
+            ):  # repeats are left out, so ask again for what is still missing
                 missing = QUESTIONS_PER_TOPIC - checkpoint.topic_counts().get(topic, 0)
                 if missing <= 0:
                     break
                 try:
-                    added = generator.topic_questions(module, topic, missing, checkpoint)
+                    added = generator.topic_questions(
+                        module, topic, missing, checkpoint
+                    )
                 except (LLMUnavailable, UnusableAnswer) as error:
                     print(f"  no questions on {topic}: {error}")
                     break
-                checkpoint = checkpoint.model_copy(update={"questions": [*checkpoint.questions, *added]})
+                checkpoint = checkpoint.model_copy(
+                    update={"questions": [*checkpoint.questions, *added]}
+                )
                 changed = changed or bool(added)
                 print(f"  {len(added)} questions on {topic}")
-            covered = {p.topic for p in (checkpoint.problem, *checkpoint.problems) if p is not None}
+            covered = {
+                p.topic
+                for p in (checkpoint.problem, *checkpoint.problems)
+                if p is not None
+            }
             if checkpoint.problem is not None and topic not in covered:
                 try:
                     problem = generator.topic_problem(module, topic)
@@ -325,11 +349,15 @@ def _topic_pools(
                 if problem is None:
                     print(f"  no problem on {topic}: not a topic to practise in code")
                     continue
-                checkpoint = checkpoint.model_copy(update={"problems": [*checkpoint.problems, problem]})
+                checkpoint = checkpoint.model_copy(
+                    update={"problems": [*checkpoint.problems, problem]}
+                )
                 changed = True
                 print(f"  a problem on {topic}: {problem.title}")
         if changed:
-            checkpoint = checkpoint.model_copy(update={"status": Status.DRAFT, "reviewed_by": None})
+            checkpoint = checkpoint.model_copy(
+                update={"status": Status.DRAFT, "reviewed_by": None}
+            )
             print(f"{module.id}: written to {store.save(checkpoint)}: review it")
 
 

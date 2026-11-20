@@ -25,7 +25,9 @@ from .database import Database, as_database
 from .project_review import ProjectReview
 
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
-REVIEWS_PER_DAY = 5  # projects a learner can hand in for a review by the model, each day
+REVIEWS_PER_DAY = (
+    5  # projects a learner can hand in for a review by the model, each day
+)
 MAX_LINK_LENGTH = 500
 MAX_NOTE_LENGTH = 2000
 _CHUNK = 64 * 1024
@@ -265,9 +267,7 @@ class SubmissionStore:
             stored = tx.execute(
                 "SELECT stored_as FROM submissions WHERE account_id = ?", (account_id,)
             ).fetchall()
-            tx.execute(
-                "DELETE FROM submissions WHERE account_id = ?", (account_id,)
-            )
+            tx.execute("DELETE FROM submissions WHERE account_id = ?", (account_id,))
         for (name,) in stored:
             if name:
                 (self._uploads / name).unlink(missing_ok=True)

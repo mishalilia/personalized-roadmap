@@ -152,23 +152,39 @@ def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_to
     from roadmap.curriculum import Topic
     from roadmap.path import TopicChoice
 
-    terminal, algebra, notes, vision = "basics/terminal", "basics/algebra", "tracks/notes", "tracks/vision/resources"
+    terminal, algebra, notes, vision = (
+        "basics/terminal",
+        "basics/algebra",
+        "tracks/notes",
+        "tracks/vision/resources",
+    )
     course = curriculum.model_copy(
         update={
             "modules": [
-                m.model_copy(update={"topics": [Topic(title="Intro"), Topic(title="Practice")]})
-                if m.id == vision
-                else m
+                (
+                    m.model_copy(
+                        update={
+                            "topics": [Topic(title="Intro"), Topic(title="Practice")]
+                        }
+                    )
+                    if m.id == vision
+                    else m
+                )
                 for m in curriculum.modules
             ]
         }
     )
     first = study_all(course, except_for={notes: (Choice.PROVE, "You have used it.")})
-    vision_id = planner_response(course, {vision: (Choice.STUDY, "x")})["decisions"][0]["module_id"]
+    vision_id = planner_response(course, {vision: (Choice.STUDY, "x")})["decisions"][0][
+        "module_id"
+    ]
     for decision in first["decisions"]:
         if decision["module_id"] == vision_id:
             decision["skim"] = [{"topic": "Intro", "reason": "You know it."}]
-    again = study_all(course, except_for={algebra: (Choice.SKIP, "Lighter, which a failure cannot bring.")})
+    again = study_all(
+        course,
+        except_for={algebra: (Choice.SKIP, "Lighter, which a failure cannot bring.")},
+    )
     llm = FakeLLM(first, again)
     roadmap = Roadmap(course, questions, llm)
     path = roadmap.build_path({"programming": "Some Python"}, Level.BEGINNER).confirm()
@@ -187,7 +203,9 @@ def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_to
 
     assert after.item(terminal).progress == "failed"
     # In course order; algebra's lighter "skip" is dropped after a failure.
-    assert [(p.module_id, p.choice, p.topic, p.topic_choice) for p in after.proposals] == [
+    assert [
+        (p.module_id, p.choice, p.topic, p.topic_choice) for p in after.proposals
+    ] == [
         (vision, None, "Intro", TopicChoice.STUDY),
         (notes, Choice.STUDY, None, None),
     ]
@@ -196,13 +214,23 @@ def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_to
     assert f"{vision}: study (skim Intro)" in llm.prompts[-1]
 
 
-def test_over_the_quota_a_failed_checkpoint_still_counts_without_suggestions(curriculum, questions):
+def test_over_the_quota_a_failed_checkpoint_still_counts_without_suggestions(
+    curriculum, questions
+):
     from roadmap.checkpoints import Grade
 
     llm = FakeLLM(study_all(curriculum))
     roadmap = Roadmap(curriculum, questions, llm)
     path = roadmap.build_path({}, Level.BEGINNER).confirm()
-    grade = Grade(attempt=0, score=1, total=5, passed=False, effortless=False, feedback=[], review_topics=["Pipes"])
+    grade = Grade(
+        attempt=0,
+        score=1,
+        total=5,
+        passed=False,
+        effortless=False,
+        feedback=[],
+        review_topics=["Pipes"],
+    )
 
     after = roadmap.after_checkpoint(path, "basics/terminal", grade, suggest=False)
 

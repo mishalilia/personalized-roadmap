@@ -99,7 +99,9 @@ class Roadmap:
             grade.effortless or (not grade.passed and bool(grade.review_topics))
         )
 
-    def suggestions_after(self, path: LearningPath, module_id: str, grade: Grade) -> list[Proposal]:
+    def suggestions_after(
+        self, path: LearningPath, module_id: str, grade: Grade
+    ) -> list[Proposal]:
         """Lighter modules and topics after an easy pass, heavier after a failure. Slow: one model call over
         the whole course, so the API runs it after answering."""
         if grade.effortless:
@@ -174,9 +176,14 @@ class Roadmap:
                 continue
             if planned.choice is not Choice.STUDY:
                 continue
-            reasons = {marked.topic: marked.reason for marked in [*planned.skim, *planned.skip_topics]}
+            reasons = {
+                marked.topic: marked.reason
+                for marked in [*planned.skim, *planned.skip_topics]
+            }
             for topic in current_item.module.topics:
-                old, new = current_item.topic_choice(topic.title), planned.topic_choice(topic.title)
+                old, new = current_item.topic_choice(topic.title), planned.topic_choice(
+                    topic.title
+                )
                 if old is not new:
                     proposals.append(
                         Proposal(

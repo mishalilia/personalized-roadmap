@@ -32,7 +32,9 @@ PROBLEM = CodingProblem(
 
 
 def terminal_checkpoint(
-    version: str, problem: CodingProblem | None = None, problems: list[CodingProblem] = ()
+    version: str,
+    problem: CodingProblem | None = None,
+    problems: list[CodingProblem] = (),
 ) -> Checkpoint:
     """Ten questions whose right answer is always the second option as written."""
     return Checkpoint(
@@ -73,9 +75,9 @@ class Site:
             Edition(
                 roadmap,
                 {
-                    TERMINAL: terminal_checkpoint(roadmap.curriculum.version, problem, problems).model_copy(
-                        update={"open_questions": list(open_questions)}
-                    )
+                    TERMINAL: terminal_checkpoint(
+                        roadmap.curriculum.version, problem, problems
+                    ).model_copy(update={"open_questions": list(open_questions)})
                 },
             )
             for roadmap in roadmaps
@@ -181,7 +183,9 @@ def test_a_level_and_a_path_for_the_level_the_learner_chose(
 ):
     llm = FakeLLM(ASSESSMENT, study_all(curriculum))
     client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
-    answers = {"programming": {"choices": ["under_year"], "details": "One month of Python"}}
+    answers = {
+        "programming": {"choices": ["under_year"], "details": "One month of Python"}
+    }
 
     assessment = client.post("/level", json={"answers": answers}).json()["assessment"]
     response = client.post(
@@ -577,7 +581,9 @@ def test_a_coding_problem_follows_the_questions_before_the_module_counts_as_pass
 def test_the_passed_questions_open_with_their_answers_only_after_a_pass(
     curriculum, questions
 ):
-    client = site_for(Roadmap(curriculum, questions, llm=None), problem=PROBLEM).signed_in()
+    client = site_for(
+        Roadmap(curriculum, questions, llm=None), problem=PROBLEM
+    ).signed_in()
     confirmed_path(client)
     before = client.get(f"/me/checkpoints/{TERMINAL}/passed")
     answer(client, attempt=0, right=1)
@@ -653,7 +659,9 @@ def test_the_path_takes_the_planners_title_and_a_new_one_with_a_new_goal(
 ):
     first = study_all(curriculum) | {"title": "Computer vision research"}
     second = study_all(curriculum) | {"title": " LLM applications. "}
-    client = site_for(Roadmap(curriculum, questions, FakeLLM(first, second))).signed_in()
+    client = site_for(
+        Roadmap(curriculum, questions, FakeLLM(first, second))
+    ).signed_in()
     path = confirmed_path(client)
     assert path["title"] == "Computer vision research"
 
@@ -761,7 +769,11 @@ def test_a_learner_reports_a_question_and_reviewers_see_it_with_the_answer_key(
 
     response = learner.post(
         f"/me/checkpoints/{TERMINAL}/reports",
-        json={"question_id": question_id, "reason": "wrong_answer", "comment": "B is right too"},
+        json={
+            "question_id": question_id,
+            "reason": "wrong_answer",
+            "comment": "B is right too",
+        },
     )
     assert response.status_code == 200, response.text
     again = learner.post(
@@ -797,9 +809,13 @@ def test_reports_need_a_real_question_of_a_module_in_the_path(curriculum, questi
         "/me/checkpoints/tracks/vision/resources/reports",
         json={"question_id": "q1", "reason": "other"},
     )
-    signed_out = site_for(Roadmap(curriculum, questions, llm=None)).learner().post(
-        f"/me/checkpoints/{TERMINAL}/reports",
-        json={"question_id": "q1", "reason": "other"},
+    signed_out = (
+        site_for(Roadmap(curriculum, questions, llm=None))
+        .learner()
+        .post(
+            f"/me/checkpoints/{TERMINAL}/reports",
+            json={"question_id": "q1", "reason": "other"},
+        )
     )
 
     assert unknown.status_code == 404
@@ -818,7 +834,8 @@ def test_a_stored_path_shows_its_modules_as_the_course_is_read_now(
         stored = tx.execute("SELECT path FROM paths").fetchone()[0]
         assert "Shell Basics" in stored
         tx.execute(
-            "UPDATE paths SET path = ?", (stored.replace("Shell Basics", "Old heading"),)
+            "UPDATE paths SET path = ?",
+            (stored.replace("Shell Basics", "Old heading"),),
         )
 
     path = client.get("/me/path").json()
@@ -908,7 +925,9 @@ def test_after_a_failed_checkpoint_the_assistant_sees_the_topics_of_the_wrong_an
 def test_the_assistant_knows_the_part_of_the_page_on_the_learners_screen(
     curriculum, questions
 ):
-    llm = FakeLLM(study_all(curriculum), {"reply": "Here are three questions.", "modules": []})
+    llm = FakeLLM(
+        study_all(curriculum), {"reply": "Here are three questions.", "modules": []}
+    )
     client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
     confirmed_path(client)
 
@@ -923,7 +942,9 @@ def test_the_assistant_knows_the_part_of_the_page_on_the_learners_screen(
 def test_code_sent_with_a_question_comes_with_the_problem_but_not_its_solution(
     curriculum, questions
 ):
-    llm = FakeLLM(study_all(curriculum), {"reply": "Return instead of print.", "modules": []})
+    llm = FakeLLM(
+        study_all(curriculum), {"reply": "Return instead of print.", "modules": []}
+    )
     client = site_for(Roadmap(curriculum, questions, llm), problem=PROBLEM).signed_in()
     confirmed_path(client)
 
@@ -945,7 +966,9 @@ def test_code_sent_with_a_question_comes_with_the_problem_but_not_its_solution(
 
 def test_a_problem_names_the_topic_it_practises(curriculum, questions):
     practised = PROBLEM.model_copy(update={"topic": "Shell Basics"})
-    client = site_for(Roadmap(curriculum, questions, llm=None), problem=practised).learner()
+    client = site_for(
+        Roadmap(curriculum, questions, llm=None), problem=practised
+    ).learner()
 
     problem = client.get(f"/problems/{TERMINAL}").json()
 
@@ -1028,15 +1051,22 @@ def test_the_assistant_sees_only_the_prerequisites_the_course_states(
 
 
 def test_the_assistant_hears_the_error_the_site_showed(curriculum, questions):
-    llm = FakeLLM(study_all(curriculum), {"reply": "Attach a .zip instead.", "modules": []})
+    llm = FakeLLM(
+        study_all(curriculum), {"reply": "Attach a .zip instead.", "modules": []}
+    )
     client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
     confirmed_path(client)
 
     client.post(
         "/me/chat",
-        json={"question": "Why can't I upload?", "page_error": "Attach a .zip or a .tar.gz archive."},
+        json={
+            "question": "Why can't I upload?",
+            "page_error": "Attach a .zip or a .tar.gz archive.",
+        },
     )
-    too_long = client.post("/me/chat", json={"question": "Why?", "page_error": "x" * 501})
+    too_long = client.post(
+        "/me/chat", json={"question": "Why?", "page_error": "x" * 501}
+    )
 
     assert "Attach a .zip or a .tar.gz archive." in llm.prompts[-1]
     assert too_long.status_code == 422
@@ -1050,7 +1080,10 @@ def test_the_site_guide_quotes_the_limits_the_site_uses():
 
     assert "5 questions; 4 right answers pass" in guide
     assert "at most 20 MB" in guide
-    assert f"up to {REVIEWS_PER_DAY} a day" in guide and f"{CHATS_PER_DAY} questions a day" in guide
+    assert (
+        f"up to {REVIEWS_PER_DAY} a day" in guide
+        and f"{CHATS_PER_DAY} questions a day" in guide
+    )
 
 
 def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, questions):
@@ -1059,30 +1092,48 @@ def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, quest
     with_topics = curriculum.model_copy(
         update={
             "modules": [
-                m.model_copy(update={"topics": [Topic(title="Topic 0"), Topic(title="Topic 1")]})
-                if m.id == TERMINAL
-                else m
+                (
+                    m.model_copy(
+                        update={
+                            "topics": [Topic(title="Topic 0"), Topic(title="Topic 1")]
+                        }
+                    )
+                    if m.id == TERMINAL
+                    else m
+                )
                 for m in curriculum.modules
             ]
         }
     )
     on_one = PROBLEM.model_copy(update={"title": "On topic 1", "topic": "Topic 1"})
     on_zero = PROBLEM.model_copy(update={"title": "On topic 0", "topic": "Topic 0"})
-    site = site_for(Roadmap(with_topics, questions, llm=None), problem=on_one, problems=[on_zero])
+    site = site_for(
+        Roadmap(with_topics, questions, llm=None), problem=on_one, problems=[on_zero]
+    )
     client = site.signed_in()
     confirmed_path(client)
     assert client.get(f"/problems/{TERMINAL}").json()["title"] == "On topic 1"
 
     chosen = client.post(
-        "/me/path/topic", json={"module_id": TERMINAL, "topic": "Topic 1", "choice": "skip"}
+        "/me/path/topic",
+        json={"module_id": TERMINAL, "topic": "Topic 1", "choice": "skip"},
     )
     assert chosen.status_code == 200, chosen.text
     assert chosen.json()["confirmed_at"] is not None
 
-    asked = client.get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()["questions"]
+    asked = client.get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()[
+        "questions"
+    ]
     assert {q["topic"] for q in asked} == {"Topic 0"}
-    stranger = site.learner().get(f"/checkpoints/{TERMINAL}", params={"attempt": 0}).json()["questions"]
-    assert {q["topic"] for q in stranger} == {"Topic 0", "Topic 1"}  # without a path: every topic
+    stranger = (
+        site.learner()
+        .get(f"/checkpoints/{TERMINAL}", params={"attempt": 0})
+        .json()["questions"]
+    )
+    assert {q["topic"] for q in stranger} == {
+        "Topic 0",
+        "Topic 1",
+    }  # without a path: every topic
 
     graded = answer(client, attempt=0, right=5)
     assert graded["grade"]["passed"] and graded["grade"]["total"] == 5
@@ -1095,13 +1146,15 @@ def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, quest
 # A public link to the learner's progress
 
 
-def test_a_public_link_shows_what_the_learner_finished_and_nothing_private(curriculum, questions):
+def test_a_public_link_shows_what_the_learner_finished_and_nothing_private(
+    curriculum, questions
+):
     site = site_for(Roadmap(curriculum, questions, llm=None))
     client = site.signed_in("private@example.com")
     confirmed_path(client)
     assert answer(client, attempt=0, right=5)["grade"]["passed"]
     assert client.post("/me/path/done", json={"module_id": ALGEBRA}).status_code == 200
-    assert client.get("/me/public-link").json() == {"token": None}
+    assert client.get("/me/public-link").json() == {"token": None}  # nosec B105
 
     token = client.post("/me/public-link").json()["token"]
     page = site.learner().get(f"/public/{token}")
@@ -1109,7 +1162,8 @@ def test_a_public_link_shows_what_the_learner_finished_and_nothing_private(curri
     assert page.status_code == 200, page.text
     shown = {m["title"].split(" › ")[-1]: m for m in page.json()["finished"]}
     terminal, algebra = (
-        next(m for m in curriculum.modules if m.id == module_id).title for module_id in (TERMINAL, ALGEBRA)
+        next(m for m in curriculum.modules if m.id == module_id).title
+        for module_id in (TERMINAL, ALGEBRA)
     )
     assert shown[terminal]["how"] == "checkpoint" and shown[terminal]["score"] == "5/5"
     assert shown[algebra]["how"] == "marked_done" and shown[algebra]["score"] is None
@@ -1137,13 +1191,17 @@ def test_deleting_the_account_ends_its_public_link(curriculum, questions):
     confirmed_path(client)
     token = client.post("/me/public-link").json()["token"]
 
-    assert client.post("/auth/delete", json={"confirmation": PASSWORD}).status_code == 200
+    assert (
+        client.post("/auth/delete", json={"confirmation": PASSWORD}).status_code == 200
+    )
     assert site.learner().get(f"/public/{token}").status_code == 404
 
 
 def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions):
     # Notes is to prove at first; after the terminal checkpoint fails, the model would study it.
-    first = study_all(curriculum, except_for={"tracks/notes": (Choice.PROVE, "You have used it.")})
+    first = study_all(
+        curriculum, except_for={"tracks/notes": (Choice.PROVE, "You have used it.")}
+    )
     again = study_all(curriculum)
     client = site_for(Roadmap(curriculum, questions, FakeLLM(first, again))).signed_in()
     confirmed_path(client)
@@ -1154,18 +1212,26 @@ def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions
     assert graded["path"]["suggestions_pending"] == f"{TERMINAL}:1"
     stored = client.get("/me/path").json()
     assert stored["suggestions_pending"] is None
-    assert [(p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]] == [
-        ("tracks/notes", "study", True)
-    ]
+    assert [
+        (p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]
+    ] == [("tracks/notes", "study", True)]
 
 
-def test_the_browser_gets_the_options_but_not_the_right_answer_to_the_code_question(curriculum, questions):
+def test_the_browser_gets_the_options_but_not_the_right_answer_to_the_code_question(
+    curriculum, questions
+):
     client = site_for(Roadmap(curriculum, questions, None)).learner()
 
-    asked = {question["id"]: question for question in client.get("/questions").json()["questions"]}
+    asked = {
+        question["id"]: question
+        for question in client.get("/questions").json()["questions"]
+    }
 
     assert asked["tools"]["kind"] == "multiple" and len(asked["tools"]["options"]) > 2
-    assert asked["code_check"]["kind"] == "check" and "print" in asked["code_check"]["code"]
+    assert (
+        asked["code_check"]["kind"] == "check"
+        and "print" in asked["code_check"]["code"]
+    )
     assert "correct" not in asked["code_check"] and asked["goal"]["kind"] == "text"
 
 
@@ -1174,7 +1240,9 @@ def test_an_option_a_question_does_not_have_is_refused(curriculum, questions):
 
     for answers in (
         {"math": {"choices": ["genius"]}},
-        {"math": {"choices": ["school", "faded"]}},  # one option for a single-choice question
+        {
+            "math": {"choices": ["school", "faded"]}
+        },  # one option for a single-choice question
         {"pets": "two cats"},
     ):
         assert client.post("/level", json={"answers": answers}).status_code == 422

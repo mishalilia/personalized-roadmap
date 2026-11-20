@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field
 
 from .config import read_yaml
 
-Answers = dict[str, str]  # question id -> the learner's answer as text, as the model and the path see it
+Answers = dict[
+    str, str
+]  # question id -> the learner's answer as text, as the model and the path see it
 
 
 class Option(BaseModel):
@@ -29,7 +31,9 @@ class Question(BaseModel):
     placeholder: str = ""
     options: list[Option] = []
     code: str = ""  # check: the code the question is about
-    correct: str | None = Field(default=None, exclude=True)  # check: the right option; stays on the server
+    correct: str | None = Field(
+        default=None, exclude=True
+    )  # check: the right option; stays on the server
 
     def option(self, option_id: str) -> Option:
         for option in self.options:
@@ -77,9 +81,9 @@ def answer_text(question: Question, answer: Answer) -> str:
     if chosen and question.kind == "check":
         right = question.option(question.correct) if question.correct else None
         verdict = (
-            "right" if right and chosen[0].id == right.id
-            else f"wrong; the right answer is {right.label}" if right
-            else "not graded"
+            "right"
+            if right and chosen[0].id == right.id
+            else f"wrong; the right answer is {right.label}" if right else "not graded"
         )
         parts.append(f"Picked: {chosen[0].label} ({verdict}).")
     elif chosen:

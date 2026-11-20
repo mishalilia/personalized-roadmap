@@ -23,8 +23,12 @@ class Planner(Protocol):
 
 
 class SkimSuggestion(BaseModel):
-    topic: str = Field(description="One of the module's topic titles, exactly as given.")
-    reason: Reason = Field(description="One short sentence tied to the learner's answers.")
+    topic: str = Field(
+        description="One of the module's topic titles, exactly as given."
+    )
+    reason: Reason = Field(
+        description="One short sentence tied to the learner's answers."
+    )
 
 
 class ModuleDecision(BaseModel):
@@ -44,7 +48,9 @@ class ModuleDecision(BaseModel):
     )
 
 
-def _topics_for(module: Module, decision: ModuleDecision) -> tuple[list[SkimTopic], list[SkimTopic]]:
+def _topics_for(
+    module: Module, decision: ModuleDecision
+) -> tuple[list[SkimTopic], list[SkimTopic]]:
     """The topics to skim and to skip, as the module's own titles: only for a module to study, never a topic
     the module does not have, and at least one topic left to study in full; else the module would be one to
     prove or skip."""
