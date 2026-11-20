@@ -14,14 +14,19 @@ learner ── https://SITE_DOMAIN ──► Caddy ──► site (nginx, the bu
 - A server with Docker and the Compose plugin, ports 80 and 443 open.
 - Two DNS A records pointing at the server, for example `path.example.com` (the site) and
   `api.path.example.com` (the API). Caddy cannot get certificates until they resolve.
-- This repository and the curriculum repository with the personal path page (our fork) side by side:
+- This repository and the curriculum repository side by side, with the personal path page added to the
+  curriculum site from `site/` ([site/README.md](../site/README.md)):
 
 ```bash
 git clone https://github.com/mishalilia/personalized-roadmap
 ```
 
 ```bash
-git clone <the fork of int.academy-curriculum> int.academy-curriculum
+git clone https://github.com/humblebeeai/int.academy-curriculum
+```
+
+```bash
+cd int.academy-curriculum && git checkout 9fc5573 && cp -r ../personalized-roadmap/site/src . && git apply ../personalized-roadmap/site/upstream.patch && cd ..
 ```
 
 ## Configure
@@ -35,7 +40,7 @@ cp .env.example .env
 ```
 
 Fill in `.env`: the two domains; optionally a Google OAuth client for sign-in with Google (its redirect URI is
-`https://API_DOMAIN/auth/google/callback`); `SITE_DIR` (the fork, relative to `deploy/`); at least one model key
+`https://API_DOMAIN/auth/google/callback`); `SITE_DIR` (the curriculum site with the page, relative to `deploy/`); at least one model key
 (`LLM_API_KEY_OPENAI` for the default model); a long random `API_REPORT_TOKEN` (`openssl rand -hex 32`) and
 `POSTGRES_PASSWORD` (`openssl rand -hex 24`). The file holds keys: keep it on the server only.
 

@@ -1,0 +1,364 @@
+/* The assistant tab of the path panel. Colours come from the path's tokens (path.module.css). */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Above the conversation, sticky while it scrolls: what it is about, and starting a new one. */
+.chatTop {
+  position: sticky;
+  top: -1.25rem; /* the panel scrolls on its own and has its own top padding */
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: -1.25rem -1.2rem 0.75rem;
+  padding: 0.6rem 1.2rem;
+  border-bottom: 1px solid var(--pp-border);
+  background: #141414;
+  color: var(--pp-muted);
+  font-size: 0.8rem;
+}
+
+.chatTop > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pp-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chatTop > button:hover:not(:disabled) {
+  border-color: var(--pp-gold-line);
+}
+
+.chatTop > button:focus-visible {
+  outline: 2px solid var(--pp-gold);
+  outline-offset: 2px;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  padding-bottom: 1rem;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.25rem 0 0.5rem;
+  color: var(--pp-muted);
+  font-size: 0.9rem;
+}
+
+.intro > svg {
+  color: var(--pp-gold);
+}
+
+.intro > p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.intro strong {
+  color: var(--pp-text);
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.suggestions > button {
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 10px;
+  background: var(--pp-surface);
+  color: var(--pp-text);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestions > button:hover:not(:disabled) {
+  border-color: var(--pp-gold-line);
+  background: var(--pp-hover);
+}
+
+.message {
+  max-width: 92%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.message p,
+.message ul {
+  margin: 0 0 0.5rem;
+}
+
+.message p:last-child,
+.message ul:last-child {
+  margin-bottom: 0;
+}
+
+.message ul {
+  padding-left: 1.1rem;
+}
+
+.message[data-speaker="learner"] {
+  align-self: flex-end;
+  background: var(--pp-gold);
+  color: #111;
+  border-bottom-right-radius: 4px;
+}
+
+.message[data-speaker="assistant"] {
+  align-self: flex-start;
+  border: 1px solid var(--pp-border);
+  background: var(--pp-surface);
+  border-bottom-left-radius: 4px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.links > a {
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 999px;
+  color: var(--pp-text);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+.links > a:hover {
+  border-color: var(--pp-gold-line);
+  color: var(--pp-gold);
+}
+
+.typing {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem 0;
+}
+
+.typing > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pp-muted);
+  animation: blink 1.2s infinite ease-in-out;
+}
+
+.typing > span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing > span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing > span {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.error {
+  margin: 0;
+  color: var(--pp-red, hsl(0, 75%, 65%));
+  font-size: 0.85rem;
+}
+
+/* The question box stays at the bottom of the panel while the conversation scrolls above it. */
+.composer {
+  position: sticky;
+  bottom: -2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 -1.2rem -2rem;
+  padding: 0.7rem 1.2rem 1rem;
+  border-top: 1px solid var(--pp-border);
+  background: #141414;
+}
+
+.context {
+  color: var(--pp-muted);
+  font-size: 0.75rem;
+}
+
+.box {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.75rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 12px;
+  background: var(--pp-surface);
+}
+
+.box:focus-within {
+  border-color: var(--pp-gold-line);
+}
+
+.box > textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--pp-text);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  resize: none;
+}
+
+.send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 9px;
+  background: var(--pp-gold);
+  color: #111;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--pp-muted);
+  cursor: default;
+}
+
+.send:focus-visible,
+.suggestions > button:focus-visible,
+.footer > button:focus-visible {
+  outline: 2px solid var(--pp-gold);
+  outline-offset: 2px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--pp-muted);
+  font-size: 0.72rem;
+}
+
+.footer > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+  padding: 0.15rem 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pp-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.footer > button:hover:not(:disabled) {
+  color: var(--pp-text);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--pp-muted);
+  font-size: 0.9rem;
+}
+
+.empty > svg {
+  color: var(--pp-gold);
+}
+
+.empty > strong {
+  color: var(--pp-text);
+  font-size: 1rem;
+}
+
+.empty > p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.primary {
+  margin-top: 0.25rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 9px;
+  background: var(--pp-gold);
+  color: #111;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Code in an answer: as written, with its indentation, scrolling sideways when long. */
+.codeBlock {
+  margin: 0.5rem 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  background: #0d0d0d;
+  color: #e8e8e8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 4;
+}
+
+.codeBlock code {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: inherit;
+}

@@ -100,7 +100,12 @@ def settings_with(**values) -> Settings:
 
 @pytest.fixture(autouse=True)
 def no_llm_environment(monkeypatch):
-    for name in ("LLM_PROVIDER", "LLM_API_KEY_GROQ", "LLM_API_KEY_GOOGLE"):
+    for name in (
+        "LLM_PROVIDER",
+        "LLM_API_KEY_OPENAI",
+        "LLM_API_KEY_GROQ",
+        "LLM_API_KEY_GOOGLE",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -109,6 +114,19 @@ def test_without_a_provider_the_first_one_with_a_key_is_used():
 
     assert client is not None
     assert client.models[0].startswith("gemini")
+
+
+def test_openai_comes_first_when_it_has_a_key():
+    client = connect(
+        settings_with(
+            llm_api_key_openai=FAKE_KEY,
+            llm_api_key_groq=FAKE_KEY,
+            llm_api_key_google=FAKE_KEY,
+        )
+    )
+
+    assert client is not None
+    assert client.models == ["gpt-6-luna"]
 
 
 def test_the_chosen_provider_wins_over_the_order_in_the_config():

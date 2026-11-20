@@ -3,9 +3,9 @@
 Maps every Baseline, Target and Stretch item of the S2 brief to the test that checks it, and records the
 result. Companion to [project-overview.md](project-overview.md).
 
-## 0. Results at a glance (20 November 2026)
+## 0. Results at a glance (21 November 2026)
 
-- `pytest`: **229 tests pass**, eight of them on the real curriculum. The model is a stub, so these check
+- `pytest`: **230 tests pass**, eight of them on the real curriculum. The model is a stub, so these check
   everything code decides.
 - The whole flow ran with GPT-6 Luna on 20 November on a local copy of the site and the API: level, path,
   checkpoints with an open question, suggestions after a checkpoint, the assistant, project review and goal

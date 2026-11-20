@@ -1,0 +1,778 @@
+/* The path as a map over the whole screen. Colours come from the path's own tokens (path.module.css):
+   gold for what the learner studies, blue for what they prove, grey for what they skip, green for what is done. */
+
+.mapButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pp-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mapButton:hover {
+  background: var(--pp-hover);
+}
+
+.mapButton > svg {
+  color: var(--pp-gold);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  background: #101010;
+  color: var(--pp-text);
+  animation: appear 0.2s ease-out;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+/* Leaving: the opening played backwards. */
+.overlay[data-closing="true"] {
+  animation: disappear 0.2s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes disappear {
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--pp-border);
+  background: #141414;
+}
+
+.barTitle {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.barTitle > strong {
+  font-family: var(--ifm-heading-font-family);
+  font-size: 1.1rem;
+}
+
+.barTitle > span {
+  overflow: hidden;
+  color: var(--pp-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--pp-muted);
+  font-size: 0.8rem;
+}
+
+.legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.legend > li::before {
+  content: "";
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  border: 2px solid var(--pp-gold);
+  background: var(--pp-gold-soft);
+}
+
+.legend > li[data-choice="prove"]::before {
+  border-color: var(--pp-blue);
+  background: var(--pp-blue-soft);
+}
+
+.legend > li[data-choice="skip"]::before {
+  border: 1px dashed hsl(0, 0%, 45%);
+  background: transparent;
+}
+
+.legend > li[data-status="finished"]::before {
+  border-color: var(--pp-green);
+  background: var(--pp-green-soft);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--pp-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pp-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--pp-hover);
+}
+
+.close:focus-visible,
+.stop:focus-visible,
+.topic:focus-visible,
+.mapButton:focus-visible {
+  outline: 2px solid var(--pp-gold);
+  outline-offset: 2px;
+}
+
+.scroller {
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* The map itself: three columns, the road in the middle and each stop's topics at either side. */
+.canvas {
+  --stop-width: 250px;
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.lines path {
+  fill: none;
+}
+
+.road {
+  stroke: hsl(0, 0%, 32%);
+  stroke-width: 3;
+}
+
+.roadDone {
+  stroke: var(--pp-green);
+  stroke-width: 3;
+}
+
+.branch {
+  stroke: hsla(206, 90%, 68%, 0.55);
+  stroke-width: 2;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+.branchDim {
+  stroke: hsl(0, 0%, 28%);
+  stroke-width: 2;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+.stage {
+  position: relative;
+  margin: 0 0 1.5rem;
+}
+
+.milestone {
+  position: relative;
+  z-index: 1;
+  width: var(--stop-width);
+  margin: 0 auto 1.5rem;
+  padding: 0.55rem 0.8rem;
+  border: 2px solid var(--pp-gold);
+  border-radius: 999px;
+  background: #101010;
+  text-align: center;
+}
+
+.milestone > small {
+  display: block;
+  color: var(--pp-muted);
+  font-size: 0.68rem;
+}
+
+.milestone > h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.stage[data-skipped="true"] .milestone {
+  border-style: dashed;
+  border-color: hsl(0, 0%, 38%);
+}
+
+.stage[data-skipped="true"] .milestone > h2 {
+  color: var(--pp-muted);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--stop-width) minmax(0, 1fr);
+  grid-template-areas: "left center right";
+  align-items: center;
+  column-gap: 4.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.left {
+  grid-area: left;
+}
+
+.right {
+  grid-area: right;
+}
+
+.center {
+  grid-area: center;
+}
+
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.left {
+  align-items: flex-end;
+}
+
+.right {
+  align-items: flex-start;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+}
+
+.stop {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid var(--pp-gold);
+  border-radius: 10px;
+  background: #1d1c10;
+  color: var(--pp-text);
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+a.stop:hover {
+  color: var(--pp-text);
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.stop[data-choice="prove"] {
+  border-color: var(--pp-blue);
+  background: #121b22;
+}
+
+.stop[data-choice="skip"] {
+  border: 1px dashed hsl(0, 0%, 38%);
+  background: #151515;
+  color: var(--pp-muted);
+  font-weight: 600;
+}
+
+.stop[data-choice="skip"] .stopTitle {
+  text-decoration: line-through;
+  text-decoration-color: hsl(0, 0%, 40%);
+}
+
+.stop[data-status="finished"] {
+  border-color: var(--pp-green);
+  background: #101d14;
+}
+
+.stop[data-status="next"] {
+  box-shadow:
+    0 0 0 4px var(--pp-gold-soft),
+    0 0 28px rgba(255, 245, 0, 0.18);
+}
+
+.stop[data-status="locked"] {
+  opacity: 0.7;
+}
+
+.stop :global(svg) {
+  flex: none;
+}
+
+.stopTitle {
+  min-width: 0;
+}
+
+.stopChoice {
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--pp-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.note {
+  color: var(--pp-muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.topic {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 280px;
+  padding: 0.4rem 0.7rem 0.4rem 0.6rem;
+  border: 1px solid var(--pp-border-strong);
+  border-left: 3px solid var(--topic-road, var(--pp-border-strong));
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: hsl(0, 0%, 86%);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+a.topic:hover {
+  border-color: var(--pp-blue);
+  background: #172029;
+  color: var(--pp-text);
+  text-decoration: none;
+}
+
+/* An elective's topics are options to choose from, not parts to learn one after another. */
+.topic[data-option="true"] {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.topic[data-dim="true"] {
+  color: var(--pp-muted);
+  background: transparent;
+  border-color: var(--pp-border);
+}
+
+/* On a narrow screen the topics follow their stop instead of branching off it. */
+@media (max-width: 760px) {
+  .canvas {
+    --stop-width: 100%;
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .stage {
+    padding-left: 1.75rem;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "center" "left" "right";
+    row-gap: 0.4rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .center {
+    grid-area: center;
+  }
+
+  .left {
+    grid-area: left;
+  }
+
+  .right {
+    grid-area: right;
+  }
+
+  .left,
+  .right {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-left: 1.5rem;
+  }
+
+  .left:empty,
+  .right:empty {
+    display: none;
+  }
+
+  .topic {
+    font-size: 0.78rem;
+  }
+
+  .milestone {
+    width: auto;
+  }
+
+  .legend {
+    display: none;
+  }
+}
+
+/* The card beside a stop or topic under the pointer: why the path has the module so, and the switch. */
+.peek {
+  position: fixed;
+  z-index: 5;
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--pp-border-strong, rgba(255, 255, 255, 0.16));
+  border-radius: 12px;
+  background: #1b1b1b;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  font-size: 0.88rem;
+  animation: appear 0.12s ease-out;
+}
+
+.peekHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.peekHead strong {
+  line-height: 1.25;
+}
+
+.peekTopic,
+.peekStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--pp-muted, hsl(0, 0%, 62%));
+  font-size: 0.8rem;
+}
+
+.peekReason {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.peekActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.peekSwitch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--pp-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: #121212;
+}
+
+.peekSwitch button {
+  padding: 0.3rem 0.7rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pp-muted, hsl(0, 0%, 62%));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.peekSwitch button[aria-checked="true"][data-choice="study"] {
+  background: var(--pp-gold, #fff500);
+  color: #111;
+}
+
+.peekSwitch button[aria-checked="true"][data-choice="prove"] {
+  background: var(--pp-blue, hsl(206, 90%, 68%));
+  color: #111;
+}
+
+.peekSwitch button[aria-checked="true"][data-choice="skip"] {
+  background: hsl(0, 0%, 30%);
+  color: #fff;
+}
+
+.peekSwitch button:disabled {
+  cursor: wait;
+}
+
+.peekOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.peekError {
+  margin: 0;
+  color: var(--pp-red, hsl(0, 75%, 65%));
+  font-size: 0.8rem;
+}
+
+
+/* A topic the learner can skim: dashed. */
+.topic[data-skim="true"] {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.peekSkim {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--pp-gold);
+}
+
+.peekOutcomes {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.peekMissed {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--pp-red);
+}
+
+.peekModuleLine {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--pp-muted);
+  font-size: 0.8rem;
+}
+
+/* A topic's own switch in its card: study it in full, or skim it. */
+.peekSwitch button[aria-checked="true"][data-choice="skim"] {
+  background: transparent;
+  outline: 1px dashed var(--pp-blue);
+  outline-offset: -1px;
+  color: var(--pp-blue);
+}
+
+/* A topic the learner skips: faint; its checkpoint leaves it out. */
+.topic[data-skip="true"] {
+  opacity: 0.55;
+}
+
+.peekSwitch button[aria-checked="true"][data-choice="skip"] {
+  background: hsl(0, 0%, 30%);
+  color: #fff;
+}
+
+/* A topic carries its module's colour down its left side, and a mark for how the learner takes it. */
+.topic[data-tone="study"] {
+  --topic-road: var(--pp-gold);
+}
+
+.topic[data-tone="prove"] {
+  --topic-road: var(--pp-blue);
+}
+
+.topic[data-tone="finished"] {
+  --topic-road: var(--pp-green);
+}
+
+.topic[data-tone="project"] {
+  --topic-road: var(--pp-gold);
+}
+
+.topic[data-tone="skip"],
+.topic[data-dim="true"] {
+  --topic-road: hsl(0, 0%, 30%);
+}
+
+.topicMark {
+  flex: none;
+  color: var(--topic-road, var(--pp-muted));
+}
+
+.topicTitle {
+  min-width: 0;
+}
+
+.topicTag {
+  flex: none;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: hsl(0, 0%, 100%, 0.08);
+  color: var(--pp-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topic[data-skim="true"] .topicTag {
+  background: var(--pp-blue-soft);
+  color: var(--pp-blue);
+}
+
+.topic[data-skip="true"] .topicTitle {
+  text-decoration: line-through;
+}
+
+/* Skim is blue everywhere: its mark, its tag, its switch and the legend. */
+.topic[data-skim="true"] .topicMark {
+  color: var(--pp-blue);
+}
+
+/* A topic the learner got wrong: a red frame, but the side facing the module keeps the module's colour. */
+.topic[data-missed="true"] {
+  border-color: var(--pp-red);
+  border-left-color: var(--topic-road, var(--pp-border-strong));
+}
+
+.topic[data-missed="true"] .topicMark {
+  color: var(--pp-red);
+}
+
+.legend > li[data-topic]::before {
+  content: none;
+}
+
+.legend > li[data-topic] {
+  gap: 0.25rem;
+}
+
+.legend > li[data-topic="study"] {
+  margin-left: 0.6rem;
+  color: var(--pp-gold);
+}
+
+.legend > li[data-topic="skim"] {
+  color: var(--pp-blue);
+}
+
+/* Topics left of their stop carry the colour on the side that faces it. */
+@media (min-width: 761px) {
+  .left .topic {
+    padding: 0.4rem 0.6rem 0.4rem 0.7rem;
+    border-left: 1px solid var(--pp-border-strong);
+    border-right: 3px solid var(--topic-road, var(--pp-border-strong));
+  }
+
+  .left .topic[data-skim="true"],
+  .left .topic[data-option="true"] {
+    border-left-style: dashed;
+    border-right-style: solid;
+  }
+
+  .left .topic[data-missed="true"] {
+    border-left-color: var(--pp-red);
+    border-right-color: var(--topic-road, var(--pp-border-strong));
+  }
+}
+
+/* A topic the learner marked as finished. */
+.topic[data-done="true"] .topicMark {
+  color: var(--pp-green);
+}
+
+.peekDone {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.peekDone input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--pp-green);
+  cursor: pointer;
+}
+
+.peekAllDone {
+  margin: 0 0 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--pp-green);
+  border-radius: 8px;
+  background: var(--pp-green-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.peekAllDone a {
+  color: var(--pp-green);
+}
+
+.peekModuleStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  color: var(--pp-muted);
+  font-size: 0.82rem;
+}
+

@@ -1,0 +1,67 @@
+/* A learner's public progress page. Colours come from the --pp-* tokens in path.module.css. */
+
+.list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--pp-radius);
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: var(--pp-green);
+  background: var(--pp-green-soft);
+}
+
+.row[data-how="questions"] .icon {
+  color: var(--pp-blue);
+  background: var(--pp-blue-soft);
+}
+
+.row[data-how="marked_done"] .icon {
+  color: var(--pp-muted);
+  background: var(--pp-hover);
+}
+
+.title {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.title a {
+  color: var(--pp-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.title .muted,
+.title span {
+  font-size: 0.85rem;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--pp-green);
+}
+
+.note {
+  font-size: 0.85rem;
+}

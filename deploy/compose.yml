@@ -37,7 +37,7 @@ services:
 
   site:
     build:
-      # The curriculum repository with the personal path page (our fork, branch with the page).
+      # The curriculum repository with the personal path page added from site/ (see site/README.md).
       context: ${SITE_DIR}
       args:
         PERSONAL_PATH_API: https://${API_DOMAIN}

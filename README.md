@@ -11,7 +11,7 @@ Capstone project **S2** — Convergence of Business Administration & Engineering
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI. Team 3, Polaris.
 
 **Status (20 November 2026).** The Baseline, the Target and three of the four Stretch items are built and
-tested: 229 automated tests pass, the whole flow runs with GPT-6 Luna, and five learners outside the team used
+tested: 230 automated tests pass, the whole flow runs with GPT-6 Luna, and five learners outside the team used
 it. Not built: peer recommendation (Stretch). Known limits are listed under
 [Test results and limitations](#test-results-and-limitations).
 
@@ -70,7 +70,8 @@ everything in it.
 A Python core with a command line, and an HTTP API (FastAPI) that puts it behind the curriculum site, because
 the site is static and cannot hold model keys. Accounts, paths, submitted projects, question reports and shared
 progress are kept in PostgreSQL (SQLite files without `DATABASE_URL`, for tests and local use). The learner's
-page is React code in our fork of the curriculum site (Docusaurus), under `src/components/personal-path/`.
+page is React code added to the curriculum site (Docusaurus); it is kept in [site/](site/README.md), with a patch
+for the site's own files.
 Diagrams: [docs/architecture.md](docs/architecture.md).
 
 The model makes the judgement calls: the level, each module's decision, suggestions, open answers and project
@@ -83,6 +84,7 @@ questions, applies locks and adds the attribution, so a path never contains a li
 | `src/roadmap/prompts/` | Model instructions as Markdown, editable without touching code |
 | `config/` | Curriculum versions, onboarding questions, example learners, model providers |
 | `checkpoints/` | Questions and coding problems, one file per module and curriculum version |
+| `site/` | The learner's page: React code for the curriculum site, and a patch for the site's own files |
 | `deploy/` | Docker Compose for the site, the API, PostgreSQL and HTTPS on one server |
 | `tests/` | Tests; the model is replaced by a stub, the curriculum by a small invented course |
 
@@ -151,17 +153,14 @@ course as written.
 
 ### Run the page locally
 
-The API, from this repository:
+The API, from this repository (`API_COOKIE_SECURE=false` in `.env` lets sign-in work over plain http):
 
 ```bash
 uvicorn roadmap.api:app --app-dir src --port 8000
 ```
 
-The site, from our fork of the curriculum repository (Node.js 20 or newer):
-
-```bash
-npm ci
-```
+The site: the curriculum repository at commit `9fc5573` with `site/src` copied in and `site/upstream.patch`
+applied, as [site/README.md](site/README.md) shows (Node.js 20 or newer). Then:
 
 ```bash
 PERSONAL_PATH_API=http://localhost:8000 npm start
@@ -228,7 +227,7 @@ The page on the curriculum site, run locally on 5 November without a model key, 
 
 ## Test results and limitations
 
-- **Automated tests:** 229 pass (20 November 2026), with a stub model: parsing both curriculum versions, course
+- **Automated tests:** 230 pass (21 November 2026), with a stub model: parsing both curriculum versions, course
   order, attribution, the fallback, accounts, checkpoint grading, locks, topics, suggestions, goal change,
   project review and the report. Eight run on the real curriculum after `python -m roadmap fetch`.
 - **With the real model:** the whole flow — level, path, checkpoints with open questions, suggestions
