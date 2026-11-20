@@ -46,7 +46,9 @@ def _stores_on_postgres(monkeypatch):
     if not _POSTGRES_URL:
         yield
         return
+    url: str = _POSTGRES_URL
     import psycopg
+    from psycopg import sql
 
     from roadmap.database import PostgresDatabase
 
@@ -59,11 +61,17 @@ def _stores_on_postgres(monkeypatch):
             return opened[key]
         schema = f"test_{len(schemas)}"
         schemas.append(schema)
-        with psycopg.connect(_POSTGRES_URL, autocommit=True) as connection:
-            connection.execute(f"DROP SCHEMA IF EXISTS {schema} CASCADE")
-            connection.execute(f"CREATE SCHEMA {schema}")
+        with psycopg.connect(url, autocommit=True) as connection:
+            connection.execute(
+                sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
+                    sql.Identifier(schema)
+                )
+            )
+            connection.execute(
+                sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema))
+            )
         database = PostgresDatabase(
-            f"{_POSTGRES_URL}?options=-csearch_path%3D{schema}", max_connections=4
+            f"{url}?options=-csearch_path%3D{schema}", max_connections=4
         )
         opened[key if key != ":memory:" else schema] = database
         return database
@@ -72,6 +80,10 @@ def _stores_on_postgres(monkeypatch):
     yield
     for database in opened.values():
         database.close()
-    with psycopg.connect(_POSTGRES_URL, autocommit=True) as connection:
+    with psycopg.connect(url, autocommit=True) as connection:
         for schema in schemas:
-            connection.execute(f"DROP SCHEMA IF EXISTS {schema} CASCADE")
+            connection.execute(
+                sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
+                    sql.Identifier(schema)
+                )
+            )

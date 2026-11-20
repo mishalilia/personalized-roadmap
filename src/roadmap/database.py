@@ -21,7 +21,7 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 
 class IntegrityError(Exception):
@@ -117,7 +117,7 @@ class _SqliteTransaction:
         self._connection = connection
 
     def execute(self, sql: str, params: Sequence[Any] = ()) -> Cursor:
-        return self._connection.execute(sql, _plain(params))
+        return cast(Cursor, self._connection.execute(sql, _plain(params)))
 
     def executemany(self, sql: str, rows: Sequence[Sequence[Any]]) -> None:
         self._connection.executemany(sql, [_plain(row) for row in rows])

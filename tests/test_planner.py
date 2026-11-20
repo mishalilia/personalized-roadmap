@@ -4,7 +4,13 @@ from pydantic import ValidationError
 
 from roadmap import Choice, Level
 from roadmap.llm import LLMUnavailable
-from roadmap.planner import CourseOrderPlanner, LLMPlanner, ModuleDecision, prompt_ids
+from roadmap.planner import (
+    CourseOrderPlanner,
+    LLMPlanner,
+    ModuleDecision,
+    SkimSuggestion,
+    prompt_ids,
+)
 
 
 def plan(curriculum, questions, response, level=None):
@@ -160,8 +166,8 @@ def test_a_module_to_study_may_skip_topics_but_keeps_one_to_study(
             module_id="m1",
             choice=Choice.STUDY,
             reason="Study it.",
-            skip_topics=[{"topic": t, "reason": "Known."} for t in skip],
-            skim=[{"topic": t, "reason": "Refresh."} for t in skim],
+            skip_topics=[SkimSuggestion(topic=t, reason="Known.") for t in skip],
+            skim=[SkimSuggestion(topic=t, reason="Refresh.") for t in skim],
         )
 
     skim, skip = _topics_for(module, decide(["Part 1"], ["Part 1", "2. Part 2"]))

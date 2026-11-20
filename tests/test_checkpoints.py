@@ -374,11 +374,13 @@ def test_an_attempt_takes_the_studied_topics_in_turn_and_their_problem():
     # Too few questions left for an attempt: the whole checkpoint.
     assert len(checkpoint.questions_for_attempt(0, frozenset({"A", "B"}))) == 5
 
-    assert checkpoint.problem_for().title == "On A"
-    assert checkpoint.problem_for(frozenset({"A"})).title == "On B"
+    assert getattr(checkpoint.problem_for(), "title", None) == "On A"
+    assert getattr(checkpoint.problem_for(frozenset({"A"})), "title", None) == "On B"
+    # studied in full comes first
     assert (
-        checkpoint.problem_for(skimmed=frozenset({"A"})).title == "On B"
-    )  # studied in full comes first
+        getattr(checkpoint.problem_for(skimmed=frozenset({"A"})), "title", None)
+        == "On B"
+    )
     assert checkpoint.problem_for(frozenset({"A", "B"})) is None
     grade = checkpoint.grade(0, {x.id: 0 for x in only_b}, frozenset({"A", "C"}))
     assert grade.total == 5

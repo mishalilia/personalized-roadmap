@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,7 @@ PROBLEM = CodingProblem(
 def terminal_checkpoint(
     version: str,
     problem: CodingProblem | None = None,
-    problems: list[CodingProblem] = (),
+    problems: Sequence[CodingProblem] = (),
 ) -> Checkpoint:
     """Ten questions whose right answer is always the second option as written."""
     return Checkpoint(
@@ -65,11 +66,11 @@ class Site:
         *roadmaps: Roadmap,
         limit: int = 100,
         problem: CodingProblem | None = None,
-        problems: list[CodingProblem] = (),
+        problems: Sequence[CodingProblem] = (),
         events: EventLog | None = None,
         token: str | None = None,
         reviewers: set[str] | None = None,
-        open_questions: list = (),
+        open_questions: Sequence = (),
     ) -> None:
         editions = [
             Edition(
