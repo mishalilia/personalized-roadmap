@@ -1,8 +1,6 @@
 # Question Log
 
-Open questions, who to ask, and what was decided. Updated whenever a question is answered.
-
-Status values: Not checked / Under review / Decided.
+Questions we had, who we asked, and what was decided.
 
 ---
 
@@ -19,9 +17,11 @@ Status values: Not checked / Under review / Decided.
   the licence section of the README), and applied the stricter option to ourselves. That is safe under
   either answer.
 - **Ask:** Professor
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** use the professor's answer when we are asked about the licence at the demo.
+- **Status:** Decided
+- **Decision and date:** 20 November 2026: no longer relevant. HumbleBeeAI is the project's partner and gave us
+  its course to use; DotPath runs only on HumbleBeeAI's course site. We keep the attribution and the
+  curriculum's licence, CC BY-NC-SA 4.0, on paths and checkpoints.
+- **Follow-up:** none.
 
 ### Q-002 — In what form should AI assistance be recorded?
 
@@ -62,10 +62,13 @@ Status values: Not checked / Under review / Decided.
     of 9 paths.
 - **Ask:** Team decision; assistant if no free option holds
 - **Status:** Decided
-- **Decision and date:** `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` as the
-  second provider; `gpt-oss-20b` dropped (22 October 2026). Pinned in `config/llm.yaml`.
-- **Follow-up:** before real learners use it (Target), decide whether their answers may go to the Gemini free
-  tier, which may use requests to improve Google's products.
+- **Decision and date:** 22 October 2026: `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq
+  `openai/gpt-oss-120b` as the second provider; `gpt-oss-20b` dropped. November 2026:
+  OpenAI `gpt-6-luna` became the default, so learners' answers do not go to a free tier that may use them to
+  improve the provider's products. It costs about $0.002 a path ($0.10 per million input tokens, $0.50 per
+  million output; token counts from our server's log on 20 November). Gemini and Groq stay in `config/llm.yaml`,
+  so the Baseline still runs on a free tier.
+- **Follow-up:** none.
 
 ### Q-004 — What can checkpoint questions actually be generated from?
 
@@ -76,50 +79,31 @@ Status values: Not checked / Under review / Decided.
   third-party ("Third party sources: under their original licence" in the source README), so copying from it
   is not open to us either. This gates the whole Target tier.
 - **What we have tried:** Measured the corpus as above, and confirmed that `llms-full.txt` cannot replace
-  parsing the content: 10,646 characters, 4 URLs, no resource metadata. The check is 10 questions generated
-  for one module from repository content only, rated by someone who knows the topic for how many test
-  application rather than recall. Built on the working answer below: `python -m roadmap checkpoints` gives the
-  model a module's topics, stated outcomes, resource notes and completion criteria, and asks for 15 questions
-  that each name one of the module's topics. Not yet run with a real model; the two draft checkpoints in the
-  repository were written by Claude to show the flow and are not the check.
+  parsing the content: 10,646 characters, 4 URLs, no resource metadata. Built on the working answer below:
+  `python -m roadmap checkpoints` gives the model a module's topics, stated outcomes, resource notes and
+  completion criteria, and asks for questions on each topic. Run with GPT-6 Luna for 13 modules of the current
+  version; every question was then reviewed by a person.
 - **Working answer:** Generate questions about the topic the section defines. Its heading and structure,
   stated learning outcomes, declared difficulty and the authors' per-resource notes specify what to test; the
   model supplies the subject knowledge. Nothing is copied from third-party sites and it scales across all 126
   sections. Known risk to report as a limitation: questions can drift from what a specific linked resource
   actually covered. Fetching openly licensed sources stays available as a Stretch refinement.
 - **Ask:** Team experiment first
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** run the generator on one module, have the questions rated, and decide. If the approach does
-  not hold, narrow the checkpoint scope and say so in the README.
+- **Status:** Decided
+- **Decision and date:** November 2026: the working answer, with a pool of questions per topic, an open
+  question marked against a rubric, and a coding problem per topic. Every question is reviewed by a person
+  before learners see it; learners can report a wrong question in one click.
+- **Follow-up:** none.
 
-### Q-005 — Is a lock that holds only in the learner's browser enough for the Target?
+### Q-005 — Where is a learner's path kept: in their browser or on our server?
 
-- **Related DoD item:** Target — progress blocked past a failed checkpoint
-- **Why it matters:** Accounts are out of scope, so the path and its progress live in the learner's browser
-  and in the file they download. The page enforces the lock, and the server refuses progress on a locked
-  module, but a learner who edits their saved path can undo the lock, and a coding problem counts as solved on
-  the browser's word.
-- **What we have tried:** Built the lock in the page and in the API; failed attempts reveal no answers and
-  options are shuffled per attempt, so the questions themselves cannot be learned by retrying.
+- **Related DoD item:** Target — progress blocked past a failed checkpoint; a usable web interface
+- **Why it matters:** At first accounts were out of scope, so the path and its progress lived in the learner's
+  browser and in the file they downloaded. That loses the path on another device or after clearing the browser,
+  and a learner who edited the saved path could undo a lock or replay an attempt.
 - **Ask:** Professor
-- **Status:** Resolved
-- **Decision and date:** 2026-11-08 — no. The professors' feedback asks for login and accounts, so the path
-  now lives on the server under the learner's account (email and password), and every change to it goes
-  through the API. Locks and attempts can no longer be undone from the browser; only the coding problem
-  still counts as solved on the browser's word.
-- **Follow-up (superseded):** if a server-side record is expected, a signed path (the server signs the progress it
-  returns) would detect edits without accounts.
-
-### Q-006 — Expected decisions for the current curriculum
-
-- **Related DoD item:** Baseline — visibly different paths for three profiles; model-quality tests
-- **Why it matters:** New paths use the current curriculum (20 modules, restructured in October), but the
-  expected decisions we score the model against were written for the 18 modules of the October 6 version. Until
-  they are rewritten, the model's quality on the current curriculum is unmeasured.
-- **What we have tried:** Kept the October 6 version served and reproducible (`--curriculum 2026-10-06`), so
-  the results of 21 October still stand for it.
-- **Ask:** Team (Data & Research)
-- **Status:** Not checked
-- **Decision and date:** —
-- **Follow-up:** write the expected decisions for the current version, then repeat the stability runs.
+- **Status:** Decided
+- **Decision and date:** 8 November 2026: on the server. The professors' feedback asked for login, so the path
+  is kept under the learner's account (Google, or email and password) and every change goes through the API. A
+  path planned before signing up is kept for a day; the learner can delete the account with everything in it.
+- **Follow-up:** none.

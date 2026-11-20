@@ -30,6 +30,27 @@ only when a checkpoint or a goal change asks the model again).
 **Match:** the share of decisions that are expected or accepted. **Harmful:** a module the learner needs is
 skipped, or "prove" is given without evidence.
 
+### How the numbers are counted
+
+- **Unit.** A decision is the planner's suggestion (study, prove or skip) for one module in one path, before the
+  learner changes anything.
+- **Reference.** The [expected decisions](expected-decisions.md): one expected decision per module and profile,
+  plus any other decision we also accept, written from the profiles and the module pages (with AI assistance,
+  as that page says).
+- **Stable decisions** = module–profile pairs where every run gave the same decision ÷ all module–profile pairs
+  (18 modules × 3 profiles = 54).
+- **Match** = decisions that are the expected or an accepted one ÷ all decisions (18 modules × number of paths).
+  "Prove" where "skip" was expected counts as a miss, even though the learner loses nothing.
+
+| Model | Runs per profile | Stable decisions | Match |
+|---|---|---|---|
+| `gemini-3.5-flash-lite` | 5 | 50 / 54 = 92.6% | 258 / 270 = 95.6% |
+| `gemini-3.8-flash` | 3 | 53 / 54 = 98.1% | 150 / 162 = 92.6% |
+| `openai/gpt-oss-120b` | 5 | 41 / 54 = 75.9% | 251 / 270 = 93.0% |
+
+The table above rounds these to whole percents. Recounted on 20 November 2026 from the saved paths in
+`out/stability/`.
+
 The suggested level never changed: P1 intermediate, P2 and P3 beginner, with every model. P1 and P2 paths
 differ by 40–50% with `gemini-3.5-flash-lite`; with `gpt-oss-120b`, one pair came out identical.
 
@@ -51,6 +72,9 @@ Engineering (5 of 5 runs, to deploy speech services) and P1 study Terminal & Alg
 its algorithm problems).
 
 ## Decision (Q-003)
+
+Superseded in November 2026: OpenAI `gpt-6-luna` is now the default; its results on the current curriculum are in
+[2026-11-20-current-curriculum.md](2026-11-20-current-curriculum.md).
 
 - **`gemini-3.5-flash-lite` first:** stable, the best match, fast, and about 250 paths a day. Its one repeated
   error should be easier to fix in the prompt than scattered ones.

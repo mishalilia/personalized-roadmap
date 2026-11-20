@@ -1,6 +1,6 @@
 # Data Sources
 
-**Status:** matches the code on 5 November 2026. What is not decided is marked **TBD**.
+**Status:** matches the code on 20 November 2026.
 
 Default rule from the course: public or safe sample data only. No personal data, no real company data.
 
@@ -37,13 +37,12 @@ Default rule from the course: public or safe sample data only. No personal data,
 
 | | |
 |---|---|
-| **What for** | The level suggestion; a decision and a reason for every module; suggestions after a checkpoint passed without a mistake; replanning for a new goal; drafting checkpoint questions (by the team, not when a learner takes a checkpoint). |
-| **Options** | (a) A free hosted API: the Gemini API free tier or Groq. (b) An open model run locally or on Colab or Kaggle. |
-| **Decision** | `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` as the second provider. Measurements in Q-003. |
-| **What it receives** | The learner's onboarding answers and level, and the curriculum's module outlines. The questions ask for no names or contact details. |
+| **What for** | The level suggestion; a decision and a reason for every module; suggestions after a checkpoint; replanning for a new goal; marking open checkpoint answers; reviewing capstone projects; the assistant; writing checkpoint questions (once per module, not when a learner takes a checkpoint). |
+| **Decision** | OpenAI `gpt-6-luna` by default (about $0.002 a path); Gemini (`gemini-3.5-flash-lite`, `gemini-3.8-flash`) and Groq (`openai/gpt-oss-120b`) free tiers as alternatives. Measurements and reasons in Q-003. |
+| **What it receives** | The learner's onboarding answers and level, the curriculum's module outlines, open checkpoint answers, assistant messages, and the text files of a submitted project. The questions ask for no names or contact details. |
 | **Access needs** | An API key, kept in `.env` (git-ignored) or `deploy/.env` on the server. `.env.example` shows the variable names with empty values. Keys never go into the repository, a notebook or a slide. |
-| **Provider notes** (checked 21 September 2026) | The Google AI Plus student offer gives no API quota. The Gemini API free tier may use requests to improve Google's products; Groq keeps inputs and outputs only for troubleshooting and abuse checks. |
-| **Limits** | Free-tier quotas are counted per model and can change. Output can differ between runs. The API limits model calls per learner (20 an hour by default). |
+| **Provider notes** | The Gemini API free tier may use requests to improve Google's products (checked 21 September 2026), one reason OpenAI is the default. Groq keeps inputs and outputs only for troubleshooting and abuse checks. |
+| **Limits** | Output can differ between runs (measured: [October](test-results/2026-10-21-model-stability.md), [November](test-results/2026-11-20-current-curriculum.md)). The API limits model calls per learner (20 an hour by default). |
 | **Fallback** | 1) The provider's next model. 2) If no model answers, the whole course in its own order, and the learner is told that personalization is unavailable. |
 
 ---
@@ -57,18 +56,15 @@ Default rule from the course: public or safe sample data only. No personal data,
 - They are invented, not built from real people. No personal data.
 - Stored in [config/profiles.yaml](../config/profiles.yaml); the page offers them as a starting point for demos.
   The decisions we expect for each module are in
-  [test-results/expected-decisions.md](test-results/expected-decisions.md), written for the 18 modules of the
-  October 6 version. **TBD:** the same for the 20 modules of the current version.
+  [test-results/expected-decisions.md](test-results/expected-decisions.md), for both curriculum versions.
 
 ---
 
-## 4. Real learner testing (Target)
+## 4. Learner testing
 
-- At least 5 people outside the team; how we run and write it up is in [learner-testing.md](learner-testing.md).
-- We tell them what we collect and why, and which model provider receives their answers. Names are not kept.
-  **TBD:** how consent is recorded. We collect only what we need: observations of what broke, their decisions
-  and one short rating.
-- **Nothing from these sessions goes into the public repository** except the anonymised write-up.
+- Five people outside the team, November 2026; protocol and results in [learner-testing.md](learner-testing.md).
+- The protocol tells them what is collected and which model provider receives their answers. Names are not kept.
+- **Nothing from these sessions is in the repository** except the summary.
 
 ---
 
@@ -78,7 +74,7 @@ Default rule from the course: public or safe sample data only. No personal data,
 |---|---|
 | **What** | For paths whose learner ticks "Share my progress anonymously": a random path id, the curriculum version, and events per module (included in the confirmed path, checkpoint failed, questions passed, finished) or for the path (goal changed), each with the time. |
 | **What not** | Onboarding answers, the goal, the level, checkpoint answers, code, names, e-mail or IP addresses. The rate limit holds IP addresses in memory only, and the server's access log is turned off in `deploy/`. |
-| **Where** | A SQLite file on the API server (`API_EVENTS_FILE`, a Docker volume in `deploy/`). Never in this repository. |
+| **Where** | The API's PostgreSQL database (`DATABASE_URL`, a Docker volume in `deploy/`). Never in this repository. |
 | **Who sees it** | Whoever holds `API_REPORT_TOKEN`, as counts per module (`GET /report`, `python -m roadmap report`). |
 | **Default** | Off. Turning it off stops new events; events already sent stay counted, and the page says so. |
 
@@ -88,10 +84,12 @@ Default rule from the course: public or safe sample data only. No personal data,
 
 | Data | How it is made | Where it lives | Licence |
 |---|---|---|---|
-| Paths (JSON) | The API, for a learner; the command line, for the example learners | The learner's account on the API server, with their onboarding answers, until they delete it; a path planned without an account for a day; the learner's downloads; files the team writes with `--out`. Not committed: they contain curriculum text and can be rebuilt | CC BY-NC-SA 4.0. Every module carries its title and URL; the path carries the licence |
-| Project submissions | A learner hands in a capstone | `API_ACCOUNTS_FILE` (the link, the note, the archive's name and size, the review) and `API_UPLOADS_DIR` (the archive, under a random name) on the API server. Seen by the learner and the reviewers only; for the AI review, the project's text files (up to about 120 000 characters) go to the model provider in `config/llm.yaml`; deleted with the account. Never in this repository | The learner's own work |
-| Accounts | Sign-up on the curriculum site | `API_ACCOUNTS_FILE` on the API server: the email (verified by Google, or not verified), a scrypt hash of the password or Google's id for the learner, session tokens as SHA-256 hashes. Deleted with the account. Never in this repository | — |
-| Checkpoints (YAML) | Written by the model from a module's outline, then reviewed by a person | `checkpoints/` in this repository | CC BY-NC-SA 4.0, as material derived from the curriculum |
+| Paths (JSON) | The API, for a learner; the command line, for the example learners | The learner's account on the API server, with their onboarding answers, until they delete it; a path planned without an account for a day; files the team writes with `--out`. Not committed: they contain curriculum text and can be rebuilt | CC BY-NC-SA 4.0. Every module carries its title and URL; the path carries the licence |
+| Project submissions | A learner hands in a capstone | The API's database (the link, the note, the archive's name and size, the review) and `API_UPLOADS_DIR` (the archive, under a random name) on the API server. Seen by the learner and the reviewers only; for the AI review, the project's text files (up to about 120 000 characters) go to the model provider in `config/llm.yaml`; deleted with the account. Never in this repository | The learner's own work |
+| Accounts | Sign-up on the curriculum site | The API's PostgreSQL database: the email (verified by Google, or not verified), a scrypt hash of the password or Google's id for the learner, session tokens as SHA-256 hashes. Deleted with the account. Never in this repository | — |
+| Question reports | A learner marks a checkpoint question as wrong | The API's database: the account's id, the question, the reason and the comment; seen by reviewers. Not deleted with the account | — |
+| Public progress links | A learner makes a read-only link | The API's database: a random token and the account; the page shows only finished modules. Removed with the account | — |
+| Checkpoints (YAML) | Written by the model from a module's outline, reviewed by a person (Li Mikhail) | `checkpoints/` in this repository | CC BY-NC-SA 4.0, as material derived from the curriculum |
 
 ---
 
