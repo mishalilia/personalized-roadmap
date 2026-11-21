@@ -1,9 +1,9 @@
 import React, { type ReactNode } from "react";
 import Link from "@docusaurus/Link";
 
-// Inline Markdown from the curriculum and the checkpoints: **bold**, `code` and [links](...), rendered as
-// React elements, never as raw HTML.
-const PART = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]*\]\([^)\s]+\))/g;
+// Inline Markdown from the curriculum, the checkpoints and the assistant: **bold**, *italics*, `code` and
+// [links](...), rendered as React elements, never as raw HTML.
+const PART = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\[[^\]]*\]\([^)\s]+\))/g;
 
 export function InlineMarkdown({ text }: { text: string }): ReactNode {
   return (
@@ -14,6 +14,8 @@ export function InlineMarkdown({ text }: { text: string }): ReactNode {
         .map((part, index) => {
           const bold = /^\*\*(.+)\*\*$/.exec(part);
           if (bold) return <strong key={index}>{bold[1]}</strong>;
+          const italic = /^\*([^*]+)\*$/.exec(part);
+          if (italic) return <em key={index}>{italic[1]}</em>;
           const code = /^`(.+)`$/.exec(part);
           if (code) return <code key={index}>{code[1]}</code>;
           const link = /^\[([^\]]*)\]\(([^)\s]+)\)$/.exec(part);

@@ -107,4 +107,7 @@ def test_unlisted_pages_are_left_out_and_completion_headings_can_be_read(tmp_pat
     assert plain[0].checklist == []
     assert with_headings[0].checklist == ["A passing test suite."]
     assert with_headings[0].topics[0].title == "Testing"
+    assert (
+        with_headings[0].topics[0].anchor == "tests"
+    )  # the authors' id, for links to the topic
     assert with_headings[0].resources[0].difficulty is None

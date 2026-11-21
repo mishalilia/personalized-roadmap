@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from helpers import FIXTURE_DOCS, ROOT, SITE_URL
 
@@ -30,3 +32,58 @@ def module_ids(curriculum: Curriculum) -> list[str]:
 @pytest.fixture
 def questions() -> list[Question]:
     return load_questions(ROOT / "config" / "onboarding.yaml")
+
+
+# With ROADMAP_TEST_DATABASE_URL set to a PostgreSQL database that may be emptied, every store in every test
+# uses it instead of a SQLite file: the whole suite then runs against PostgreSQL. As with SQLite, stores given
+# the same file share a database and each ":memory:" one is a database of its own: here, a schema of its own,
+# dropped when the test ends.
+_POSTGRES_URL = os.environ.get("ROADMAP_TEST_DATABASE_URL")
+
+
+@pytest.fixture(autouse=True)
+def _stores_on_postgres(monkeypatch):
+    if not _POSTGRES_URL:
+        yield
+        return
+    url: str = _POSTGRES_URL
+    import psycopg
+    from psycopg import sql
+
+    from roadmap.database import PostgresDatabase
+
+    opened: dict[str, PostgresDatabase] = {}
+    schemas: list[str] = []
+
+    def open_database(target):
+        key = str(target)
+        if key in opened and key != ":memory:":
+            return opened[key]
+        schema = f"test_{len(schemas)}"
+        schemas.append(schema)
+        with psycopg.connect(url, autocommit=True) as connection:
+            connection.execute(
+                sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
+                    sql.Identifier(schema)
+                )
+            )
+            connection.execute(
+                sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema))
+            )
+        database = PostgresDatabase(
+            f"{url}?options=-csearch_path%3D{schema}", max_connections=4
+        )
+        opened[key if key != ":memory:" else schema] = database
+        return database
+
+    monkeypatch.setattr("roadmap.database.Database.open", staticmethod(open_database))
+    yield
+    for database in opened.values():
+        database.close()
+    with psycopg.connect(url, autocommit=True) as connection:
+        for schema in schemas:
+            connection.execute(
+                sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
+                    sql.Identifier(schema)
+                )
+            )

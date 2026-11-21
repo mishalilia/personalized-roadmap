@@ -1,28 +1,19 @@
-import React, { type ReactNode } from "react";
+import React, { useEffect, type ReactNode } from "react";
 import Layout from "@theme/Layout";
-import BrowserOnly from "@docusaurus/BrowserOnly";
+import { useHistory } from "@docusaurus/router";
+import { setDrawer } from "@site/src/components/personal-path/store";
 
+// The personal path lives in a panel beside the course (src/components/personal-path/PathDrawer.tsx). This
+// address, from earlier links and bookmarks, opens the course with the panel open.
 export default function PersonalPathPage(): ReactNode {
+  const history = useHistory();
+  useEffect(() => {
+    setDrawer(true);
+    history.replace("/docs/");
+  }, [history]);
   return (
-    <Layout
-      title="Your personal path"
-      description="Answer a few questions and get a path through the curriculum: which modules to study, which to prove and which to skip, each with a reason."
-    >
-      <main className="container margin-vert--lg">
-        <h1>Your personal path</h1>
-        <p>
-          Answer a few questions about what you have done and what you want to do. For every module
-          you get a suggestion — study it, prove you already know it with its checklist, or skip it —
-          with a reason. You can change any of them before you confirm the path.
-        </p>
-        <BrowserOnly fallback={<p>Loading…</p>}>
-          {() => {
-            const PersonalPath =
-              require("@site/src/components/personal-path/PersonalPath").default;
-            return <PersonalPath />;
-          }}
-        </BrowserOnly>
-      </main>
+    <Layout title="My path" description="Your personal path through the curriculum.">
+      <main className="container margin-vert--xl" />
     </Layout>
   );
 }

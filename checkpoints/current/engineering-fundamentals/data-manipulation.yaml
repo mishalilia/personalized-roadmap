@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/data-manipulation
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: NumPy Foundations
@@ -112,30 +112,666 @@ questions:
   answer: 0
   explanation: A few very large values pull the mean up but barely move the median, so the distribution has a long
     right tail worth investigating.
+- id: q11
+  topic: NumPy Foundations
+  text: For `x = np.array([[2, 4, 6], [1, 3, 5]])`, what does `(x.shape, x.ndim, x.size)` return?
+  options:
+  - '`((2, 3), 2, 6)`'
+  - '`((3, 2), 2, 6)`'
+  - '`((2, 3), 3, 6)`'
+  - '`((2, 3), 2, 5)`'
+  answer: 0
+  explanation: The array has two rows and three columns, so its shape is `(2, 3)` and it has two dimensions. It
+    contains six elements.
+- id: q12
+  topic: NumPy Foundations
+  text: What is the result of `a = np.array([1, 2, 3]); a * 2 + 1`?
+  options:
+  - '`[3, 5, 7]`'
+  - '`[4, 6, 8]`'
+  - '`[3, 4, 5]`'
+  - '`[5, 7, 9]`'
+  answer: 0
+  explanation: 'NumPy applies the multiplication and addition elementwise: each value is doubled, then increased
+    by one.'
+- id: q13
+  topic: NumPy Foundations
+  text: What array results from `a = np.array([[1, 2, 3], [4, 5, 6]]); b = np.array([10, 20, 30]); a + b`?
+  options:
+  - '`[[11, 12, 13], [24, 25, 26]]`'
+  - '`[[11, 22, 33], [14, 25, 36]]`'
+  - '`[[11, 22, 33], [44, 55, 66]]`'
+  - '`[[11, 12, 13], [14, 15, 16]]`'
+  answer: 1
+  explanation: The one-dimensional array broadcasts across each row of the two-dimensional array. Corresponding
+    columns are added.
+- id: q14
+  topic: NumPy Foundations
+  text: What does `x.T` produce for `x = np.arange(6).reshape(2, 3)`?
+  options:
+  - '`[[0, 1, 2], [3, 4, 5]]`'
+  - '`[[0, 3], [1, 4], [2, 5]]`'
+  - '`[[5, 4, 3], [2, 1, 0]]`'
+  - '`[[0, 2, 4], [1, 3, 5]]`'
+  answer: 1
+  explanation: Transposing swaps rows and columns while keeping the elements in their corresponding positions.
+- id: q15
+  topic: NumPy Foundations
+  text: What does `a.sum(axis=0)` return for `a = np.array([[1, 2, 3], [4, 5, 6]])`?
+  options:
+  - '`[6, 15]`'
+  - '`[1, 2, 3, 4, 5, 6]`'
+  - '`[5, 7, 9]`'
+  - '`[[5, 7, 9]]`'
+  answer: 2
+  explanation: With `axis=0`, NumPy sums down the rows, producing one total for each column.
+- id: q16
+  topic: NumPy Foundations
+  text: After `a = np.array([-2, 4, -1, 7]); a[a < 0] = 0`, what is `a`?
+  options:
+  - '`[0, 4, 0, 7]`'
+  - '`[-2, 4, -1, 7]`'
+  - '`[0, 0, 0, 7]`'
+  - '`[2, 4, 1, 7]`'
+  answer: 0
+  explanation: The Boolean mask selects the negative entries, and the assignment replaces each selected value with
+    zero.
+- id: q17
+  topic: Pandas and Data Cleaning
+  text: A DataFrame’s `date` column contains date strings, and you want Pandas to treat the values as dates in the
+    DataFrame. Which line does that?
+  options:
+  - '`df["date"] = df["date"].astype(str)`'
+  - '`df["date"] = pd.to_numeric(df["date"])`'
+  - '`df["date"] = pd.to_datetime(df["date"])`'
+  - '`df["date"] = df["date"].sort_values()`'
+  answer: 2
+  explanation: '`pd.to_datetime` converts the column’s values to Pandas datetime values, and assigning the result
+    updates the DataFrame. The other options either keep the values as strings, attempt numeric conversion, or sort
+    them.'
+- id: q18
+  topic: Pandas and Data Cleaning
+  text: A customer table has repeated email addresses. You want to keep the first row for each email and remove
+    later rows with the same email. Which expression should you use?
+  options:
+  - '`df.drop_duplicates(subset="email", keep="first")`'
+  - '`df.dropna(subset="email", keep="first")`'
+  - '`df.drop_duplicates(subset="email", keep="last")`'
+  - '`df.sort_values("email").dropna()`'
+  answer: 0
+  explanation: '`drop_duplicates` with `subset="email"` identifies repeated email values, and `keep="first"` retains
+    the first matching row. Keeping the last would retain a different row, while `dropna` removes missing values
+    rather than duplicates.'
+- id: q19
+  topic: Pandas and Data Cleaning
+  text: A category column contains values such as `" North "` and `"north"`, which should be treated as the same
+    category. Which transformation handles both extra spaces and capitalization?
+  options:
+  - '`df["category"].str.lower()`'
+  - '`df["category"].str.strip()`'
+  - '`df["category"].astype(str)`'
+  - '`df["category"].str.strip().str.lower()`'
+  answer: 3
+  explanation: '`str.strip()` removes surrounding whitespace, and `str.lower()` makes capitalization consistent.
+    Using either operation alone leaves one of the two inconsistencies.'
+- id: q20
+  topic: Pandas and Data Cleaning
+  text: You have two monthly DataFrames with the same columns and want one DataFrame containing all their rows.
+    Which approach is appropriate?
+  options:
+  - '`pd.concat([jan, feb], axis=1, ignore_index=True)`'
+  - '`pd.concat([jan, feb], ignore_index=True)`'
+  - '`jan.merge(feb, how="outer")`'
+  - '`jan.groupby(feb).sum()`'
+  answer: 1
+  explanation: '`pd.concat` combines the DataFrames row-wise by default, and `ignore_index=True` creates a fresh
+    row index. Concatenating on `axis=1` places columns side by side instead.'
+- id: q21
+  topic: Pandas and Data Cleaning
+  text: A `sales` DataFrame has `store_id`, and a `stores` DataFrame maps each `store_id` to a `region`. You want
+    to add `region` to sales while keeping every sales row, including rows with no matching store. Which expression
+    should you use?
+  options:
+  - '`sales.groupby("store_id").sum().merge(stores, on="store_id")`'
+  - '`pd.concat([sales, stores], axis=1)`'
+  - '`sales.merge(stores[["store_id", "region"]], on="store_id", how="left")`'
+  - '`sales.merge(stores[["store_id", "region"]], on="store_id", how="inner")`'
+  answer: 2
+  explanation: A left merge adds matching store information while preserving every row from `sales`. An inner merge
+    would discard sales rows whose `store_id` has no match.
+- id: q22
+  topic: SQL
+  text: A `staff` table has a nullable `start_date` column. Which query returns only rows where the date is missing?
+  options:
+  - '`SELECT * FROM staff WHERE start_date = NULL;`'
+  - '`SELECT * FROM staff WHERE start_date IS NULL;`'
+  - '`SELECT * FROM staff WHERE start_date = ''NULL'';`'
+  - '`SELECT * FROM staff WHERE start_date IS NOT NULL;`'
+  answer: 1
+  explanation: SQL tests for missing values with `IS NULL`; comparisons using `= NULL` do not match them. The other
+    options either compare to the text `'NULL'` or select present dates.
+- id: q23
+  topic: SQL
+  text: A `sales` table stores `region` and `amount`. Which query returns regions whose total sales exceed 1000?
+  options:
+  - '`SELECT region, SUM(amount) FROM sales WHERE SUM(amount) > 1000 GROUP BY region;`'
+  - '`SELECT region, SUM(amount) FROM sales GROUP BY amount HAVING SUM(amount) > 1000;`'
+  - '`SELECT region, SUM(amount) FROM sales GROUP BY region HAVING SUM(amount) > 1000;`'
+  - '`SELECT region, SUM(amount) FROM sales GROUP BY region WHERE SUM(amount) > 1000;`'
+  answer: 2
+  explanation: The query groups rows by region, then uses `HAVING` to filter groups based on their summed amounts.
+    `WHERE` filters individual rows before aggregation.
+- id: q24
+  topic: SQL
+  text: For each row in `orders`, you want a calculated label that is `'large'` when `amount` is at least 100 and
+    `'standard'` otherwise. Which expression does this?
+  options:
+  - '`CASE WHEN amount >= 100 THEN ''large'' ELSE ''standard'' END`'
+  - '`CASE WHEN amount < 100 THEN ''large'' ELSE ''standard'' END`'
+  - '`CASE amount >= 100 WHEN ''large'' THEN ''standard'' ELSE ''large'' END`'
+  - '`CASE WHEN amount >= 100 THEN ''standard'' ELSE ''large'' END`'
+  answer: 0
+  explanation: This searched `CASE` checks the amount for each row and returns the requested label for each condition.
+    The other expressions reverse the labels or use an incompatible `CASE` form.
+- id: q25
+  topic: SQL
+  text: You want to rank employees by descending salary within each department, with employees tied on salary receiving
+    the same rank. Which expression should you use?
+  options:
+  - '`RANK() OVER (ORDER BY salary DESC)`'
+  - '`ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC)`'
+  - '`RANK() OVER (PARTITION BY department ORDER BY salary ASC)`'
+  - '`RANK() OVER (PARTITION BY department ORDER BY salary DESC)`'
+  answer: 3
+  explanation: '`PARTITION BY department` starts the ranking separately for each department, and descending order
+    puts higher salaries first. `RANK()` gives tied salaries the same rank.'
+- id: q26
+  topic: SQL
+  text: A `products` table has a `price` column. Which query returns products priced above the average price of
+    all products?
+  options:
+  - '`SELECT name FROM products WHERE price < (SELECT AVG(price) FROM products);`'
+  - '`SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products);`'
+  - '`SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products WHERE category = products.category);`'
+  - '`SELECT name FROM products WHERE price > (SELECT MAX(price) FROM products);`'
+  answer: 1
+  explanation: The scalar subquery calculates the average across all products, and the outer query keeps rows with
+    a greater price. The other options compare against the overall average in the opposite direction, a category-specific
+    average, or the maximum.
+- id: q27
+  topic: Exploratory Analysis and Visualization
+  text: A sales table has one row per item on an order, so the same `order_id` can appear on several rows. You want
+    to report how many orders are represented. What should you count?
+  options:
+  - The total number of rows in the table
+  - The number of distinct `order_id` values
+  - The number of columns in the table
+  - The number of distinct item names
+  answer: 1
+  explanation: Each order can produce multiple rows, so counting rows would count item entries rather than orders.
+    Counting distinct `order_id` values matches the unit you want to report.
+- id: q28
+  topic: Exploratory Analysis and Visualization
+  text: You want to plot a monthly trend from a dataset whose dates are stored as text and whose measurements are
+    recorded daily. What is the best preparation?
+  options:
+  - Sort the text dates and plot every row as a separate category
+  - Convert dates to dates, aggregate by month, and plot in time order
+  - Average all measurements and plot one bar for the whole dataset
+  - Group by measurement value and connect the groups with a line
+  answer: 1
+  explanation: Parsing the dates allows you to group observations into calendar months and order them chronologically.
+    A line chart of those monthly values makes the time trend readable.
+- id: q29
+  topic: Exploratory Analysis and Visualization
+  text: A team wants to see whether customer wait times cluster around one value or spread across a range. Which
+    chart is the best starting point?
+  options:
+  - A histogram of wait times
+  - A line chart connecting wait times by customer
+  - A bar chart with one bar for each customer
+  - A scatter plot of wait times against row numbers
+  answer: 0
+  explanation: A histogram groups numeric wait times into bins, revealing where observations are concentrated and
+    how widely they spread. The other charts do not summarize this single-variable distribution as directly.
+- id: q30
+  topic: Exploratory Analysis and Visualization
+  text: You have one numeric value for advertising spend and one for revenue for each campaign. Which chart best
+    helps you inspect whether the two variables move together?
+  options:
+  - A histogram of advertising spend
+  - A bar chart of campaign names
+  - A line chart joining campaigns in table order
+  - A scatter plot of spend against revenue
+  answer: 3
+  explanation: A scatter plot places each campaign at its spend and revenue values, making patterns between the
+    two numeric variables visible. Connecting points in table order could imply a sequence that the data does not
+    have.
+- id: q31
+  topic: Exploratory Analysis and Visualization
+  text: You need to compare the spread and typical wait time across several service centers. Which visualization
+    is most useful?
+  options:
+  - A single histogram combining all centers
+  - A line chart connecting each center's average
+  - Side-by-side box plots for the centers
+  - A scatter plot of center names against wait times
+  answer: 2
+  explanation: Side-by-side box plots summarize the distribution for each center, allowing their typical values
+    and spreads to be compared. Combining all centers into one histogram hides those group differences.
+- id: q32
+  topic: Exploratory Analysis and Visualization
+  text: In an observational dataset, customers with longer delivery delays tend to give lower ratings. Which conclusion
+    best communicates this finding?
+  options:
+  - Longer delays caused the lower ratings for these customers
+  - In this dataset, longer delays are associated with lower ratings
+  - Reducing delays will raise every customer's rating
+  - The relationship proves that the ratings were recorded incorrectly
+  answer: 1
+  explanation: The data supports describing an association, but an observational pattern alone does not establish
+    that delays caused lower ratings. Other factors may contribute to the relationship.
+open_questions:
+- id: o1
+  topic: NumPy Foundations
+  text: You need to apply the same calculation to every value in a very large array, and some inputs have compatible
+    but different shapes. How could NumPy operations help you do this without writing a Python loop, and why do
+    the shapes matter?
+  rubric:
+  - Explains that a vectorized array operation applies the calculation across values without an explicit Python
+    loop.
+  - Explains that broadcasting can apply an operation across compatible shapes without manually copying values.
+  - Notes that incompatible shapes cannot be combined by broadcasting as intended.
+  required: 2
+  model_answer: A vectorized NumPy operation applies the calculation across the array without a Python loop for
+    each value. Broadcasting can let arrays with compatible shapes work together without manually copying the smaller
+    array. The shapes still matter because incompatible dimensions cannot be combined in that way.
+- id: o2
+  topic: NumPy Foundations
+  text: A two-dimensional array stores measurements for several days in rows and different sensors in columns. How
+    would choosing an aggregation axis affect a summary of the measurements, and how could you check that the result
+    has the shape you expect?
+  rubric:
+  - Explains that aggregating along the rows produces one result per sensor column.
+  - Explains that aggregating along the columns produces one result per day row.
+  - Connects the output shape or number of results to the dimension that remains after aggregation.
+  required: 2
+  model_answer: To summarize each sensor across days, aggregate along the row dimension, leaving one result for
+    each sensor column. Aggregating across the sensor columns instead gives one result for each day. I would check
+    the output shape and confirm that it contains one value for each dimension I intended to keep.
+- id: o3
+  topic: Pandas and Data Cleaning
+  text: A dataset has prices loaded as text with currency symbols, category labels that differ only in capitalization,
+    some missing prices, and repeated records. How would you decide what to clean before analyzing the data, and
+    why should you inspect the results afterward?
+  rubric:
+  - Explains that prices should be converted to a suitable numeric type after handling the currency symbols.
+  - Explains that category labels should be standardized so equivalent categories are treated consistently.
+  - Explains that missing prices and repeated records should be handled based on their meaning rather than removed
+    blindly.
+  - Notes that inspecting the cleaned data helps verify the changes and catch remaining problems.
+  required: 3
+  model_answer: I would remove or handle the currency symbols and convert prices to a numeric type so they can be
+    analyzed. I would standardize capitalization in category labels so the same category is not split into multiple
+    groups. I would check why prices are missing and whether repeated records are true duplicates before deciding
+    how to handle them. Finally, I would inspect the cleaned data to confirm the changes worked.
+- id: o4
+  topic: Pandas and Data Cleaning
+  text: You have a sales table with a customer ID and a separate customer table with one row per customer. What
+    would you consider when combining them, and how could you check that the result still represents the sales records
+    correctly?
+  rubric:
+  - Explains that the customer ID is the key used to match rows across the two tables.
+  - Explains that the choice of merge affects whether sales without a matching customer are retained.
+  - Notes that checking row counts or unmatched IDs can reveal unexpected merge results.
+  required: 2
+  model_answer: I would merge the tables using customer ID, after checking that the customer table has one row per
+    ID so a match does not unexpectedly multiply sales rows. An inner merge would drop sales whose IDs are not in
+    the customer table, while a left merge from sales would retain them. I would compare row counts and check for
+    unmatched IDs to confirm the result is as expected.
+- id: o5
+  topic: SQL
+  text: You need to report customers with at least three completed orders. How would you structure a SQL query so
+    it first selects the relevant orders and then keeps only customers who meet the threshold, and why do those
+    conditions belong at different stages?
+  rubric:
+  - Explains that a row-level condition for completed orders belongs in WHERE before grouping.
+  - Explains that the query groups orders by customer to calculate a per-customer count.
+  - Explains that the threshold on the calculated count belongs in HAVING after grouping.
+  required: 2
+  model_answer: I would use WHERE to keep only completed orders before calculating counts. Then I would group the
+    remaining rows by customer and count their orders. I would use HAVING to keep groups whose count is at least
+    three, because that condition applies to the aggregate result.
+- id: o6
+  topic: SQL
+  text: You want the latest order for every customer, along with the other columns from that order. How would you
+    use a window function to identify those rows, and why might that be more useful than returning only the maximum
+    order date?
+  rubric:
+  - Explains that the window function should divide orders into groups by customer and order them by date.
+  - Explains that assigning a row number within each customer group makes the latest order identifiable.
+  - Explains that filtering to the first-ranked row retains the full order row, not just the maximum date.
+  required: 2
+  model_answer: I would use a window function partitioned by customer and ordered from newest to oldest order date.
+    It can assign row number 1 to the latest order for each customer, and I can filter to those rows, using a CTE
+    or subquery if needed. Unlike returning only the maximum date, this keeps the other columns from the selected
+    order.
+- id: o7
+  topic: Exploratory Analysis and Visualization
+  text: A numeric response-time dataset contains a few values much larger than most of the others. How would you
+    visualize and investigate the distribution before deciding whether those values should affect your analysis?
+  rubric:
+  - Names a histogram or another suitable distribution-focused view to reveal the overall spread and unusual values.
+  - Explains that unusual values should be investigated in context before being removed or treated as errors.
+  - Notes that the distribution or unusual values can affect which summary or comparison is appropriate.
+  required: 2
+  model_answer: I would use a histogram to see the distribution, including whether most response times cluster together
+    and how extreme the large values are. I would investigate those values to determine whether they are errors
+    or genuine slow responses before removing them. If they are genuine, they may affect summaries and should be
+    considered when interpreting the results.
+- id: o8
+  topic: Exploratory Analysis and Visualization
+  text: A team wants to compare weekly signups for several product categories and share a short finding. What chart
+    would help show the comparison over time, and what would you include so readers can understand both the finding
+    and its limitations?
+  rubric:
+  - Chooses a line chart or another suitable chart for showing changes over time across categories.
+  - Explains that clear labels, a title, and a legend help readers interpret the displayed categories and values.
+  - Identifies a relevant limitation, such as missing weeks or the chart showing association rather than a cause.
+  required: 2
+  model_answer: I would use a line chart with a separate line for each product category to show weekly changes over
+    time. I would add a descriptive title, label the axes, and include a readable legend. In the finding, I would
+    describe the visible comparison without claiming the chart proves what caused it. I would also note relevant
+    limitations, such as missing weeks in the data.
 problem:
-  title: Scale each column to 0–1
-  prompt: 'Write `min_max_scale(a)` for a 2-D NumPy array: scale each column so that its smallest value becomes
-    0 and its largest 1, without a Python loop. A column whose values are all equal becomes all zeros.
+  title: Reshape and Filter Readings
+  prompt: "Write `analyze_readings(readings, rows, cols, cutoff)` using NumPy. Treat `readings` as a flat sequence\
+    \ of measurements and reshape it into a `rows`-by-`cols` matrix. Return a dictionary with:\n\n- `matrix`: the\
+    \ reshaped matrix as a nested list.\n- `row_totals`: the sum of each row, in order.\n- `selected_rows`: the\
+    \ rows whose totals are **greater than or equal to** `cutoff`, preserving their order.\n- `column_means`: the\
+    \ mean of each column across the **entire** matrix, not just the selected rows.\n\nUse array operations for\
+    \ the sums, filtering, and means rather than looping over individual values or rows.\n\nExample:\n```python\n\
+    analyze_readings([1, 2, 3, 4, 5, 6], 2, 3, 10)\n```\nreturns:\n```python\n{\n    \"matrix\": [[1, 2, 3], [4,\
+    \ 5, 6]],\n    \"row_totals\": [6, 15],\n    \"selected_rows\": [[4, 5, 6]],\n    \"column_means\": [2.5, 3.5,\
+    \ 4.5]\n}\n```"
+  starter_code: "def analyze_readings(readings, rows, cols, cutoff):\n    \"\"\"Reshape readings, summarize rows\
+    \ and columns, and select rows by total.\"\"\"\n    ..."
+  tests: 'result = analyze_readings([1, 2, 3, 4, 5, 6], 2, 3, 10)
+
+    assert result == {"matrix": [[1, 2, 3], [4, 5, 6]], "row_totals": [6, 15], "selected_rows": [[4, 5, 6]], "column_means":
+    [2.5, 3.5, 4.5]}, "reshape and summarize the example matrix"
 
 
-    Example: the column `[1, 3, 2]` becomes `[0, 1, 0.5]`.'
-  starter_code: "import numpy as np\n\n\ndef min_max_scale(a: np.ndarray) -> np.ndarray:\n    \"\"\"Each column\
-    \ scaled to 0..1; a constant column becomes zeros.\"\"\"\n    ..."
-  tests: 'import numpy as np
+    result = analyze_readings([1, 2, 3, 4, 5, 6], 2, 3, 6)
+
+    assert result["selected_rows"] == [[1, 2, 3], [4, 5, 6]], "include rows whose total equals the cutoff"
 
 
-    a = np.array([[1.0, 10.0], [3.0, 10.0], [2.0, 10.0]])
+    result = analyze_readings([1, 9, 2, 8, 1, 1, 3, 2, 3], 3, 3, 10)
 
-    result = min_max_scale(a)
+    assert result["row_totals"] == [12, 10, 8] and result["selected_rows"] == [[1, 9, 2], [8, 1, 1]], "select qualifying
+    rows in their original order"
 
-    assert result.shape == (3, 2), "the shape stays the same"
+    assert result["column_means"] == [4.0, 4.0, 2.0], "calculate column means across the full matrix"
 
-    assert np.allclose(result[:, 0], [0.0, 1.0, 0.5]), "the first column is scaled"
 
-    assert np.allclose(result[:, 1], 0.0), "a constant column becomes zeros"
+    result = analyze_readings([1, 1, 1, 2, 2, 2], 2, 3, 100)
 
-    assert np.allclose(min_max_scale(np.array([[0.0], [4.0]]))[:, 0], [0.0, 1.0]), "one column works too"'
-  solution: "import numpy as np\n\n\ndef min_max_scale(a):\n    low = a.min(axis=0)\n    span = a.max(axis=0) -\
-    \ low\n    return np.divide(a - low, span, out=np.zeros_like(a, dtype=float), where=span != 0)"
+    assert result["selected_rows"] == [], "return an empty selection when no row qualifies"
+
+    assert result["column_means"] == [1.5, 1.5, 1.5], "still calculate means when no rows qualify"
+
+
+    result = analyze_readings([1, 4, 7], 3, 1, 5)
+
+    assert result["matrix"] == [[1], [4], [7]] and result["row_totals"] == [1, 4, 7], "handle a matrix with one
+    column"
+
+    assert result["selected_rows"] == [[7]] and result["column_means"] == [4.0], "filter and summarize a one-column
+    matrix"'
+  solution: "import numpy as np\n\n\ndef analyze_readings(readings, rows, cols, cutoff):\n    \"\"\"Reshape readings,\
+    \ summarize rows and columns, and select rows by total.\"\"\"\n    matrix = np.asarray(readings).reshape(rows,\
+    \ cols)\n    row_totals = matrix.sum(axis=1)\n    selected_rows = matrix[row_totals >= cutoff]\n    column_means\
+    \ = matrix.mean(axis=0)\n\n    return {\n        \"matrix\": matrix.tolist(),\n        \"row_totals\": row_totals.tolist(),\n\
+    \        \"selected_rows\": selected_rows.tolist(),\n        \"column_means\": column_means.tolist(),\n    }"
   packages:
   - numpy
+  topic: NumPy Foundations
+  wrong_solutions:
+  - "import numpy as np\n\n\ndef analyze_readings(readings, rows, cols, cutoff):\n    matrix = np.asarray(readings).reshape(rows,\
+    \ cols)\n    row_totals = matrix.sum(axis=1)\n    selected_rows = matrix[row_totals > cutoff]  # Incorrectly\
+    \ excludes rows exactly at the cutoff.\n    return {\"matrix\": matrix.tolist(), \"row_totals\": row_totals.tolist(),\
+    \ \"selected_rows\": selected_rows.tolist(), \"column_means\": matrix.mean(axis=0).tolist()}"
+  - "import numpy as np\n\n\ndef analyze_readings(readings, rows, cols, cutoff):\n    matrix = np.asarray(readings).reshape(rows,\
+    \ cols)\n    row_totals = matrix.sum(axis=0)  # Sums columns instead of rows.\n    selected_rows = matrix[row_totals\
+    \ >= cutoff]\n    return {\"matrix\": matrix.tolist(), \"row_totals\": row_totals.tolist(), \"selected_rows\"\
+    : selected_rows.tolist(), \"column_means\": matrix.mean(axis=0).tolist()}"
+  - "import numpy as np\n\n\ndef analyze_readings(readings, rows, cols, cutoff):\n    matrix = np.asarray(readings).reshape(rows,\
+    \ cols)\n    row_totals = matrix.sum(axis=1)\n    selected_rows = matrix[row_totals >= cutoff]\n    means_source\
+    \ = selected_rows if len(selected_rows) else matrix\n    return {\"matrix\": matrix.tolist(), \"row_totals\"\
+    : row_totals.tolist(), \"selected_rows\": selected_rows.tolist(), \"column_means\": means_source.mean(axis=0).tolist()}\
+    \  # Means use only selected rows when any qualify."
+problems:
+- title: Clean Sales Records
+  prompt: "Write `clean_sales(df)`, which takes a pandas DataFrame with columns `order_id`, `category`, `quantity`,\
+    \ and `unit_price`, and returns a cleaned DataFrame with columns `order_id`, `category`, `quantity`, `unit_price`,\
+    \ and `revenue` in that order.\n\nApply these rules in order:\n1. Keep the first row for each `order_id`, removing\
+    \ later rows with the same ID.\n2. Convert `quantity` and `unit_price` to numeric values. Treat values that\
+    \ cannot be converted as missing, then remove rows where either numeric value is missing.\n3. Strip surrounding\
+    \ whitespace from `category` and convert it to title case. Replace missing or blank categories with `\"Unknown\"\
+    `.\n4. Add `revenue`, calculated as `quantity * unit_price` without rounding. Preserve row order and reset the\
+    \ returned DataFrame's index.\n\nFor example:\n```python\nimport pandas as pd\n\nclean_sales(pd.DataFrame([\n\
+    \    {\"order_id\": 1, \"category\": \"  OFFICE supplies \", \"quantity\": \"2\", \"unit_price\": \"3.5\"}\n\
+    ])).to_dict(\"records\")\n# [{'order_id': 1, 'category': 'Office Supplies', 'quantity': 2.0,\n#   'unit_price':\
+    \ 3.5, 'revenue': 7.0}]\n```"
+  starter_code: "def clean_sales(df):\n    \"\"\"Return deduplicated, normalized sales rows with numeric values\
+    \ and revenue.\"\"\"\n    ..."
+  tests: "import pandas as pd\n\nexample = pd.DataFrame([\n    {\"order_id\": 1, \"category\": \"  OFFICE supplies\
+    \ \", \"quantity\": \"2\", \"unit_price\": \"3.5\"}\n])\nassert clean_sales(example).to_dict(\"records\") ==\
+    \ [\n    {\"order_id\": 1, \"category\": \"Office Supplies\", \"quantity\": 2.0, \"unit_price\": 3.5, \"revenue\"\
+    : 7.0}\n], \"normalizes categories and calculates revenue\"\n\nrecords = pd.DataFrame([\n    {\"order_id\":\
+    \ 8, \"category\": \"Books\", \"quantity\": \"2\", \"unit_price\": \"4\"},\n    {\"order_id\": 8, \"category\"\
+    : \"Toys\", \"quantity\": \"9\", \"unit_price\": \"9\"},\n    {\"order_id\": 9, \"category\": \"Games\", \"\
+    quantity\": \"1\", \"unit_price\": \"5\"},\n])\nresult = clean_sales(records)\nassert result[\"order_id\"].tolist()\
+    \ == [8, 9], \"keeps only the first row for each order ID\"\nassert result.loc[0, \"category\"] == \"Books\"\
+    , \"the first duplicate row is retained\"\n\nrecords = pd.DataFrame([\n    {\"order_id\": 1, \"category\": \"\
+    A\", \"quantity\": \"bad\", \"unit_price\": \"2\"},\n    {\"order_id\": 2, \"category\": \"B\", \"quantity\"\
+    : \"3\", \"unit_price\": None},\n    {\"order_id\": 3, \"category\": \"C\", \"quantity\": \"4\", \"unit_price\"\
+    : \"2.5\"},\n])\nresult = clean_sales(records)\nassert result[\"order_id\"].tolist() == [3], \"removes rows\
+    \ with missing or unparseable numeric values\"\nassert result.loc[0, \"revenue\"] == 10.0, \"computes revenue\
+    \ from converted numeric values\"\n\nrecords = pd.DataFrame([\n    {\"order_id\": 1, \"category\": \"  tools\
+    \ \", \"quantity\": 1, \"unit_price\": 2},\n    {\"order_id\": 2, \"category\": \"\", \"quantity\": 1, \"unit_price\"\
+    : 2},\n    {\"order_id\": 3, \"category\": None, \"quantity\": 1, \"unit_price\": 2},\n])\nassert clean_sales(records)[\"\
+    category\"].tolist() == [\"Tools\", \"Unknown\", \"Unknown\"], \"normalizes blank and missing categories\"\n\
+    \nrecords = pd.DataFrame([\n    {\"order_id\": 2, \"category\": \"B\", \"quantity\": 2, \"unit_price\": 3},\n\
+    \    {\"order_id\": 1, \"category\": \"A\", \"quantity\": 1, \"unit_price\": 4},\n])\nresult = clean_sales(records)\n\
+    assert result.columns.tolist() == [\"order_id\", \"category\", \"quantity\", \"unit_price\", \"revenue\"], \"\
+    returns exactly the requested columns\"\nassert result[\"order_id\"].tolist() == [2, 1] and result.index.tolist()\
+    \ == [0, 1], \"preserves row order and resets the index\"\n\nempty = pd.DataFrame(columns=[\"order_id\", \"\
+    category\", \"quantity\", \"unit_price\"])\nassert clean_sales(empty).columns.tolist() == [\"order_id\", \"\
+    category\", \"quantity\", \"unit_price\", \"revenue\"], \"handles an empty input\"\nassert clean_sales(empty).empty,\
+    \ \"returns no rows for an empty input\""
+  solution: "import pandas as pd\n\n\ndef clean_sales(df):\n    \"\"\"Return deduplicated, normalized sales rows\
+    \ with numeric values and revenue.\"\"\"\n    result = df.drop_duplicates(subset=\"order_id\", keep=\"first\"\
+    ).copy()\n    result[\"quantity\"] = pd.to_numeric(result[\"quantity\"], errors=\"coerce\")\n    result[\"unit_price\"\
+    ] = pd.to_numeric(result[\"unit_price\"], errors=\"coerce\")\n    result = result.dropna(subset=[\"quantity\"\
+    , \"unit_price\"])\n\n    result[\"category\"] = result[\"category\"].fillna(\"\").str.strip().str.title()\n\
+    \    result[\"category\"] = result[\"category\"].replace(\"\", \"Unknown\")\n    result[\"revenue\"] = result[\"\
+    quantity\"] * result[\"unit_price\"]\n\n    columns = [\"order_id\", \"category\", \"quantity\", \"unit_price\"\
+    , \"revenue\"]\n    return result[columns].reset_index(drop=True)"
+  packages:
+  - pandas
+  topic: Pandas and Data Cleaning
+  wrong_solutions:
+  - "def clean_sales(df):\n    \"\"\"Deduplicates, converts numeric fields, normalizes categories, and adds revenue.\"\
+    \"\"\n    result = df.copy()\n    result[\"quantity\"] = pd.to_numeric(result[\"quantity\"], errors=\"coerce\"\
+    )\n    result[\"unit_price\"] = pd.to_numeric(result[\"unit_price\"], errors=\"coerce\")\n    result = result.dropna(subset=[\"\
+    quantity\", \"unit_price\"])\n    result[\"category\"] = result[\"category\"].fillna(\"\").str.strip().str.title().replace(\"\
+    \", \"Unknown\")\n    result[\"revenue\"] = result[\"quantity\"] * result[\"unit_price\"]\n    return result[[\"\
+    order_id\", \"category\", \"quantity\", \"unit_price\", \"revenue\"]].reset_index(drop=True)"
+  - "def clean_sales(df):\n    \"\"\"Deduplicates, converts numeric fields, normalizes categories, and adds revenue.\"\
+    \"\"\n    result = df.drop_duplicates(subset=\"order_id\", keep=\"first\").copy()\n    result[\"quantity\"]\
+    \ = pd.to_numeric(result[\"quantity\"], errors=\"coerce\")\n    result[\"unit_price\"] = pd.to_numeric(result[\"\
+    unit_price\"], errors=\"coerce\")\n    result = result.dropna(subset=[\"quantity\", \"unit_price\"])\n    result[\"\
+    category\"] = result[\"category\"].fillna(\"\").str.strip().replace(\"\", \"Unknown\")\n    result[\"revenue\"\
+    ] = result[\"quantity\"] * result[\"unit_price\"]\n    return result[[\"order_id\", \"category\", \"quantity\"\
+    , \"unit_price\", \"revenue\"]].reset_index(drop=True)"
+  - "def clean_sales(df):\n    \"\"\"Deduplicates, converts numeric fields, normalizes categories, and adds revenue.\"\
+    \"\"\n    result = df.drop_duplicates(subset=\"order_id\", keep=\"first\").copy()\n    result = result.dropna(subset=[\"\
+    quantity\", \"unit_price\"])\n    result[\"quantity\"] = pd.to_numeric(result[\"quantity\"])\n    result[\"\
+    unit_price\"] = pd.to_numeric(result[\"unit_price\"])\n    result[\"category\"] = result[\"category\"].fillna(\"\
+    \").str.strip().str.title().replace(\"\", \"Unknown\")\n    result[\"revenue\"] = result[\"quantity\"] * result[\"\
+    unit_price\"]\n    return result[[\"order_id\", \"category\", \"quantity\", \"unit_price\", \"revenue\"]].reset_index(drop=True)"
+- title: Regional Order Summary
+  prompt: 'Write `regional_order_summary(conn)` to run a SQL query using the supplied SQLite connection. The database
+    has `customers(customer_id, region)` and `orders(order_id, customer_id, status, amount)` tables.
+
+
+    Return a list of tuples in this order: `(region, customer_count, completed_order_count, completed_revenue, large_completed_order_count)`.
+    Include regions with at least two customers even if they have no orders. Count and sum only orders whose status
+    is `''completed''`; treat a completed order with a `NULL` amount as zero revenue. A large completed order has
+    an amount of at least 100. Sort by completed revenue descending, then region name ascending.
+
+
+    For example, with the corresponding rows already in `conn`:
+
+
+    ```python
+
+    regional_order_summary(conn)
+
+    # [(''South'', 2, 2, 180, 1), (''North'', 2, 2, 120, 1),
+
+    #  (''East'', 2, 0, 0, 0), (''West'', 2, 0, 0, 0)]
+
+    ```'
+  starter_code: "def regional_order_summary(conn):\n    \"\"\"Run a SQL query and return the regional order summary\
+    \ as a list of tuples.\"\"\"\n    ..."
+  tests: "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE customers (customer_id\
+    \ INTEGER PRIMARY KEY, region TEXT NOT NULL)\")\nconn.execute(\"CREATE TABLE orders (order_id INTEGER PRIMARY\
+    \ KEY, customer_id INTEGER, status TEXT, amount INTEGER)\")\nconn.executemany(\n    \"INSERT INTO customers\
+    \ VALUES (?, ?)\",\n    [\n        (1, \"North\"), (2, \"North\"),\n        (3, \"South\"), (4, \"South\"),\n\
+    \        (5, \"East\"), (6, \"East\"),\n        (7, \"West\"), (8, \"West\"),\n        (9, \"Solo\"),\n    ],\n\
+    )\nconn.executemany(\n    \"INSERT INTO orders VALUES (?, ?, ?, ?)\",\n    [\n        (11, 1, \"completed\"\
+    , 120),\n        (12, 1, \"completed\", None),\n        (13, 2, \"pending\", 300),\n        (14, 2, \"cancelled\"\
+    , 50),\n        (15, 3, \"completed\", 80),\n        (16, 4, \"completed\", 100),\n        (17, 9, \"completed\"\
+    , 999),\n    ],\n)\n\nrows = regional_order_summary(conn)\nassert rows == [(\"South\", 2, 2, 180, 1), (\"North\"\
+    , 2, 2, 120, 1), (\"East\", 2, 0, 0, 0), (\"West\", 2, 0, 0, 0)], \"include qualifying regions and sort by revenue,\
+    \ then region\"\nassert rows[0] == (\"South\", 2, 2, 180, 1), \"count completed orders and include amounts of\
+    \ exactly 100 as large\"\nassert rows[1] == (\"North\", 2, 2, 120, 1), \"ignore non-completed orders and count\
+    \ NULL completed revenue as zero\"\nassert rows[2:] == [(\"East\", 2, 0, 0, 0), (\"West\", 2, 0, 0, 0)], \"\
+    retain regions with no orders and order ties by region name\"\nassert all(row[0] != \"Solo\" for row in rows),\
+    \ \"exclude regions with fewer than two customers\"\nassert [row[3] for row in rows] == [180, 120, 0, 0], \"\
+    sort completed revenue in descending order\""
+  solution: "def regional_order_summary(conn):\n    \"\"\"Run a SQL query and return the regional order summary\
+    \ as a list of tuples.\"\"\"\n    query = \"\"\"\n        SELECT\n            c.region,\n            COUNT(DISTINCT\
+    \ c.customer_id) AS customer_count,\n            SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS\
+    \ completed_order_count,\n            SUM(CASE WHEN o.status = 'completed' THEN COALESCE(o.amount, 0) ELSE 0\
+    \ END) AS completed_revenue,\n            SUM(CASE WHEN o.status = 'completed' AND o.amount >= 100 THEN 1 ELSE\
+    \ 0 END) AS large_completed_order_count\n        FROM customers AS c\n        LEFT JOIN orders AS o ON o.customer_id\
+    \ = c.customer_id\n        GROUP BY c.region\n        HAVING COUNT(DISTINCT c.customer_id) >= 2\n        ORDER\
+    \ BY completed_revenue DESC, c.region ASC\n    \"\"\"\n    return conn.execute(query).fetchall()"
+  packages: []
+  topic: SQL
+  wrong_solutions:
+  - "def regional_order_summary(conn):\n    \"\"\"Incorrectly counts joined rows as customers.\"\"\"\n    query\
+    \ = \"\"\"\n        SELECT c.region, COUNT(*) AS customer_count,\n               SUM(CASE WHEN o.status = 'completed'\
+    \ THEN 1 ELSE 0 END),\n               SUM(CASE WHEN o.status = 'completed' THEN COALESCE(o.amount, 0) ELSE 0\
+    \ END),\n               SUM(CASE WHEN o.status = 'completed' AND o.amount >= 100 THEN 1 ELSE 0 END)\n      \
+    \  FROM customers AS c\n        LEFT JOIN orders AS o ON o.customer_id = c.customer_id\n        GROUP BY c.region\n\
+    \        HAVING COUNT(DISTINCT c.customer_id) >= 2\n        ORDER BY 4 DESC, c.region ASC\n    \"\"\"\n    return\
+    \ conn.execute(query).fetchall()"
+  - "def regional_order_summary(conn):\n    \"\"\"Incorrectly drops regions that have no orders.\"\"\"\n    query\
+    \ = \"\"\"\n        SELECT c.region, COUNT(DISTINCT c.customer_id),\n               SUM(CASE WHEN o.status =\
+    \ 'completed' THEN 1 ELSE 0 END),\n               SUM(CASE WHEN o.status = 'completed' THEN COALESCE(o.amount,\
+    \ 0) ELSE 0 END),\n               SUM(CASE WHEN o.status = 'completed' AND o.amount >= 100 THEN 1 ELSE 0 END)\n\
+    \        FROM customers AS c\n        JOIN orders AS o ON o.customer_id = c.customer_id\n        GROUP BY c.region\n\
+    \        HAVING COUNT(DISTINCT c.customer_id) >= 2\n        ORDER BY 4 DESC, c.region ASC\n    \"\"\"\n    return\
+    \ conn.execute(query).fetchall()"
+  - "def regional_order_summary(conn):\n    \"\"\"Incorrectly sorts revenue in ascending order.\"\"\"\n    query\
+    \ = \"\"\"\n        SELECT c.region, COUNT(DISTINCT c.customer_id),\n               SUM(CASE WHEN o.status =\
+    \ 'completed' THEN 1 ELSE 0 END),\n               SUM(CASE WHEN o.status = 'completed' THEN COALESCE(o.amount,\
+    \ 0) ELSE 0 END),\n               SUM(CASE WHEN o.status = 'completed' AND o.amount >= 100 THEN 1 ELSE 0 END)\n\
+    \        FROM customers AS c\n        LEFT JOIN orders AS o ON o.customer_id = c.customer_id\n        GROUP\
+    \ BY c.region\n        HAVING COUNT(DISTINCT c.customer_id) >= 2\n        ORDER BY 4 ASC, c.region ASC\n   \
+    \ \"\"\"\n    return conn.execute(query).fetchall()"
+- title: Build Histogram Data
+  prompt: 'Write `histogram_data(values, edges)` to prepare numerical data for a histogram. Return a dictionary
+    with `bins` (a list of dictionaries containing `left`, `right`, and `count`), `underflow` (values below the
+    first edge), `overflow` (values above the last edge), and `total` (the number of input values).
+
+
+    Each bin includes its left edge and excludes its right edge, except the last bin, which includes its right edge.
+    Values outside the edge range are not counted in bins, but must be reported as underflow or overflow. Assume
+    `edges` contains at least two strictly increasing numbers and `values` contains finite numbers.
+
+
+    Example:
+
+    ```python
+
+    histogram_data([0, 1, 2, 3, 4], [0, 2, 4])
+
+    # {''bins'': [{''left'': 0, ''right'': 2, ''count'': 2},
+
+    #           {''left'': 2, ''right'': 4, ''count'': 3}],
+
+    #  ''underflow'': 0, ''overflow'': 0, ''total'': 5}
+
+    ```'
+  starter_code: "def histogram_data(values, edges):\n    \"\"\"Return histogram bins and counts of values outside\
+    \ the edge range.\"\"\"\n    ..."
+  tests: 'assert histogram_data([0, 1, 2, 3, 4], [0, 2, 4]) == {''bins'': [{''left'': 0, ''right'': 2, ''count'':
+    2}, {''left'': 2, ''right'': 4, ''count'': 3}], ''underflow'': 0, ''overflow'': 0, ''total'': 5}, "Include the
+    final edge in the last bin."
+
+    assert histogram_data([-1, 0, 1, 2, 3, 4, 5], [0, 2, 4]) == {''bins'': [{''left'': 0, ''right'': 2, ''count'':
+    2}, {''left'': 2, ''right'': 4, ''count'': 3}], ''underflow'': 1, ''overflow'': 1, ''total'': 7}, "Report out-of-range
+    values separately."
+
+    assert histogram_data([], [0, 1, 3]) == {''bins'': [{''left'': 0, ''right'': 1, ''count'': 0}, {''left'': 1,
+    ''right'': 3, ''count'': 0}], ''underflow'': 0, ''overflow'': 0, ''total'': 0}, "Return zero-count bins for
+    empty input."
+
+    assert histogram_data([2, 2, 2], [0, 2, 4]) == {''bins'': [{''left'': 0, ''right'': 2, ''count'': 0}, {''left'':
+    2, ''right'': 4, ''count'': 3}], ''underflow'': 0, ''overflow'': 0, ''total'': 3}, "Place a shared boundary
+    in the bin on its right."
+
+    assert histogram_data([-2, -1], [0, 1, 2]) == {''bins'': [{''left'': 0, ''right'': 1, ''count'': 0}, {''left'':
+    1, ''right'': 2, ''count'': 0}], ''underflow'': 2, ''overflow'': 0, ''total'': 2}, "Count values below the first
+    edge as underflow."
+
+    assert histogram_data([2, 3], [0, 1, 2]) == {''bins'': [{''left'': 0, ''right'': 1, ''count'': 0}, {''left'':
+    1, ''right'': 2, ''count'': 1}], ''underflow'': 0, ''overflow'': 1, ''total'': 2}, "Count values above the last
+    edge as overflow."'
+  solution: "def histogram_data(values, edges):\n    bins = [\n        {\"left\": edges[i], \"right\": edges[i +\
+    \ 1], \"count\": 0}\n        for i in range(len(edges) - 1)\n    ]\n    underflow = 0\n    overflow = 0\n\n\
+    \    for value in values:\n        if value < edges[0]:\n            underflow += 1\n        elif value > edges[-1]:\n\
+    \            overflow += 1\n        else:\n            for i in range(len(bins)):\n                is_last_bin\
+    \ = i == len(bins) - 1\n                if edges[i] <= value < edges[i + 1] or (is_last_bin and value == edges[i\
+    \ + 1]):\n                    bins[i][\"count\"] += 1\n                    break\n\n    return {\n        \"\
+    bins\": bins,\n        \"underflow\": underflow,\n        \"overflow\": overflow,\n        \"total\": len(values),\n\
+    \    }"
+  packages: []
+  topic: Exploratory Analysis and Visualization
+  wrong_solutions:
+  - "def histogram_data(values, edges):\n    bins = [{\"left\": edges[i], \"right\": edges[i + 1], \"count\": 0}\
+    \ for i in range(len(edges) - 1)]\n    underflow = overflow = 0\n    for value in values:\n        if value\
+    \ < edges[0]:\n            underflow += 1\n        elif value >= edges[-1]:  # Incorrectly treats the final\
+    \ edge as overflow.\n            overflow += 1\n        else:\n            for i in range(len(bins)):\n    \
+    \            if edges[i] <= value < edges[i + 1]:\n                    bins[i][\"count\"] += 1\n           \
+    \         break\n    return {\"bins\": bins, \"underflow\": underflow, \"overflow\": overflow, \"total\": len(values)}"
+  - "def histogram_data(values, edges):\n    bins = [{\"left\": edges[i], \"right\": edges[i + 1], \"count\": 0}\
+    \ for i in range(len(edges) - 1)]\n    for value in values:\n        # Incorrectly clamps out-of-range values\
+    \ into the edge bins.\n        value = min(max(value, edges[0]), edges[-1])\n        for i in range(len(bins)):\n\
+    \            if edges[i] <= value < edges[i + 1] or (i == len(bins) - 1 and value == edges[i + 1]):\n      \
+    \          bins[i][\"count\"] += 1\n                break\n    return {\"bins\": bins, \"underflow\": 0, \"\
+    overflow\": 0, \"total\": len(values)}"
+  - "def histogram_data(values, edges):\n    bins = [{\"left\": edges[i], \"right\": edges[i + 1], \"count\": 0}\
+    \ for i in range(len(edges) - 1)]\n    underflow = overflow = 0\n    for value in values:\n        if value\
+    \ < edges[0]:\n            underflow += 1\n        elif value > edges[-1]:\n            overflow += 1\n    \
+    \    else:\n            for i in range(len(bins)):\n                # Incorrectly assigns shared-edge values\
+    \ to the bin on the left.\n                if edges[i] < value <= edges[i + 1]:\n                    bins[i][\"\
+    count\"] += 1\n                    break\n            else:\n                if value == edges[0]:\n       \
+    \             bins[0][\"count\"] += 1\n    return {\"bins\": bins, \"underflow\": underflow, \"overflow\": overflow,\
+    \ \"total\": len(values)}"

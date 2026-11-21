@@ -142,3 +142,97 @@ def test_without_a_model_a_checkpoint_still_counts_but_brings_no_suggestions(
 
     assert after.item("basics/terminal").progress == "passed"
     assert after.proposals == []
+
+
+def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_topics(
+    curriculum, questions
+):
+    from helpers import planner_response
+    from roadmap.checkpoints import Grade, QuestionFeedback
+    from roadmap.curriculum import Topic
+    from roadmap.path import TopicChoice
+
+    terminal, algebra, notes, vision = (
+        "basics/terminal",
+        "basics/algebra",
+        "tracks/notes",
+        "tracks/vision/resources",
+    )
+    course = curriculum.model_copy(
+        update={
+            "modules": [
+                (
+                    m.model_copy(
+                        update={
+                            "topics": [Topic(title="Intro"), Topic(title="Practice")]
+                        }
+                    )
+                    if m.id == vision
+                    else m
+                )
+                for m in curriculum.modules
+            ]
+        }
+    )
+    first = study_all(course, except_for={notes: (Choice.PROVE, "You have used it.")})
+    vision_id = planner_response(course, {vision: (Choice.STUDY, "x")})["decisions"][0][
+        "module_id"
+    ]
+    for decision in first["decisions"]:
+        if decision["module_id"] == vision_id:
+            decision["skim"] = [{"topic": "Intro", "reason": "You know it."}]
+    again = study_all(
+        course,
+        except_for={algebra: (Choice.SKIP, "Lighter, which a failure cannot bring.")},
+    )
+    llm = FakeLLM(first, again)
+    roadmap = Roadmap(course, questions, llm)
+    path = roadmap.build_path({"programming": "Some Python"}, Level.BEGINNER).confirm()
+    assert path.item(vision).topic_choice("Intro") is TopicChoice.SKIM
+    grade = Grade(
+        attempt=0,
+        score=1,
+        total=5,
+        passed=False,
+        effortless=False,
+        feedback=[QuestionFeedback(id="q1", topic="Pipes", correct=False)],
+        review_topics=["Pipes"],
+    )
+
+    after = roadmap.after_checkpoint(path, terminal, grade)
+
+    assert after.item(terminal).progress == "failed"
+    # In course order; algebra's lighter "skip" is dropped after a failure.
+    assert [
+        (p.module_id, p.choice, p.topic, p.topic_choice) for p in after.proposals
+    ] == [
+        (vision, None, "Intro", TopicChoice.STUDY),
+        (notes, Choice.STUDY, None, None),
+    ]
+    assert all(p.after_failure for p in after.proposals)
+    assert "failed the checkpoint" in llm.prompts[-1] and "Pipes" in llm.prompts[-1]
+    assert f"{vision}: study (skim Intro)" in llm.prompts[-1]
+
+
+def test_over_the_quota_a_failed_checkpoint_still_counts_without_suggestions(
+    curriculum, questions
+):
+    from roadmap.checkpoints import Grade
+
+    llm = FakeLLM(study_all(curriculum))
+    roadmap = Roadmap(curriculum, questions, llm)
+    path = roadmap.build_path({}, Level.BEGINNER).confirm()
+    grade = Grade(
+        attempt=0,
+        score=1,
+        total=5,
+        passed=False,
+        effortless=False,
+        feedback=[],
+        review_topics=["Pipes"],
+    )
+
+    after = roadmap.after_checkpoint(path, "basics/terminal", grade, suggest=False)
+
+    assert after.item("basics/terminal").progress == "failed" and after.proposals == []
+    assert len(llm.prompts) == 1  # only the first plan

@@ -1,188 +1,613 @@
 module_id: softlanding/specializations/data-science/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
-- id: q1
-  topic: Curriculum
-  text: A study tests a null hypothesis using a significance level of 0.05 and obtains a p-value of 0.03. What is
-    the appropriate conclusion?
+- id: q24
+  topic: Inferential Statistics
+  text: A test of equal average delivery times between two services gives a p-value of 0.03. With a significance
+    level of 0.05, what should the analyst conclude?
   options:
-  - Keep the null hypothesis because the p-value is below the significance level.
-  - Conclude the null hypothesis has a 3% chance of being true.
-  - Reject the null hypothesis; the result is statistically significant at this level.
-  - Conclude the alternative hypothesis is certainly true.
-  answer: 2
-  explanation: Because the p-value is below 0.05, the result is statistically significant under the chosen test.
-    This does not tell us the probability that either hypothesis is true.
-- id: q2
-  topic: Curriculum
-  text: A team wants to know whether the average delivery time differs between two independent groups of orders.
-    Which approach best addresses that question?
-  options:
-  - Estimate and test the difference between the two population means.
-  - Compare the largest delivery time observed in each group.
-  - Test whether the two groups have identical delivery-time distributions in every respect.
-  - Compare the two sample means without considering sample variability.
+  - Reject equal averages; the data provide evidence of a difference.
+  - Keep equal averages; the p-value is below the significance level.
+  - Conclude there is a 3% chance the averages are equal.
+  - Conclude the difference is large enough to matter in practice.
   answer: 0
-  explanation: The question concerns a difference in average delivery time, so the relevant target is the difference
-    between the population means. A statistical test accounts for the variability in the samples.
-- id: q3
-  topic: Curriculum
-  text: The same customers rate a service before and after a redesign. To test whether their average rating changed,
-    what should the analysis focus on?
+  explanation: Since 0.03 is below 0.05, the result is statistically significant and the null hypothesis of equal
+    averages is rejected. This alone does not establish the practical size of the difference.
+- id: q25
+  topic: Inferential Statistics
+  text: A company wants to test whether a new process reduces average production time below the current 20 minutes.
+    Which hypotheses match that question?
   options:
-  - Treat the before and after ratings as unrelated samples.
-  - Compare the two groups' variances and ignore their means.
-  - Use only the ratings recorded after the redesign.
-  - Analyze each customer's after-minus-before rating difference.
-  answer: 3
-  explanation: The observations are paired because each customer provides both ratings. Testing the within-customer
-    differences uses that pairing rather than treating the samples as independent.
-- id: q4
-  topic: Curriculum
-  text: Two independent groups have noticeably different sample variances and different sample sizes. The goal is
-    to compare their means. Which test is a sensible choice?
-  options:
-  - A pooled-variance t-test that assumes the population variances are equal.
-  - Welch's t-test, which does not require equal population variances.
-  - A paired t-test, matching each observation in one group with one in the other.
-  - A one-sample t-test applied to the combined observations.
+  - 'H₀: μ < 20; Hₐ: μ = 20'
+  - 'H₀: μ = 20; Hₐ: μ < 20'
+  - 'H₀: μ ≠ 20; Hₐ: μ = 20'
+  - 'H₀: μ > 20; Hₐ: μ < 20'
   answer: 1
-  explanation: Welch's t-test compares independent group means without assuming equal population variances. That
-    is a suitable choice when variances and sample sizes differ.
-- id: q5
-  topic: Curriculum
-  text: A one-way ANOVA comparing four treatment groups gives a statistically significant result. What can the team
-    conclude from this test alone?
+  explanation: 'The alternative hypothesis represents the claim being investigated: that the new process has a mean
+    time below 20 minutes. The null uses equality as the reference value.'
+- id: q26
+  topic: Inferential Statistics
+  text: An analyst compares average monthly spending in two independent customer groups. The sample sizes and sample
+    variances differ substantially. Which test is a suitable choice for comparing their population means?
   options:
-  - Every pair of treatment means differs significantly.
-  - The group with the largest sample mean is significantly better than the others.
-  - At least one population mean differs, but follow-up comparisons are needed to locate the difference.
-  - The treatment with the smallest sample variance has the largest population mean.
+  - A paired t-test using the two group averages
+  - A one-sample t-test against the combined average
+  - A Welch two-sample t-test
+  - A one-way ANOVA treating each customer as a group
   answer: 2
-  explanation: A significant ANOVA indicates evidence that not all population means are equal. It does not identify
-    which groups differ; follow-up comparisons are needed for that.
-- id: q6
-  topic: Curriculum
-  text: A very large study finds a statistically significant difference in average wait time, but the estimated
-    difference is only one second. What is the best interpretation?
+  explanation: Welch’s two-sample t-test compares means from independent groups without requiring their population
+    variances to be equal. The groups are not paired, so a paired test would not fit.
+- id: q27
+  topic: Inferential Statistics
+  text: A researcher records each participant’s blood pressure before and after a program, then tests whether the
+    average changed. Which analysis best uses this study design?
   options:
-  - The difference may be statistically detectable but too small to matter operationally.
-  - Statistical significance proves the difference is large enough to matter.
-  - The result must be invalid because large studies cannot find small effects.
-  - The one-second estimate means the two population averages are equal.
-  answer: 0
-  explanation: A large sample can make a small difference statistically detectable. Whether a one-second change
-    matters in practice is a separate question from statistical significance.
-- id: q7
-  topic: Curriculum
-  text: A fraud detector flags transactions for review. Reviewers want flagged transactions to be fraudulent as
-    often as possible, even if some fraud is missed. Which metric should they prioritize?
-  options:
-  - Recall, because it measures the fraction of all fraud cases found.
-  - Accuracy, because it counts correct decisions across all transactions.
-  - Specificity, because it measures the fraction of legitimate cases left unflagged.
-  - Precision, because it measures the fraction of flagged transactions that are fraud.
+  - An independent two-sample t-test on the two sets of readings
+  - A two-proportion test on the before and after readings
+  - A one-way ANOVA that treats each reading as independent
+  - A paired t-test on each participant’s before-and-after difference
   answer: 3
-  explanation: Precision is the proportion of flagged transactions that are truly fraudulent. Prioritizing it reduces
-    the share of reviewed alerts that are false alarms.
-- id: q8
-  topic: Curriculum
-  text: A screening system must miss as few genuinely ill patients as possible, even if it sends some healthy patients
-    for further testing. Which metric should be emphasized?
+  explanation: Each before-and-after pair comes from the same participant, so the analysis should account for that
+    pairing. A paired t-test evaluates the average within-participant difference.
+- id: q28
+  topic: Inferential Statistics
+  text: Two studies estimate the same population mean using samples of equal size. The measurements in the second
+    study are much more variable. What is the likely effect on its confidence interval?
   options:
-  - Precision, the fraction of positive predictions that are correct.
-  - Recall, the fraction of actual positive cases that are detected.
-  - Specificity, the fraction of actual negative cases that are correctly rejected.
-  - Negative predictive value, the fraction of negative predictions that are correct.
+  - It will be wider because greater variability increases uncertainty.
+  - It will be narrower because greater variability adds information.
+  - It will have the same width because sample sizes are equal.
+  - It will be centered on the population mean rather than the sample mean.
+  answer: 0
+  explanation: With sample size held constant, greater variability generally increases the standard error and widens
+    the confidence interval. Equal sample sizes alone do not ensure equal precision.
+- id: q29
+  topic: Inferential Statistics
+  text: Two independent samples come from populations that are reasonably normal. An analyst wants to test whether
+    the population variances differ. Which approach fits this question and these conditions?
+  options:
+  - Use a paired t-test on the sample standard deviations.
+  - Use an F-test based on the ratio of sample variances.
+  - Use a two-proportion test on the variance estimates.
+  - Use a one-way ANOVA on the two sample variances.
   answer: 1
-  explanation: Recall measures how many actual positive cases the system detects. Emphasizing recall helps reduce
-    false negatives, which are missed ill patients in this scenario.
-- id: q9
-  topic: Curriculum
-  text: Two classifiers have very different precision and recall. A project needs one score that balances both and
-    penalizes a very low value in either. Which metric best fits?
+  explanation: For independent samples from approximately normal populations, an F-test can test whether the population
+    variances differ by comparing the sample variance ratio with its reference distribution.
+- id: q30
+  topic: Inferential Statistics
+  text: A one-way ANOVA comparing the mean output of four production lines gives a significant result. What does
+    this result support?
   options:
-  - Accuracy, which measures the fraction of all predictions that are correct.
-  - Brier score, which measures the squared error of probability predictions.
-  - F1-score, which combines precision and recall using their harmonic mean.
-  - Mean absolute error, which measures average absolute prediction error.
+  - Every production line has a different population mean.
+  - The production line with the largest sample mean is best.
+  - At least one population mean differs from another.
+  - The population variances of all four lines are unequal.
   answer: 2
-  explanation: The F1-score combines precision and recall using their harmonic mean, so a low value for either pulls
-    the score down. The other metrics evaluate different aspects of model performance.
-- id: q10
-  topic: Curriculum
-  text: Two models predict probabilities for the same binary outcomes. Their Brier scores are 0.12 and 0.19. Assuming
-    the same evaluation data, which model has better probability predictions by this metric?
+  explanation: A significant ANOVA provides evidence that not all population means are equal, so at least one differs.
+    It does not show that every mean differs or identify which lines differ.
+- id: q31
+  topic: Inferential Statistics
+  text: After a significant ANOVA comparing five group means, a researcher wants to find which pairs differ while
+    controlling the overall chance of false positives. What should they do next?
   options:
-  - The model with a Brier score of 0.12.
-  - The model with a Brier score of 0.19.
-  - Neither; Brier scores are better when they are larger.
-  - Neither; Brier scores compare only the models' predicted classes.
-  answer: 0
-  explanation: The Brier score measures squared error between predicted probabilities and observed outcomes, so
-    lower is better. A score of 0.12 indicates less error than 0.19.
-- id: q11
-  topic: Curriculum
-  text: A team evaluates a classifier on a dataset where one class is much more common than the other. They want
-    a single metric that reflects performance across all four confusion-matrix outcomes. Which is a good choice?
-  options:
-  - Accuracy, because it weights all four confusion-matrix outcomes equally.
-  - Precision, because it incorporates both true negatives and false negatives.
-  - Recall, because it incorporates both true positives and false positives.
-  - Matthews Correlation Coefficient (MCC), because it uses all four confusion-matrix outcomes.
+  - Run unadjusted t-tests for every pair and report each p-value.
+  - Compare only the group with the largest mean to the smallest.
+  - Repeat the ANOVA separately for every pair of groups.
+  - Use a multiple-comparison procedure such as Tukey’s test.
   answer: 3
+  explanation: A post-hoc procedure such as Tukey’s test compares group pairs while accounting for the multiple
+    comparisons. Running many unadjusted tests increases the chance of finding a false positive.
+- id: q32
+  topic: Evaluation Metrics
+  text: A fraud model flags 20 transactions, of which 15 are actually fraudulent. What is its precision?
+  options:
+  - '0.60'
+  - '0.75'
+  - '0.80'
+  - '0.25'
+  answer: 1
+  explanation: 'Precision is the fraction of flagged transactions that are truly fraudulent: 15 ÷ 20 = 0.75.'
+- id: q33
+  topic: Evaluation Metrics
+  text: A hospital wants to avoid missing patients who have a disease, even if that means investigating more patients
+    who do not. Which metric should it prioritize?
+  options:
+  - Precision
+  - Accuracy
+  - Recall
+  - Specificity
+  answer: 2
+  explanation: Recall measures the share of actual positive cases the model identifies. Prioritizing recall helps
+    reduce missed disease cases.
+- id: q34
+  topic: Evaluation Metrics
+  text: A classifier has precision 0.8 and recall 0.5. What is its F1-score, rounded to two decimal places?
+  options:
+  - '0.62'
+  - '0.50'
+  - '0.80'
+  - '0.65'
+  answer: 0
+  explanation: 'The F1-score is the harmonic mean of precision and recall: 2 × 0.8 × 0.5 ÷ (0.8 + 0.5) ≈ 0.62.'
+- id: q35
+  topic: Evaluation Metrics
+  text: Two models predict probabilities for the same set of outcomes. Model A has a Brier score of 0.12 and Model
+    B has a score of 0.20. Which model has better probability predictions according to this metric?
+  options:
+  - Model B, because its score is higher
+  - They are equally good because both scores are below 1
+  - Neither, because the Brier score measures classification accuracy
+  - Model A, because its score is lower
+  answer: 3
+  explanation: The Brier score measures the squared error of probability predictions, so lower scores indicate predictions
+    closer to the observed outcomes.
+- id: q36
+  topic: Evaluation Metrics
+  text: A dataset has very few positive cases, and a model gets high accuracy by predicting almost everything as
+    negative. Which metric would give a more balanced summary using all four confusion-matrix outcomes?
+  options:
+  - Accuracy
+  - Matthews Correlation Coefficient (MCC)
+  - Precision
+  - Mean absolute error
+  answer: 1
   explanation: MCC incorporates true positives, true negatives, false positives, and false negatives, making it
-    useful when class frequencies are uneven. Accuracy alone can look strong when a classifier mostly predicts the
-    majority class.
-- id: q12
-  topic: Curriculum
-  text: Two regression models are being compared, and large prediction errors should count especially heavily. Which
-    metric is most directly suited to that preference?
+    useful when class sizes are imbalanced.
+- id: q37
+  topic: Evaluation Metrics
+  text: Two regression models have the same MAE, but one makes a single prediction error that is much larger than
+    its other errors. Which metric will tend to penalize that model more strongly?
   options:
-  - Mean absolute error, because it averages absolute errors without squaring them.
-  - Root mean squared error, because squaring errors gives large errors extra weight.
-  - Precision, because it measures the correctness of positive predictions.
-  - F1-score, because it balances errors across two classes.
-  answer: 1
-  explanation: Root mean squared error squares each prediction error before averaging, so large errors contribute
-    disproportionately. Mean absolute error does not apply that extra penalty.
-- id: q13
-  topic: Curriculum
-  text: A team uses K-Means on customer data with features measured in dollars and years. The dollar values are
-    numerically much larger. What is a sensible step before clustering?
-  options:
-  - Duplicate the years feature so its values are closer to the dollar values.
-  - Convert every feature to a binary value before computing distances.
-  - Scale the features so their units do not dominate the distance calculations.
-  - Remove the dollar feature because K-Means cannot use monetary data.
+  - Mean absolute error
+  - R-squared
+  - Root mean squared error
+  - Median absolute error
   answer: 2
-  explanation: K-Means uses distances, so a feature with much larger numerical values can dominate cluster assignments.
-    Scaling features puts them on more comparable ranges.
-- id: q14
-  topic: Curriculum
-  text: A dataset appears to contain curved, irregularly shaped groups, with some observations isolated from dense
-    regions. Which method is most aligned with this structure?
+  explanation: Root mean squared error squares errors before averaging, so a very large error has greater influence
+    than it does with MAE.
+- id: q38
+  topic: Evaluation Metrics
+  text: In a quality inspection, 80 items are actually nondefective. The model correctly labels 72 of them as nondefective.
+    What is the model's specificity?
   options:
-  - DBSCAN, which can find dense, non-spherical groups and label isolated points as noise.
-  - K-Means, which assigns every point to one of a fixed number of centroid-based groups.
-  - A pooled t-test, which groups observations according to their sample means.
-  - ANOVA, which assigns observations to groups based on their variances.
+  - 90%
+  - 80%
+  - 72%
+  - 10%
   answer: 0
-  explanation: DBSCAN forms clusters from dense regions and can mark isolated observations as noise, which suits
-    irregular cluster shapes. K-Means instead assigns points to a preset number of centroid-based clusters.
-- id: q15
-  topic: Curriculum
-  text: A DBSCAN run labels many points as noise. The team finds that some of these points belong to a sparse but
-    meaningful group. What is a reasonable next step?
+  explanation: 'Specificity is the fraction of actual negatives correctly identified: 72 ÷ 80 = 90%.'
+- id: q39
+  topic: Evaluation Metrics
+  text: A team lowers the decision threshold for labeling a case positive because it wants to catch more actual
+    positive cases. What change should it generally expect?
   options:
-  - Increase the number of clusters and keep DBSCAN's density settings unchanged.
-  - Replace the distance measure with the F1-score for each pair of points.
-  - Treat every point labeled noise as a data-entry error.
-  - Review the neighborhood radius and minimum-neighbor settings for the data's density.
+  - Precision rises and recall rises
+  - Precision falls and recall falls
+  - Precision stays fixed and recall falls
+  - Recall rises, while precision may fall
   answer: 3
-  explanation: DBSCAN's clusters and noise labels depend on its neighborhood radius and minimum-neighbor settings.
-    Reviewing those settings may help capture meaningful groups that are less dense.
+  explanation: A lower threshold generally labels more cases as positive, which can identify more actual positives
+    and raise recall. It may also add false positives, lowering precision.
+- id: q40
+  topic: Unsupervised Learning – Clustering
+  text: A dataset has two curved, intertwined groups of points, with clear gaps between them. Which approach is
+    most likely to capture their shapes?
+  options:
+  - Use K-means with k=2 and assign points to the nearest centroid
+  - Use DBSCAN with settings that separate the dense groups
+  - Use K-means with a larger k and combine nearby centroids afterward
+  - Use K-means with a different random initialization
+  answer: 1
+  explanation: DBSCAN can form clusters with non-spherical shapes by grouping nearby dense points. K-means assigns
+    points around centroids, which is less suited to curved groups.
+- id: q41
+  topic: Unsupervised Learning – Clustering
+  text: A team expects three compact customer groups and wants to assign every customer to one of them. Which approach
+    best fits this setup?
+  options:
+  - Use DBSCAN and let it determine the number of groups from density
+  - Use DBSCAN and treat each point as a separate cluster
+  - Use K-means with k=3
+  - Use K-means with k=1
+  answer: 2
+  explanation: K-means is a suitable choice when the desired number of compact groups is known. Setting k=3 asks
+    it to form three clusters.
+- id: q42
+  topic: Unsupervised Learning – Clustering
+  text: In K-means, a dataset has one feature measured in dollars (roughly 0–10,000) and another measured from 0
+    to 5. The dollar feature dominates the distance calculations. What should the analyst do first?
+  options:
+  - Scale the features to comparable ranges before clustering
+  - Increase k so the smaller-scale feature has more influence
+  - Remove the dollar feature because it has larger values
+  - Use more random centroid initializations without changing the features
+  answer: 0
+  explanation: K-means relies on distances, so a feature with a much larger scale can dominate those distances.
+    Scaling the features makes their contributions more comparable.
+- id: q43
+  topic: Unsupervised Learning – Clustering
+  text: A DBSCAN result shows two nearby groups combined into one after the analyst increases `eps`. What is the
+    most likely reason?
+  options:
+  - The larger `eps` forces DBSCAN to use more cluster centers
+  - The larger `eps` makes DBSCAN ignore all points near a group
+  - The larger `eps` changes the distance metric to cosine distance
+  - The larger `eps` lets points bridge the gap between the groups
+  answer: 3
+  explanation: Increasing `eps` makes a wider neighborhood count as close. Points can then connect the groups and
+    cause DBSCAN to merge them.
+- id: q44
+  topic: Unsupervised Learning – Clustering
+  text: A dataset has one dense group and one much sparser but legitimate group. When using the same DBSCAN settings
+    for both, what is a likely risk?
+  options:
+  - DBSCAN will always divide the denser group into smaller clusters
+  - DBSCAN may label points in the sparse group as noise
+  - DBSCAN will automatically increase `eps` for the sparse group
+  - DBSCAN will move the sparse group toward the dense group’s centroid
+  answer: 1
+  explanation: DBSCAN uses density-based criteria, and one set of settings may not fit groups with very different
+    densities. Points in the sparser group may fail the density threshold and be labeled noise.
+- id: q45
+  topic: Unsupervised Learning – Clustering
+  text: A team is clustering text vectors and considers two documents similar when their vectors point in a similar
+    direction, even if their lengths differ. Which distance measure best matches that goal?
+  options:
+  - Euclidean distance, which emphasizes absolute vector length
+  - Manhattan distance, which sums differences in each coordinate
+  - Cosine distance, which compares the angle between vectors
+  - Squared Euclidean distance, which emphasizes large coordinate gaps
+  answer: 2
+  explanation: Cosine distance focuses on the angle between vectors, so it reflects directional similarity while
+    being less affected by vector magnitude.
+- id: q46
+  topic: Unsupervised Learning – Clustering
+  text: A dataset contains several dense groups plus scattered isolated observations. The analyst wants to identify
+    the groups without forcing every isolated point into one. Which approach is a good fit?
+  options:
+  - Use DBSCAN and tune its density settings for the groups
+  - Use K-means and set k equal to the number of observations
+  - Use K-means and assign each isolated point to the nearest centroid
+  - Use K-means and increase k until every point is a centroid
+  answer: 0
+  explanation: DBSCAN can label observations that do not belong to a sufficiently dense region as noise. K-means
+    assigns observations to clusters rather than leaving them unassigned.
+- id: q47
+  topic: Unsupervised Learning – Clustering
+  text: Two K-means runs on the same data and with the same k produce different groupings because they started with
+    different centroids. What is a sensible next step?
+  options:
+  - Increase `eps` and keep the run with the most noise points
+  - Switch to DBSCAN but keep the K-means centroid assignments
+  - Choose the run that produces the most uneven cluster sizes
+  - Run K-means with several initializations and compare the resulting within-cluster sums of squares
+  answer: 3
+  explanation: K-means can converge to different results from different starting centroids. Trying multiple initializations
+    and comparing within-cluster sums of squares helps select a better-fitting result.
+- id: q48
+  topic: Visualization
+  text: A team wants to compare sales totals for five product categories, which have no natural order. Which chart
+    is the best starting point?
+  options:
+  - A bar chart with one bar per category
+  - A line chart connecting one point per category
+  - A histogram of the category names
+  - A scatter plot using category numbers and sales
+  answer: 0
+  explanation: A bar chart makes it easy to compare values across distinct categories without implying an order
+    between them.
+- id: q49
+  topic: Visualization
+  text: You want to see whether advertising spend is associated with the number of website visits across 100 campaigns.
+    Which chart should you use?
+  options:
+  - A histogram of website visits
+  - A bar chart of the two overall averages
+  - A scatter plot with spend and visits as the axes
+  - A pie chart of campaigns grouped by spend
+  answer: 2
+  explanation: A scatter plot shows each campaign's pair of numerical values, making a relationship or pattern between
+    the variables visible.
+- id: q50
+  topic: Visualization
+  text: A dataset contains thousands of individual delivery times. You want to see the distribution and identify
+    common ranges. Which chart is most suitable?
+  options:
+  - A line chart connecting each delivery time
+  - A histogram grouping times into intervals
+  - A pie chart with one slice per delivery
+  - A bar chart with one bar per delivery
+  answer: 1
+  explanation: A histogram groups numerical values into intervals and shows how many observations fall in each range.
+- id: q51
+  topic: Visualization
+  text: A chart compares monthly customer counts, but its vertical axis starts at 9,000 even though values range
+    from 9,100 to 9,300. What change would best avoid exaggerating the differences?
+  options:
+  - Remove the vertical-axis tick labels
+  - Replace the bars with a pie chart
+  - Use a different color for every month
+  - Start the vertical axis at zero
+  answer: 3
+  explanation: Starting a bar chart's vertical axis at zero shows the differences in proportion to the full values
+    and avoids making small changes look dramatic.
+- id: q52
+  topic: Visualization
+  text: You are plotting weekly revenue to show how it changes over a year. Which approach best communicates the
+    trend over time?
+  options:
+  - Plot weeks in time order and connect the revenue values with a line
+  - Sort the weeks by revenue and connect the values with a line
+  - Show each week as a separate slice in a pie chart
+  - Plot revenue against week number using unconnected points only
+  answer: 0
+  explanation: A line chart in chronological order makes changes and trends across successive weeks easy to follow.
+- id: q53
+  topic: Visualization
+  text: A report uses one color for each of three customer groups across several charts. What should you do in a
+    new chart showing those same groups?
+  options:
+  - Assign new colors to make the chart look different
+  - Use the same color-to-group mapping as in the other charts
+  - Use a color gradient to rank the groups alphabetically
+  - Use one color for all groups and remove the legend
+  answer: 1
+  explanation: Keeping the same colors for the same groups helps readers recognize them consistently across charts.
+- id: q54
+  topic: Visualization
+  text: You have daily temperature readings and want a chart of the typical temperature for each month. Which preparation
+    best matches that goal?
+  options:
+  - Count the number of readings in each month
+  - Use the highest daily reading from each month
+  - Calculate the mean daily temperature for each month
+  - Add all daily temperatures within each month
+  answer: 2
+  explanation: The monthly mean summarizes the typical daily temperature for each month; summing temperatures does
+    not represent a typical value.
+- id: q55
+  topic: Visualization
+  text: In Matplotlib, a student runs `plt.scatter(hours, score)`. What will this command display?
+  options:
+  - A line connecting each pair of hours and score values
+  - A bar for each score, grouped by hours
+  - A histogram of the score values
+  - A point for each paired hours and score value
+  answer: 3
+  explanation: '`plt.scatter` plots each paired x- and y-value as a point, so here each point represents hours and
+    its corresponding score.'
+- id: q56
+  topic: Machine Learning
+  text: A team trains a model to predict whether a customer will cancel a subscription. Their training table includes
+    a column showing whether each customer eventually canceled. What role should that column play?
+  options:
+  - It should be the target the model learns to predict.
+  - It should be an input feature used for every prediction.
+  - It should be removed before training because it is text data.
+  - It should be used only to group customers into clusters.
+  answer: 0
+  explanation: The cancellation status is the outcome the model is meant to predict, so it serves as the target
+    label during training. It would not be available as an input when predicting for a new customer.
+- id: q57
+  topic: Machine Learning
+  text: A model predicts next month's sales. Which evaluation plan best estimates how well it will work on new cases?
+  options:
+  - Measure its predictions on the same rows used to fit it.
+  - Measure its predictions on separate rows it did not train on.
+  - Measure its predictions on the training rows after shuffling them.
+  - Measure its predictions on the rows with the largest sales.
+  answer: 1
+  explanation: Evaluating on examples the model did not train on gives a more useful estimate of performance on
+    new cases. Scores on the training examples can look strong even when the model does not generalize well.
+- id: q58
+  topic: Machine Learning
+  text: A decision tree performs very well on its training data but poorly on a separate validation set. Which change
+    is most likely to improve its performance on new cases?
+  options:
+  - Allow the tree to grow more branches.
+  - Train the tree for more rounds on the same data.
+  - Limit the tree's depth or otherwise simplify it.
+  - Evaluate the tree on the training data again.
+  answer: 2
+  explanation: The gap between training and validation performance suggests the tree may be overfitting. Limiting
+    its depth can reduce complexity and help it generalize better.
+- id: q59
+  topic: Machine Learning
+  text: A model predicts whether a loan will default at the time an application is received. One proposed feature
+    records whether the loan was eventually sent to collections. What should the team do?
+  options:
+  - Keep the feature because it is strongly related to defaults.
+  - Use the feature only when scoring training examples.
+  - Replace the feature with a copy of the default label.
+  - Exclude the feature because it is known only after the prediction time.
+  answer: 3
+  explanation: The collections status would not be available when the model needs to make its prediction. Including
+    it would let training use future information that cannot legitimately be used at prediction time.
+- id: q60
+  topic: Machine Learning
+  text: A team needs to fill missing numeric values before training. It has already separated the data into training
+    and validation sets. How should it avoid letting validation data influence the model-building process?
+  options:
+  - Calculate fill values from the training set, then use them on both sets.
+  - Calculate separate fill values from each set, then fill each one.
+  - Calculate fill values from the combined sets, then split them again.
+  - Fill the training set only, leaving missing values in validation.
+  answer: 0
+  explanation: Fit the imputation rule using only the training data, then apply that same rule to the validation
+    data. This keeps information from the validation set out of the training process.
+- id: q61
+  topic: Machine Learning
+  text: A linear model is fitting the training data too closely. The team increases the strength of a standard regularization
+    penalty. What effect should it expect?
+  options:
+  - The model will be forced to memorize more training examples.
+  - The model's coefficients will be pushed toward smaller values.
+  - The model will gain additional input features automatically.
+  - The model will no longer need a separate validation set.
+  answer: 1
+  explanation: Regularization penalizes large coefficients, encouraging a less complex fit. This can reduce overfitting,
+    though too much regularization can also make a model fit poorly.
+- id: q62
+  topic: Machine Learning
+  text: A trained model is ready to score new customer records. Which procedure is appropriate?
+  options:
+  - Refit the model separately on each customer record before scoring it.
+  - Change the input columns to match each record's available values.
+  - Apply the training-time processing and use the fitted model to predict.
+  - Include the known outcome for each record among the model inputs.
+  answer: 2
+  explanation: At prediction time, new records should receive the same feature processing used during training and
+    then be passed to the fitted model. Refitting on individual records or supplying the outcome would not be a
+    valid prediction workflow.
+- id: q63
+  topic: Machine Learning
+  text: A team is building its first model to predict delivery times and wants a reference point before trying more
+    complex approaches. What is a sound first step?
+  options:
+  - Choose the most complex model available so it sets a high bar.
+  - Train a simple baseline and compare it fairly with later models.
+  - Select the model that scores best on its training examples.
+  - Skip a baseline and compare models using different data splits.
+  answer: 1
+  explanation: A simple baseline provides a reference for judging whether more complex models add value. Comparing
+    models on the same evaluation data makes that comparison meaningful.
+open_questions:
+- id: o1
+  topic: Inferential Statistics
+  text: A study finds a difference in average delivery times between two services. How would you use hypothesis
+    testing to judge whether the observed difference is statistically meaningful, and what would that conclusion
+    not tell you?
+  rubric:
+  - Explains that a hypothesis test assesses how compatible the observed difference is with a no-difference assumption.
+  - Connects statistical significance to evidence against that assumption, rather than treating the observed difference
+    alone as proof.
+  - Notes that statistical significance does not establish that the difference is practically important or that
+    one service caused it.
+  required: 2
+  model_answer: A hypothesis test checks how surprising the observed difference would be if the services truly had
+    the same average delivery time. If the result is statistically significant, it provides evidence against that
+    no-difference assumption. It does not show whether the difference matters to customers or prove that the service
+    caused it.
+- id: o2
+  topic: Inferential Statistics
+  text: You compare the average scores of two groups, but one group’s scores vary much more than the other’s. How
+    could that difference in variance affect your confidence in the comparison, and what would you consider before
+    drawing a conclusion?
+  rubric:
+  - Explains that greater variability makes a group’s average less precise or makes a difference harder to distinguish
+    from chance.
+  - Recognizes that unequal variances can affect which comparison method or assumptions are appropriate.
+  - Connects the uncertainty to interpreting the result cautiously rather than relying only on the difference between
+    the averages.
+  required: 2
+  model_answer: Greater variation in one group makes its average less precise, so an observed gap may be harder
+    to distinguish from chance. I would check whether the comparison method accounts for unequal variances and consider
+    the sample sizes as well. I would interpret the averages alongside the uncertainty in the comparison.
+- id: o3
+  topic: Evaluation Metrics
+  text: A screening system must catch as many serious cases as possible, even if it sends some people without the
+    condition for follow-up. Which evaluation metric would you prioritize, and why might another metric still matter?
+  rubric:
+  - Identifies recall as important because it measures how many actual positive cases are detected.
+  - Explains that prioritizing recall can result in more false positives.
+  - Notes that precision can still matter because it reflects how often positive predictions are correct.
+  required: 2
+  model_answer: I would prioritize recall because it measures how many of the serious cases the system successfully
+    detects. A system tuned to catch more cases may also flag more people who do not have the condition. Precision
+    would still matter because it indicates how often a flagged person is actually a case.
+- id: o4
+  topic: Evaluation Metrics
+  text: A classifier is used on a dataset where positive cases are rare, and it gets high accuracy by predicting
+    the negative class almost every time. How would you explain why accuracy is misleading here, and which metrics
+    could give a more useful view?
+  rubric:
+  - Explains that the classifier can get high accuracy by predicting the common negative class while missing many
+    positive cases.
+  - Names precision and recall or F1-score as metrics that provide information about performance on the positive
+    class.
+  - Explains that MCC can provide a more balanced view using outcomes for both classes.
+  required: 2
+  model_answer: Because positive cases are rare, a classifier that predicts negative almost every time can still
+    be correct on most examples while missing many positives. Recall shows how many positive cases it finds, while
+    precision shows how often its positive predictions are correct; F1-score combines those two measures. MCC can
+    also give a balanced summary that accounts for both classes’ outcomes.
+- id: o5
+  topic: Unsupervised Learning – Clustering
+  text: You need to group locations where clusters may have irregular shapes, and some locations may be isolated
+    noise. How might DBSCAN suit this task better than K-Means, and what limitation would you keep in mind?
+  rubric:
+  - Explains that DBSCAN groups points based on density and can identify isolated points as noise.
+  - Explains that DBSCAN can find irregularly shaped clusters, unlike K-Means’ centroid-based grouping.
+  - Notes a limitation such as DBSCAN’s sensitivity to density settings or difficulty handling clusters with very
+    different densities.
+  required: 2
+  model_answer: DBSCAN groups locations based on density, so it can find irregularly shaped groups and mark isolated
+    points as noise. K-Means instead assigns points to centroid-based clusters and requires choosing the number
+    of clusters in advance. DBSCAN can struggle when the groups have very different densities, so its settings need
+    consideration.
+- id: o6
+  topic: Unsupervised Learning – Clustering
+  text: You cluster customer records using both annual income and number of purchases, but income is measured in
+    much larger numbers. Why could that affect the clusters, and what would you do before trusting the results?
+  rubric:
+  - Explains that a distance measure may be dominated by the feature with the larger numerical scale.
+  - Suggests scaling or standardizing features when their scales differ.
+  - Connects the choice of distance measure and feature representation to whether the resulting clusters are meaningful.
+  required: 2
+  model_answer: A distance measure may be dominated by income because its values are much larger numerically than
+    purchase counts. I would consider scaling the features so that neither one dominates just because of its units.
+    I would also check that the chosen distance measure reflects what counts as similar customers for this task.
+- id: o7
+  topic: Visualization
+  text: A teammate wants to show how a company’s monthly sales change over several years. What kind of chart would
+    you suggest, and why would it make the pattern easier to interpret?
+  rubric:
+  - Suggests a line chart or another suitable chart that shows values over time.
+  - Explains that the chart makes trends or changes across ordered time points easy to see.
+  - Notes that clear time labels and an appropriate scale help readers interpret the pattern.
+  required: 2
+  model_answer: I would suggest a line chart, with months in time order along the horizontal axis and sales on the
+    vertical axis. Connecting the points makes changes and longer-term trends easier to see. Clear labels and a
+    sensible scale would help readers understand the size and timing of those changes.
+- id: o8
+  topic: Visualization
+  text: A bar chart compares sales across two stores, but its vertical axis starts far above zero and makes a small
+    difference look dramatic. How would you improve the chart, and why does the change matter?
+  rubric:
+  - Recognizes that a truncated vertical axis can exaggerate the apparent difference between bars.
+  - Suggests using a zero baseline for a bar chart or otherwise making the scale clear and appropriate.
+  - Explains that the change helps readers judge the size of the difference more fairly.
+  required: 2
+  model_answer: Starting the axis far above zero makes the bar heights look more different than the sales values
+    are. I would use a zero baseline for the bar chart and make the axis scale and labels easy to read. That makes
+    it easier for viewers to judge the difference fairly.
+- id: o9
+  topic: Machine Learning
+  text: A team has past customer records labeled as either renewed or not renewed, and it wants to predict renewal
+    for new customers. How would you frame this as a machine learning task, and why do the labels matter?
+  rubric:
+  - Identifies the task as supervised learning because the past records include known outcomes.
+  - Explains that the model learns a relationship between customer information and renewal outcomes from labeled
+    examples.
+  - Connects the learned relationship to predicting outcomes for new customers.
+  required: 2
+  model_answer: This is a supervised learning task because the past records include known renewal outcomes. The
+    model can learn patterns linking customer information to whether someone renewed or not. It can then use those
+    patterns to predict renewal for new customers whose outcomes are not yet known.
+- id: o10
+  topic: Machine Learning
+  text: A model performs very well on the examples it was trained on but poorly on new examples. What might this
+    indicate, and how would you check whether the model generalizes?
+  rubric:
+  - Identifies overfitting or failure to generalize as a possible reason for the gap.
+  - Explains that performance should be checked on examples not used to fit the model, such as a held-out test set.
+  - Connects the new-example results to whether the model is likely to work beyond its training data.
+  required: 2
+  model_answer: This gap may indicate that the model has overfit the training examples and learned patterns that
+    do not hold for new data. I would evaluate it on examples that were held out from training, such as a test set.
+    Its performance there gives a better indication of how well it may generalize.
 problem: null
+problems: []

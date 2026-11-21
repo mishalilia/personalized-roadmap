@@ -8,14 +8,13 @@ fail its checkpoint, and stop at it.
 
 from __future__ import annotations
 
-import sqlite3
-import threading
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel
 
+from .database import Database, as_database
 from .path import LearningPath
 
 
@@ -31,6 +30,7 @@ class EventKind(StrEnum):
 
 class ModuleReport(BaseModel):
     module_id: str
+    title: str = ""  # filled in by the API from the curriculum
     included: int  # shared paths that study or prove the module
     finished: int
     failed_once: int  # paths with at least one failed checkpoint attempt
@@ -44,14 +44,12 @@ class Report(BaseModel):
 
 
 class EventLog:
-    """Events in one SQLite file. Thread-safe for the API's worker threads."""
+    """Events in one table, in PostgreSQL or a SQLite file (roadmap.database). Thread-safe."""
 
-    def __init__(self, file: Path) -> None:
-        file.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(file, check_same_thread=False)
-        self._lock = threading.Lock()
-        with self._lock, self._db:
-            self._db.execute(
+    def __init__(self, database: Database | Path | str) -> None:
+        self._db = as_database(database)
+        with self._db.transaction() as tx:
+            tx.execute(
                 "CREATE TABLE IF NOT EXISTS events ("
                 " path_id TEXT NOT NULL, curriculum_version TEXT NOT NULL,"
                 " module_id TEXT, kind TEXT NOT NULL, at TEXT NOT NULL)"
@@ -70,8 +68,8 @@ class EventLog:
         after a change replaces what it included before."""
         if not path.share_progress or path.id is None:
             return
-        with self._lock, self._db:
-            self._db.execute(
+        with self._db.transaction() as tx:
+            tx.execute(
                 "DELETE FROM events WHERE path_id = ? AND kind = ?",
                 (path.id, EventKind.INCLUDED),
             )
@@ -84,8 +82,8 @@ class EventLog:
 
     def _insert(self, rows: list[tuple[str, str, str | None, str]]) -> None:
         now = datetime.now(UTC).isoformat(timespec="seconds")
-        with self._lock, self._db:
-            self._db.executemany(
+        with self._db.transaction() as tx:
+            tx.executemany(
                 "INSERT INTO events (path_id, curriculum_version, module_id, kind, at)"
                 " VALUES (?, ?, ?, ?, ?)",
                 [(*row, now) for row in rows],
@@ -93,8 +91,8 @@ class EventLog:
 
     def report(self, curriculum_version: str, module_order: list[str]) -> Report:
         """Counts per module, in course order."""
-        with self._lock:
-            rows = self._db.execute(
+        with self._db.transaction() as tx:
+            rows = tx.execute(
                 "SELECT path_id, module_id, kind FROM events WHERE curriculum_version = ?",
                 (curriculum_version,),
             ).fetchall()

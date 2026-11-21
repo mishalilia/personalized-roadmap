@@ -1,8 +1,8 @@
 module_id: softlanding/specializations/software-engineering/resources
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: 1. Networking Fundamentals
@@ -172,44 +172,1104 @@ questions:
   answer: 1
   explanation: State lets the frontend respond to a filter change by fetching or selecting the corresponding data
     and rendering the updated visualization.
-- id: q15
-  topic: Capstone Project
-  text: In a full-stack application, a frontend needs to display a user's saved projects. Which design keeps the
-    API as the boundary between the frontend and persistent data?
+- id: q16
+  topic: 1. Networking Fundamentals
+  text: A team finds that a server can reach an IP address on another network only after a router's route is corrected.
+    Which OSI layer is most directly involved?
   options:
-  - Have the frontend query the database directly and format the results
-  - Have the API read the database and return project data to the frontend
-  - Have the database call the frontend with each project's data
-  - Have the frontend read project files from the API container's disk
+  - Layer 4, which manages end-to-end transport
+  - Layer 3, which handles addressing and routing
+  - Layer 6, which handles data presentation
+  - Layer 7, which handles application requests
   answer: 1
-  explanation: The API should handle access to persistent data and expose it through a defined interface; the frontend
-    then requests and displays that data.
+  explanation: Routing traffic between networks is a Layer 3 function. Layer 4 concerns transport between endpoints,
+    while Layers 6 and 7 are higher in the stack.
+- id: q17
+  topic: 1. Networking Fundamentals
+  text: A packet capture shows a client sending `SYN` and the server replying with `SYN-ACK`. What should the client
+    send next to complete the TCP handshake?
+  options:
+  - A second `SYN` to request a new connection
+  - A `FIN` to acknowledge the server's response
+  - An `ACK` to confirm the server's response
+  - A `RST` to begin transferring application data
+  answer: 2
+  explanation: The client completes the TCP three-way handshake by acknowledging the server's `SYN-ACK`. The connection
+    is then established for data transfer.
+- id: q18
+  topic: 1. Networking Fundamentals
+  text: A service moved to a new IP address, but some users still reach its old address by hostname. Which action
+    is most directly relevant to fixing this?
+  options:
+  - Update the hostname's DNS record and account for cached answers
+  - Change the server's HTTP status code to redirect all requests
+  - Replace TCP with UDP so clients request the address again
+  - Add a TLS certificate containing the server's new IP address
+  answer: 0
+  explanation: DNS maps hostnames to IP addresses, and cached DNS answers can continue pointing clients to the old
+    address. Updating the record and allowing caches to refresh addresses the problem.
+- id: q19
+  topic: 1. Networking Fundamentals
+  text: An API receives a valid request for an item ID that does not exist. Which HTTP response is the most appropriate?
+  options:
+  - '`200 OK`, because the server processed the request'
+  - '`301 Moved Permanently`, because the item is unavailable'
+  - '`503 Service Unavailable`, because no matching item exists'
+  - '`404 Not Found`, because the requested item is absent'
+  answer: 3
+  explanation: '`404 Not Found` indicates that the server could not find the requested resource. A `503` instead
+    signals that the service is temporarily unavailable.'
+- id: q20
+  topic: 1. Networking Fundamentals
+  text: A company wants browser-to-API traffic encrypted and wants browsers to verify the API's server identity.
+    Which setup best fits?
+  options:
+  - Use HTTP with a TCP handshake before each request
+  - Use HTTPS with a valid TLS certificate for the API's hostname
+  - Use DNS records that point the hostname to a private address
+  - Use UDP so request data is not retransmitted in transit
+  answer: 1
+  explanation: HTTPS uses TLS to encrypt traffic and lets clients verify the server identity through its certificate.
+    DNS records and UDP do not provide those protections.
+- id: q21
+  topic: 1. Networking Fundamentals
+  text: Users far from a service's origin server report slow image downloads, and the images rarely change. Which
+    approach best addresses both distance and repeated origin requests?
+  options:
+  - Place a CDN in front of the origin to cache images near users
+  - Add a load balancer that sends each image request to the same origin
+  - Move image requests to DNS so clients receive the image directly
+  - Use TLS termination at the origin to cache images in browsers
+  answer: 0
+  explanation: A CDN can cache frequently requested static images at locations closer to users, reducing latency
+    and requests reaching the origin. A load balancer distributes requests but does not by itself provide geographically
+    distributed caching.
+- id: q22
+  topic: 2. Architecture Principles
+  text: A service needs to move from one database provider to another. Which design best treats the database as
+    a backing service?
+  options:
+  - Rewrite application logic for each database provider
+  - Bundle the database inside every application instance
+  - Connect to a separately managed database through a replaceable interface
+  - Copy database records into each service's local files
+  answer: 2
+  explanation: A backing service is managed separately from the application and accessed through a replaceable connection.
+    This lets the database change without bundling it into or rewriting the application.
+- id: q23
+  topic: 2. Architecture Principles
+  text: A deployment platform may stop an application instance while it is handling requests. What should the application
+    do to support disposability?
+  options:
+  - Stop accepting new work and finish active requests within the shutdown window
+  - Keep the instance running until an operator manually restarts it
+  - Save active requests only in the instance's memory for the next startup
+  - Delay startup until the previous instance has been permanently deleted
+  answer: 0
+  explanation: A disposable process should start and stop cleanly, including responding to shutdown signals. Finishing
+    active work within the allowed window helps deployments avoid unnecessary request failures.
+- id: q24
+  topic: 2. Architecture Principles
+  text: A bug appears in production but not on developers' machines because the database versions differ. Which
+    change best improves development-production parity?
+  options:
+  - Use a different database in production to match developer laptops
+  - Run the same database version and similar service setup in development and production
+  - Skip local database tests and test only after production deployment
+  - Keep the database version fixed in development but update it weekly in production
+  answer: 1
+  explanation: Using similar service versions and setups in development and production makes environment-specific
+    behavior easier to detect before release. It reduces surprises caused by differences such as database versions.
+- id: q25
+  topic: 2. Architecture Principles
+  text: Separate mobile and backend teams need to work in parallel on a new service. What is the best API-first
+    approach?
+  options:
+  - Have the mobile team read and write the backend database directly
+  - Wait until the backend is complete before describing how clients use it
+  - Let each team invent its own request and response formats
+  - Agree on the API contract first, then let both teams build against it
+  answer: 3
+  explanation: An agreed API contract gives both teams a shared interface to build and test against. They can work
+    independently without coupling the client directly to backend implementation details.
+- id: q26
+  topic: 2. Architecture Principles
+  text: Users report occasional slow requests that pass through several services, but the team cannot identify where
+    time is spent. What telemetry would help most?
+  options:
+  - A weekly count of application deployments
+  - A single uptime check for the public service URL
+  - Correlated request traces, latency metrics, and structured logs
+  - A larger log file containing unstructured startup messages
+  answer: 2
+  explanation: Correlated traces show a request's path through services, while latency metrics and structured logs
+    provide supporting operational details. Together they help locate where time is being spent.
+- id: q27
+  topic: 2. Architecture Principles
+  text: A backend API is called by several internal services, and each call must be attributable to its caller.
+    Which approach best supports authentication?
+  options:
+  - Require each service to present an identity credential that the API validates
+  - Trust requests from the company's network without checking the caller
+  - Let each caller include its name in a request field
+  - Use encrypted connections but accept requests without caller credentials
+  answer: 0
+  explanation: Validated credentials let the API establish which service is making each request. Network location,
+    a self-reported name, or encryption alone does not verify the caller's identity.
+- id: q28
+  topic: 3. API Design & Implementation
+  text: A client needs to retrieve customer 42 without changing it. Which request best represents that operation?
+  options:
+  - GET /customers/42
+  - POST /customers/42
+  - PUT /customers/42
+  - DELETE /customers/42
+  answer: 0
+  explanation: GET is used to retrieve a resource, and the path identifies customer 42. The other methods are intended
+    to create, replace, or remove resources.
+- id: q29
+  topic: 3. API Design & Implementation
+  text: An API has successfully created a new invoice immediately. Which HTTP status code is the best response?
+  options:
+  - '200'
+  - '201'
+  - '202'
+  - '204'
+  answer: 1
+  explanation: 201 Created indicates that the request successfully created a resource. 202 is for accepted but not
+    yet completed work, while 204 indicates success without a response body.
+- id: q30
+  topic: 3. API Design & Implementation
+  text: A client has a complete replacement representation for an existing profile and wants the server to replace
+    the profile with it. Which method is the best fit?
+  options:
+  - GET
+  - POST
+  - PUT
+  - DELETE
+  answer: 2
+  explanation: PUT is the appropriate method when the client is sending a complete replacement for an existing resource.
+    POST is generally used to submit data for processing or create a resource.
+- id: q31
+  topic: 3. API Design & Implementation
+  text: A new API release changes response fields in a way that could break existing clients. Which approach lets
+    old clients continue using the previous contract?
+  options:
+  - Rename the existing fields and keep the same route
+  - Return both response formats from the same route
+  - Remove the old route as soon as the new release ships
+  - Expose the changed contract under a new versioned route, such as `/v2/`
+  answer: 3
+  explanation: A new versioned route lets clients opt into the changed contract while existing clients can keep
+    using the earlier version. Changing the existing route in place risks breaking those clients.
+- id: q32
+  topic: 3. API Design & Implementation
+  text: In a FastAPI endpoint, `store.fetch` performs asynchronous I/O. What is the benefit of writing `result =
+    await store.fetch(item_id)` inside an `async def` endpoint?
+  options:
+  - It lets the endpoint wait for the I/O without blocking other async work
+  - It converts the returned value into a Pydantic model automatically
+  - It makes the endpoint run in a separate process
+  - It generates an OpenAPI document for the fetch operation
+  answer: 0
+  explanation: '`await` pauses this endpoint while the asynchronous I/O is pending, allowing the event loop to handle
+    other work. It does not itself validate the result, start a separate process, or generate documentation.'
+- id: q33
+  topic: 3. API Design & Implementation
+  text: You want Swagger UI to show the fields clients should send when creating a task. Which FastAPI change best
+    supports this?
+  options:
+  - Return a sample task only in the endpoint's description
+  - Add the fields as query parameters without type annotations
+  - Declare a Pydantic model as the endpoint's request-body parameter
+  - Rename the endpoint function to include the word `create`
+  answer: 2
+  explanation: FastAPI uses a Pydantic request model to describe the body schema in its generated OpenAPI documentation,
+    which Swagger UI displays. A function name or descriptive example does not define the request-body schema.
+- id: q34
+  topic: 4. Database Design & Management
+  text: An API frequently looks up products by an exact SKU, and the products table is growing large. Which change
+    is most likely to speed up these lookups?
+  options:
+  - Add an index on the product description column
+  - Add an index on the SKU column
+  - Duplicate each product in a separate table
+  - Sort the table by SKU after every insert
+  answer: 1
+  explanation: An index on the frequently searched SKU column helps the database find matching rows without scanning
+    the whole table. An index on a different column would not directly help this lookup.
+- id: q35
+  topic: 4. Database Design & Management
+  text: A report must list every customer, including customers who have not placed any orders. Which query approach
+    fits?
+  options:
+  - Join customers to orders with an inner join
+  - Join customers to orders with a left join
+  - Join customers to orders with a cross join
+  - Join customers to orders with a self join
+  answer: 1
+  explanation: A left join keeps every row from the customers table and includes matching orders where they exist.
+    An inner join would omit customers with no orders.
+- id: q36
+  topic: 4. Database Design & Management
+  text: A user record stores phone numbers as a comma-separated string, making it difficult to search for one number
+    or update it independently. Which redesign best addresses this?
+  options:
+  - Create a longer phone-number string column
+  - Create one user column for each possible phone number
+  - Copy the user record once for every phone number
+  - Store phone numbers in a related table, one number per row
+  answer: 3
+  explanation: Storing each phone number as its own row in a related table avoids packing multiple values into one
+    field. It also makes individual numbers easier to search and update.
+- id: q37
+  topic: 4. Database Design & Management
+  text: You need a row for every customer and the number of their orders, showing zero for customers without orders.
+    Which query works?
+  options:
+  - '`SELECT c.id, COUNT(o.id) FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.id`'
+  - '`SELECT c.id, COUNT(*) FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id`'
+  - '`SELECT c.id, COUNT(o.id) FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.id`'
+  - '`SELECT c.id, COUNT(*) FROM customers c LEFT JOIN orders o ON o.customer_id = c.id`'
+  answer: 0
+  explanation: The left join preserves customers with no matching orders, and counting the order ID gives those
+    customers a count of zero. Grouping by customer produces one result per customer.
+- id: q38
+  topic: 4. Database Design & Management
+  text: A new application version needs an `email_verified` column in production. How should the team manage this
+    schema change?
+  options:
+  - Add the column manually on each production database
+  - Wait until the application writes the new field, then let the database create it
+  - Create a versioned migration and apply it through the deployment process
+  - Replace the production database with a fresh copy of the development database
+  answer: 2
+  explanation: A versioned migration records the schema change and lets the team apply it consistently across environments.
+    Manually changing production makes it harder to track and reproduce the database schema.
+- id: q39
+  topic: 4. Database Design & Management
+  text: Two API requests could try to register accounts with the same email at nearly the same time. Which database
+    change best prevents duplicate emails?
+  options:
+  - Add an index to the account creation timestamp
+  - Add a unique constraint on the email column
+  - Store the email in a separate table without a constraint
+  - Check for an existing email only in the frontend
+  answer: 1
+  explanation: A unique constraint makes the database reject duplicate email values, including when requests arrive
+    concurrently. A frontend-only check cannot reliably prevent simultaneous duplicate inserts.
+- id: q40
+  topic: 5. Testing Strategies
+  text: A discount function takes a price and a customer category and returns a discounted price without calling
+    other services. Which test type best checks its calculation in isolation?
+  options:
+  - An end-to-end test that runs the full application
+  - An integration test that connects several services
+  - A unit test that checks inputs and returned values
+  - A deployment test that starts the production stack
+  answer: 2
+  explanation: A unit test checks a small piece of logic independently, making it a good fit for verifying the discount
+    calculation with different inputs.
+- id: q41
+  topic: 5. Testing Strategies
+  text: Several pytest tests need the same temporary user records, and each test should start with clean data. Which
+    approach best handles setup and cleanup?
+  options:
+  - Use a pytest fixture to create and remove the records
+  - Put the records in a module-level variable shared by tests
+  - Repeat the setup code manually inside every test
+  - Skip cleanup and let later tests reuse the records
+  answer: 0
+  explanation: A fixture can provide test data before a test runs and perform cleanup afterward, helping tests remain
+    independent.
+- id: q42
+  topic: 5. Testing Strategies
+  text: A coverage report shows 80% line coverage, but the uncovered lines handle denied access to an important
+    operation. What is the best next step?
+  options:
+  - Treat the report as proof that the operation is correct
+  - Raise the coverage percentage by testing unrelated utility code
+  - Remove the access checks so fewer lines remain uncovered
+  - Add a test that exercises the denied-access behavior
+  answer: 3
+  explanation: Coverage identifies code that tests have not exercised; it does not show that covered behavior is
+    correct. Testing the important denied-access path addresses the specific gap.
+- id: q43
+  topic: 5. Testing Strategies
+  text: A team is using test-driven development to add a new validation rule. Which sequence should it follow?
+  options:
+  - Implement the rule, deploy it, then decide what to test
+  - Write a failing test, implement the rule, then make the test pass
+  - Write a passing test, remove the rule, then deploy the change
+  - Refactor the application, implement the rule, then skip the test
+  answer: 1
+  explanation: In test-driven development, the team first writes a test that fails for the missing behavior, then
+    implements the behavior and confirms the test passes.
+- id: q44
+  topic: 5. Testing Strategies
+  text: A team wants to check that a user can submit a form in the frontend and see the saved result returned through
+    the application. Which test type is the best fit?
+  options:
+  - A unit test of the form's input-formatting function
+  - An integration test of only the database connection
+  - An end-to-end test of the user flow through the application
+  - A coverage test that measures executed lines
+  answer: 2
+  explanation: An end-to-end test exercises a complete user flow across the application, which is what the team
+    wants to verify.
+- id: q45
+  topic: 5. Testing Strategies
+  text: A unit test checks that an order service asks an email client to send a receipt, but the test must not send
+    a real email. What should the test do?
+  options:
+  - Replace the email client with a mock and check how it was called
+  - Use the real email client and delete the message afterward
+  - Skip the service test and check the email client separately
+  - Run the test only when the email server is unavailable
+  answer: 0
+  explanation: A mock can stand in for the email client, allowing the test to verify the service's interaction without
+    sending an actual email.
+- id: q46
+  topic: 6. DevOps & Deployment
+  text: Two developers get different dependency versions when they install an application directly on their machines.
+    What change would best make the application’s runtime environment consistent?
+  options:
+  - Package the application and its dependencies into a Docker image
+  - Ask each developer to install the dependencies from memory
+  - Store a copy of the database alongside the application source
+  - Run the application on a different port for each developer
+  answer: 0
+  explanation: A Docker image packages the application with its runtime dependencies, helping it run consistently
+    across machines.
+- id: q47
+  topic: 6. DevOps & Deployment
+  text: A developer changes the dependency list used during a Docker image build, but a container still runs the
+    old dependencies. What should they do to use the updated list?
+  options:
+  - Restart the existing container without changing its image
+  - Build a new image and start a container from it
+  - Rename the existing container and keep it running
+  - Change the container's exposed port and restart it
+  answer: 1
+  explanation: The dependencies are included in the image during its build, so the image must be rebuilt before
+    a container can use the updated dependencies.
+- id: q48
+  topic: 6. DevOps & Deployment
+  text: An application has passed testing in staging, and the team wants to reduce the chance of a staging–production
+    mismatch. Which deployment approach best supports this?
+  options:
+  - Rebuild the application separately on each production server
+  - Install production dependencies manually after each release
+  - Promote the same tested Docker image to production
+  - Copy the staging server's installed packages into production
+  answer: 2
+  explanation: Promoting the same image means production uses the artifact that was tested in staging, rather than
+    a separately built version.
+- id: q49
+  topic: 6. DevOps & Deployment
+  text: A Docker Compose application is running, and a developer has changed a service's configuration. Which command
+    applies the Compose configuration and runs the services in the background?
+  options:
+  - '`docker compose logs -d`'
+  - '`docker compose down -d`'
+  - '`docker compose build -d`'
+  - '`docker compose up -d`'
+  answer: 3
+  explanation: '`docker compose up -d` starts the services in the background and applies the configuration, recreating
+    services when needed.'
+- id: q50
+  topic: 6. DevOps & Deployment
+  text: A worker service in a multi-container Compose application is failing. Which command is the most direct way
+    to inspect that service's output?
+  options:
+  - '`docker compose logs worker`'
+  - '`docker compose build worker`'
+  - '`docker compose up worker`'
+  - '`docker compose down worker`'
+  answer: 0
+  explanation: '`docker compose logs worker` displays the worker service''s logs, which can help diagnose its failure.'
+- id: q51
+  topic: 6. DevOps & Deployment
+  text: A team wants linting and tests to run automatically as soon as a developer pushes a commit, rather than
+    relying on a person to remember to run them. What should they add?
+  options:
+  - A Docker Compose service that runs only on a developer's machine
+  - A CI workflow triggered by pushes that runs linting and tests
+  - A deployment script that skips checks when a commit is pushed
+  - A manual release checklist that developers complete after pushing
+  answer: 1
+  explanation: A push-triggered CI workflow can run linting and tests automatically for each pushed commit, providing
+    consistent feedback without relying on manual steps.
+- id: q52
+  topic: 7. Specialization (Choose One)
+  text: A frontend receives a JSON array of projects from its API. Which approach will show the projects returned
+    by the server, including projects added later?
+  options:
+  - Write each project into the page markup and update it manually
+  - Create one fixed card and change its title for each API response
+  - Render a UI item for each project in the received array
+  - Use the array only to decide whether to show a generic success message
+  answer: 2
+  explanation: Rendering from the received array makes the interface reflect the API's current data. Hardcoded markup
+    won't automatically include projects added later.
+- id: q53
+  topic: 7. Specialization (Choose One)
+  text: A dashboard fetches data when it opens, but the response can take several seconds. What should the frontend
+    do while waiting?
+  options:
+  - Show a loading indicator, then display the data or an error
+  - Show an empty chart and treat it as the final result
+  - Send the same request repeatedly until data appears
+  - Fill the dashboard with sample values and leave them in place
+  answer: 0
+  explanation: A loading state tells the user that the request is still in progress, and the interface can then
+    show the response or communicate a failure. An empty result or sample data could be mistaken for real API data.
+- id: q54
+  topic: 7. Specialization (Choose One)
+  text: A user is viewing a protected screen when the API responds that their session is no longer authorized. Which
+    frontend behavior is most appropriate?
+  options:
+  - Keep showing the protected screen as if the request succeeded
+  - Retry the request continuously using the same expired session
+  - Replace the screen with an empty state and keep the user signed in
+  - Prompt the user to sign in again before showing protected data
+  answer: 3
+  explanation: The frontend should not present protected data as available after the API rejects the user's authorization.
+    Asking the user to sign in again lets the app obtain valid authentication before continuing.
+- id: q55
+  topic: 7. Specialization (Choose One)
+  text: Your API returns a value for each day of the past month, and users need to see whether the value is rising
+    or falling over time. Which visualization best fits?
+  options:
+  - A pie chart with one slice for each day
+  - A line chart with days in order along the horizontal axis
+  - A list of days without displaying their values
+  - A map with one marker for each daily value
+  answer: 1
+  explanation: A line chart places the daily values in sequence, making changes over time easy to see. A pie chart
+    is better suited to showing parts of a whole than a time trend.
+- id: q56
+  topic: 7. Specialization (Choose One)
+  text: A user edits their display name in a frontend form. Which approach will make the saved name appear in the
+    app after the API accepts the change?
+  options:
+  - Change only the form's text and assume the server has saved it
+  - Store the new name only in the browser's temporary display state
+  - Send the edited value to the API and update the UI after a successful response
+  - Reload the page before sending the edited value to the API
+  answer: 2
+  explanation: Sending the edit to the API saves it in the backend, and updating the UI after success reflects the
+    accepted change. Changing only local display state does not save the value on the server.
+- id: q57
+  topic: 7. Specialization (Choose One)
+  text: You are building a frontend for an existing service whose data is stored behind an API. How should the frontend
+    obtain records to display?
+  options:
+  - Request the records from the service's API and use its response
+  - Connect the frontend directly to the service's database
+  - Copy the database records into the frontend source code
+  - Ask each user to enter the records into the frontend
+  answer: 0
+  explanation: The frontend should get records through the API, which provides the service's intended interface
+    to its data. Connecting directly to the database bypasses that boundary and exposes backend details to the client.
+open_questions:
+- id: o1
+  topic: 1. Networking Fundamentals
+  text: A user enters your service’s URL and waits for a page to load. How does the request get from the browser
+    to the service, and where could DNS, TCP, TLS, or HTTP affect that journey?
+  rubric:
+  - Explains that DNS helps the browser find an address for the service.
+  - Explains that TCP establishes a reliable connection and TLS protects HTTPS traffic before or while the HTTP
+    exchange takes place.
+  - Explains that HTTP carries the request and response between the browser and service.
+  required: 2
+  model_answer: DNS helps the browser find the service’s network address. For HTTPS, TCP establishes a reliable
+    connection and TLS protects the traffic. The browser then sends an HTTP request, and the service returns an
+    HTTP response.
+- id: o2
+  topic: 1. Networking Fundamentals
+  text: A team is choosing how to send video from a live camera to viewers. How would the choice between TCP and
+    UDP affect playback, and why might the team choose one over the other?
+  rubric:
+  - Explains that TCP uses connection setup and reliable delivery, which can add delay or require retransmission.
+  - Explains that UDP avoids retransmission guarantees and can be faster, but some packets may be lost.
+  - Connects the choice to whether low delay or complete, reliable delivery matters more for the video use case.
+  required: 2
+  model_answer: TCP aims to deliver data reliably, retransmitting missing packets, but that can add delay. UDP can
+    send data with less waiting, but packets may be lost and the receiver may see gaps or artifacts. For live video,
+    a team may prefer UDP when low delay matters more than perfect delivery.
+- id: o3
+  topic: 2. Architecture Principles
+  text: A service must handle a sudden increase in traffic by adding more instances. How would stateless processes
+    and external backing services make that easier?
+  rubric:
+  - Explains that a stateless instance does not depend on local memory from an earlier request, so another instance
+    can handle the next request.
+  - Explains that shared backing services, such as a database, let instances access common persistent data.
+  - Connects horizontal scaling to adding instances behind a traffic-distributing layer.
+  required: 2
+  model_answer: If instances do not keep essential request state locally, a later request can go to a different
+    instance without losing that state. Shared backing services provide common storage or other dependencies to
+    all instances. The service can then scale horizontally by adding instances and distributing traffic among them.
+- id: o4
+  topic: 2. Architecture Principles
+  text: A team deploys the same service to development and production, but it uses different settings and sometimes
+    fails only after deployment. How would 12-factor ideas help the team reduce this risk and operate the service?
+  rubric:
+  - Explains that environment-specific configuration should be separated from the application code.
+  - Explains that keeping development and production environments more alike helps reveal problems earlier.
+  - Explains that telemetry helps the team observe the service, or that disposability makes instances easier to
+    start, stop, and replace.
+  required: 2
+  model_answer: The team can keep environment-specific settings outside the code so the same application can run
+    with different configuration. Keeping development and production more alike can expose deployment problems earlier.
+    Telemetry helps reveal how the deployed service is behaving, and disposable instances are easier to replace
+    when they fail.
+- id: o5
+  topic: 3. API Design & Implementation
+  text: You are adding an API operation that changes a customer’s email address. How would you choose a REST resource
+    and HTTP method for it, and how would the response help a client understand what happened?
+  rubric:
+  - Identifies the customer as a resource, rather than treating the operation as an unrelated action.
+  - Chooses an appropriate HTTP method for changing the customer’s data, such as PATCH or PUT, and explains the
+    choice.
+  - Explains that an appropriate status code and response communicate success or a relevant failure to the client.
+  required: 2
+  model_answer: I would treat the customer as the resource and use PATCH if the request changes only the email field,
+    or PUT if it replaces the full representation. The API should return a status code that indicates whether the
+    update succeeded or failed. A response body can also provide the updated customer details or explain the problem.
+- id: o6
+  topic: 3. API Design & Implementation
+  text: A FastAPI endpoint receives user-submitted data and later needs to be used by another team. How would typed
+    request models and automatic API documentation help both the endpoint and its clients?
+  rubric:
+  - Explains that a Pydantic model describes the expected request shape and can validate incoming data.
+  - Explains that validation can help reject or report malformed input before endpoint logic uses it.
+  - Explains that generated OpenAPI documentation helps clients understand the endpoint’s inputs and outputs.
+  required: 2
+  model_answer: A Pydantic model describes the fields and types the endpoint expects, and FastAPI can use it to
+    validate incoming data. Invalid input can be reported rather than passed unchecked into the endpoint’s logic.
+    FastAPI’s generated OpenAPI documentation helps the other team see how to call the endpoint and what it returns.
+- id: o7
+  topic: 4. Database Design & Management
+  text: A database table repeats a customer’s address on every order, and staff sometimes update only some of those
+    copies. How would normalization help, and what role might an index play when the application looks up a customer’s
+    orders?
+  rubric:
+  - Explains that storing customer details separately from orders reduces repeated data.
+  - Explains that this separation helps avoid inconsistent updates to duplicate customer details.
+  - Explains that an index on a lookup or join column can speed finding matching rows without scanning the whole
+    table.
+  required: 2
+  model_answer: Customer details can be stored once in a customer table, with orders referring to the customer by
+    an identifier. This reduces duplicated addresses and prevents different copies from becoming inconsistent when
+    an address changes. An index on the customer identifier can help the database find related orders without scanning
+    every row.
+- id: o8
+  topic: 4. Database Design & Management
+  text: An application transfers money between two accounts by subtracting from one and adding to another. What
+    could go wrong if only one update succeeds, and how would a transaction help?
+  rubric:
+  - Explains that a partial transfer can leave account balances incorrect if only one update takes effect.
+  - Explains that a transaction groups the updates so they succeed together or are rolled back together.
+  - Connects this behavior to the ACID goal of keeping data consistent despite failures.
+  required: 2
+  model_answer: If the subtraction succeeds but the addition fails, the money may appear to disappear from the accounts.
+    A transaction groups both updates so they commit together, or the successful part is rolled back if the operation
+    cannot finish. This supports consistency by preventing a partial transfer from being left in the database.
+- id: o9
+  topic: 5. Testing Strategies
+  text: A team changes how its API stores a user profile. How would unit, integration, and end-to-end tests provide
+    different evidence that the change works?
+  rubric:
+  - Explains that a unit test checks a small piece of behavior in isolation.
+  - Explains that an integration test checks how connected parts, such as the API and database, work together.
+  - Explains that an end-to-end test checks a user-facing flow through the system.
+  required: 2
+  model_answer: A unit test can check a profile-related function in isolation, such as how it validates input. An
+    integration test can verify that the API and database correctly save and retrieve a profile together. An end-to-end
+    test can exercise a user flow through the application to confirm the change works from the user’s perspective.
+- id: o10
+  topic: 5. Testing Strategies
+  text: You are adding a feature that calls an unreliable external service. How would you use tests, fixtures, or
+    mocks to check the feature without depending on the real service every time?
+  rubric:
+  - Explains that a mock can imitate the external service and provide controlled responses.
+  - Explains that controlled responses let tests check both successful and failure behavior consistently.
+  - Explains that fixtures can set up reusable test data or dependencies for the tests.
+  required: 2
+  model_answer: I would mock the external service so a test can supply predictable success and failure responses
+    without making a real network call. That makes it possible to check how the feature handles different outcomes
+    consistently. A fixture can provide reusable test data or configure the mock for each test.
+- id: o11
+  topic: 6. DevOps & Deployment
+  text: A developer’s application works on their laptop but fails on another machine because of different installed
+    dependencies. How would Docker help, and what does Docker Compose add when the application also needs a database?
+  rubric:
+  - Explains that a Docker image packages the application with its required environment or dependencies.
+  - Connects running the same image in different environments to more consistent behavior.
+  - Explains that Docker Compose can define and run multiple services, such as the application and database, together.
+  required: 2
+  model_answer: Docker packages the application and its dependencies into an image, which helps it run in a consistent
+    environment on different machines. This reduces differences caused by local installations. Docker Compose can
+    describe the application and database as separate services and start them together.
+- id: o12
+  topic: 6. DevOps & Deployment
+  text: A team sometimes deploys code that has not been tested or linted. How would a CI/CD pipeline change the
+    process, and why might the team make deployment depend on those checks?
+  rubric:
+  - Explains that a pipeline can automatically run tests and linting when code changes.
+  - Explains that deployment can be gated on checks passing to reduce the chance of releasing known problems.
+  - Explains that automated deployment can make releases more repeatable or reduce manual steps.
+  required: 2
+  model_answer: A CI/CD pipeline can automatically run tests and linting whenever code changes. The team can require
+    those checks to pass before deployment, reducing the risk of releasing code with known problems. Automating
+    deployment also makes the release process more repeatable and less dependent on manual steps.
+- id: o13
+  topic: 7. Specialization (Choose One)
+  text: You are building a web or mobile frontend for an API that requires users to sign in and shows their activity
+    over time. How would you connect the frontend to the API, handle authentication, and present the activity clearly?
+  rubric:
+  - Explains that the frontend sends API requests to retrieve or update the data needed by the interface.
+  - Explains that authentication credentials or tokens should be handled so requests are associated with the signed-in
+    user.
+  - Explains that a visualization can make activity over time easier to understand, and should reflect the returned
+    data.
+  required: 2
+  model_answer: The frontend can call the API to retrieve the signed-in user’s activity and update the interface
+    with the response. It should include the appropriate authentication information with requests and avoid exposing
+    credentials unnecessarily. A chart or timeline can make changes over time easier to see, and it should be based
+    on the data returned by the API.
+- id: o14
+  topic: 7. Specialization (Choose One)
+  text: A frontend currently shows a blank screen when its API request is slow or fails. How would you change the
+    frontend so users can understand what is happening and recover?
+  rubric:
+  - Explains that the interface should show a loading state while the request is in progress.
+  - Explains that the interface should present an understandable error state if the request fails.
+  - Explains that the user should have a way to retry or otherwise continue after the failure.
+  required: 2
+  model_answer: While the request is in progress, the frontend should show a loading indicator instead of a blank
+    screen. If the request fails, it should explain the problem in a way the user can understand. A retry option
+    lets the user try again once the problem may have cleared.
 problem:
-  title: Build a Pagination Helper
-  prompt: 'Implement `paginate(items, page, page_size)` for a REST API. Pages are **1-indexed**. Return a dictionary
-    with `items` (the selected page as a list), `total` (the number of input items), `page`, `page_size`, and `pages`
-    (the total number of pages). If there are no items, `pages` should be `0`. You may assume `page` and `page_size`
-    are positive integers.
+  title: Trace an HTTP Request
+  prompt: "Write `http_request_trace(host, secure)`, a function that returns a conceptual network-event trace for\
+    \ one HTTP request. Do not perform any real networking.\n\nThe trace must list events in this order:\n1. DNS\
+    \ lookup for `host` (`\"DNS lookup: <host>\"`).\n2. The TCP three-way handshake: `\"TCP SYN\"`, `\"TCP SYN-ACK\"\
+    `, `\"TCP ACK\"`.\n3. If `secure` is `True`, a `\"TLS handshake\"`.\n4. `\"HTTP request\"` followed by `\"HTTP\
+    \ response\"`.\n\nFor example:\n\n```python\nhttp_request_trace(\"api.example.com\", True)\n```\n\nreturns:\n\
+    \n```python\n[\n    \"DNS lookup: api.example.com\",\n    \"TCP SYN\",\n    \"TCP SYN-ACK\",\n    \"TCP ACK\"\
+    ,\n    \"TLS handshake\",\n    \"HTTP request\",\n    \"HTTP response\",\n]\n```"
+  starter_code: "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS,\
+    \ connection, and HTTP events for a request.\"\"\"\n    ..."
+  tests: 'assert http_request_trace("api.example.com", False) == ["DNS lookup: api.example.com", "TCP SYN", "TCP
+    SYN-ACK", "TCP ACK", "HTTP request", "HTTP response"], "Plain HTTP should not include a TLS handshake"
 
+    assert http_request_trace("api.example.com", True) == ["DNS lookup: api.example.com", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "TLS handshake", "HTTP request", "HTTP response"], "HTTPS should include TLS after TCP connects"
 
-    Example: `paginate(["a", "b", "c"], 2, 2)` returns `{"items": ["c"], "total": 3, "page": 2, "page_size": 2,
-    "pages": 2}`.'
-  starter_code: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items\
-    \ and pagination metadata.\"\"\"\n    ..."
-  tests: 'assert paginate(["a", "b", "c"], 2, 2) == {"items": ["c"], "total": 3, "page": 2, "page_size": 2, "pages":
-    2}, "second page should contain the remaining item"
+    assert http_request_trace("service.internal", False) == ["DNS lookup: service.internal", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "HTTP request", "HTTP response"], "The DNS event should use the supplied host"
 
-    assert paginate([1, 2, 3, 4], 1, 2) == {"items": [1, 2], "total": 4, "page": 1, "page_size": 2, "pages": 2},
-    "first page should contain the first items"
+    assert http_request_trace("service.internal", True) == ["DNS lookup: service.internal", "TCP SYN", "TCP SYN-ACK",
+    "TCP ACK", "TLS handshake", "HTTP request", "HTTP response"], "Secure traces should retain the supplied host
+    and event order"
 
-    assert paginate([1, 2, 3, 4], 3, 2) == {"items": [], "total": 4, "page": 3, "page_size": 2, "pages": 2}, "a
-    page beyond the end should be empty"
-
-    assert paginate([], 1, 5) == {"items": [], "total": 0, "page": 1, "page_size": 5, "pages": 0}, "empty input
-    should have zero pages"'
-  solution: "def paginate(items, page, page_size):\n    \"\"\"Return a dictionary containing one page of items and\
-    \ pagination metadata.\"\"\"\n    total = len(items)\n    pages = (total + page_size - 1) // page_size\n   \
-    \ start = (page - 1) * page_size\n    end = start + page_size\n    return {\n        \"items\": list(items[start:end]),\n\
-    \        \"total\": total,\n        \"page\": page,\n        \"page_size\": page_size,\n        \"pages\": pages,\n\
-    \    }"
+    assert http_request_trace("localhost", True) == ["DNS lookup: localhost", "TCP SYN", "TCP SYN-ACK", "TCP ACK",
+    "TLS handshake", "HTTP request", "HTTP response"], "The trace should work with a different host name"'
+  solution: "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [\n        f\"DNS lookup: {host}\",\n        \"TCP SYN\"\
+    ,\n        \"TCP SYN-ACK\",\n        \"TCP ACK\",\n    ]\n    if secure:\n        events.append(\"TLS handshake\"\
+    )\n    events.extend([\"HTTP request\", \"HTTP response\"])\n    return events"
   packages: []
+  topic: 1. Networking Fundamentals
+  wrong_solutions:
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [f\"DNS lookup: {host}\", \"TCP SYN\", \"TCP SYN-ACK\"\
+    , \"TCP ACK\", \"HTTP request\", \"HTTP response\"]\n    return events"
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [f\"DNS lookup: {host}\", \"TCP SYN\", \"TCP SYN-ACK\"\
+    , \"HTTP request\", \"HTTP response\"]\n    if secure:\n        events.insert(3, \"TLS handshake\")\n    return\
+    \ events"
+  - "def http_request_trace(host: str, secure: bool) -> list[str]:\n    \"\"\"Return the ordered DNS, connection,\
+    \ and HTTP events for a request.\"\"\"\n    events = [\"TCP SYN\", \"TCP SYN-ACK\", \"TCP ACK\"]\n    if secure:\n\
+    \        events.append(\"TLS handshake\")\n    events.extend([\"HTTP request\", \"HTTP response\"])\n    return\
+    \ events"
+problems:
+- title: Build Runtime Configuration
+  prompt: "Write `build_runtime_config(defaults, environment, backing_services)` to prepare configuration for a\
+    \ disposable, stateless service process.\n\nReturn a new dictionary with exactly two keys: `settings` and `backing_services`.\
+    \ Start `settings` with all entries from `defaults`, then override a setting only when `environment` contains\
+    \ the same key. Ignore environment keys that are not present in `defaults`. Copy `backing_services` into the\
+    \ result unchanged; these bindings represent externally supplied backing services rather than hardcoded dependencies.\
+    \ Do not modify any input. Each call must be independent, so creating or changing one result cannot affect later\
+    \ calls.\n\nFor example:\n\n```python\nbuild_runtime_config(\n    {\"PORT\": \"8000\", \"LOG_LEVEL\": \"info\"\
+    },\n    {\"PORT\": \"9000\", \"UNUSED\": \"x\"},\n    {\"database\": \"postgres://db\"},\n)\n```\n\nreturns:\n\
+    \n```python\n{\n    \"settings\": {\"PORT\": \"9000\", \"LOG_LEVEL\": \"info\"},\n    \"backing_services\":\
+    \ {\"database\": \"postgres://db\"},\n}\n```"
+  starter_code: "def build_runtime_config(defaults, environment, backing_services):\n    \"\"\"Build independent\
+    \ runtime settings and backing-service bindings.\"\"\"\n    ..."
+  tests: 'defaults = {"PORT": "8000", "LOG_LEVEL": "info", "FEATURE_X": "off"}
+
+    environment = {"PORT": "9000", "LOG_LEVEL": "debug", "UNUSED": "x"}
+
+    services = {"database": "postgres://db", "cache": "redis://cache"}
+
+    config = build_runtime_config(defaults, environment, services)
+
+    assert config == {"settings": {"PORT": "9000", "LOG_LEVEL": "debug", "FEATURE_X": "off"}, "backing_services":
+    services}, "overrides should retain defaults and include service bindings"
+
+    assert "UNUSED" not in config["settings"], "unknown environment keys should be ignored"
+
+    assert defaults == {"PORT": "8000", "LOG_LEVEL": "info", "FEATURE_X": "off"}, "defaults must not be modified"
+
+    assert environment == {"PORT": "9000", "LOG_LEVEL": "debug", "UNUSED": "x"}, "environment must not be modified"
+
+    assert services == {"database": "postgres://db", "cache": "redis://cache"}, "service bindings must not be modified"
+
+    config["settings"]["PORT"] = "changed"
+
+    config["backing_services"]["database"] = "changed"
+
+    again = build_runtime_config(defaults, environment, services)
+
+    assert again["settings"]["PORT"] == "9000", "a result must not affect a later call"
+
+    assert again["backing_services"]["database"] == "postgres://db", "returned bindings must be independent copies"
+
+    assert build_runtime_config({"MODE": "prod"}, {}, {}) == {"settings": {"MODE": "prod"}, "backing_services":
+    {}}, "empty overrides and bindings should preserve defaults"'
+  solution: "def build_runtime_config(defaults, environment, backing_services):\n    \"\"\"Build independent runtime\
+    \ settings and backing-service bindings.\"\"\"\n    settings = dict(defaults)\n    for key, value in environment.items():\n\
+    \        if key in defaults:\n            settings[key] = value\n    return {\n        \"settings\": settings,\n\
+    \        \"backing_services\": dict(backing_services),\n    }"
+  packages: []
+  topic: 2. Architecture Principles
+  wrong_solutions:
+  - "def build_runtime_config(defaults, environment, backing_services):\n    \"\"\"Build independent runtime settings\
+    \ and backing-service bindings.\"\"\"\n    return {\"settings\": dict(defaults), \"backing_services\": dict(backing_services)}"
+  - "def build_runtime_config(defaults, environment, backing_services):\n    \"\"\"Build independent runtime settings\
+    \ and backing-service bindings.\"\"\"\n    return {\"settings\": dict(environment), \"backing_services\": dict(backing_services)}"
+  - "def build_runtime_config(defaults, environment, backing_services):\n    \"\"\"Build independent runtime settings\
+    \ and backing-service bindings.\"\"\"\n    settings = defaults\n    settings.update(environment)\n    return\
+    \ {\"settings\": settings, \"backing_services\": backing_services}"
+- title: Build a Versioned REST Handler
+  prompt: 'Write `handle_request(method, path, body, items)` to emulate a small versioned REST API for widgets.
+    Return a tuple `(status_code, response_body, updated_items)`.
+
+
+    The API has these routes:
+
+    - `GET /api/v1/widgets` returns status `200` and all items.
+
+    - `POST /api/v1/widgets` creates an item from `body["name"]`, returns status `201` and the created item, and
+    appends it to the returned item list. Assign the new item an `id` one greater than the largest existing ID,
+    or `1` when the list is empty.
+
+    - `GET /api/v1/widgets/{id}` returns status `200` and the matching item, or status `404` and `None` if it does
+    not exist.
+
+    - `DELETE /api/v1/widgets/{id}` removes the matching item and returns status `204` and `None`, or returns status
+    `404` and `None` if it does not exist.
+
+    - A recognized route with an unsupported method returns `405` and `None`. An unrecognized path or API version
+    returns `404` and `None`.
+
+
+    Assume POST bodies contain a `name` field, IDs in `items` are integers, and item IDs in paths are decimal integers.
+    Do not modify the input list.
+
+
+    Example:
+
+    ```python
+
+    handle_request("POST", "/api/v1/widgets", {"name": "lamp"}, [{"id": 2, "name": "chair"}])
+
+    ```
+
+    returns:
+
+    ```python
+
+    (201, {"id": 3, "name": "lamp"}, [{"id": 2, "name": "chair"}, {"id": 3, "name": "lamp"}])
+
+    ```'
+  starter_code: "def handle_request(method, path, body, items):\n    \"\"\"Emulate one request to the versioned\
+    \ widgets API.\"\"\"\n    ..."
+  tests: 'items = [{"id": 2, "name": "chair"}, {"id": 5, "name": "desk"}]
+
+    assert handle_request("GET", "/api/v1/widgets", None, items) == (200, items, items), "GET collection returns
+    all items"
+
+    assert handle_request("GET", "/api/v1/widgets/5", None, items) == (200, items[1], items), "GET item returns
+    the matching item"
+
+    assert handle_request("GET", "/api/v1/widgets/8", None, items) == (404, None, items), "Missing item returns
+    404"
+
+    created = {"id": 6, "name": "lamp"}
+
+    assert handle_request("POST", "/api/v1/widgets", {"name": "lamp"}, items) == (201, created, items + [created]),
+    "POST uses the next ID and returns 201"
+
+    first = {"id": 1, "name": "lamp"}
+
+    assert handle_request("POST", "/api/v1/widgets", {"name": "lamp"}, []) == (201, first, [first]), "POST to an
+    empty collection starts at ID 1"
+
+    assert handle_request("DELETE", "/api/v1/widgets/2", None, items) == (204, None, [items[1]]), "DELETE removes
+    an existing item"
+
+    assert handle_request("PUT", "/api/v1/widgets", None, items) == (405, None, items), "Unsupported method on a
+    known route returns 405"
+
+    assert handle_request("GET", "/api/v2/widgets", None, items) == (404, None, items), "Unknown API version returns
+    404"'
+  solution: "def handle_request(method, path, body, items):\n    parts = path.strip(\"/\").split(\"/\")\n    collection_route\
+    \ = parts == [\"api\", \"v1\", \"widgets\"]\n    item_id = None\n\n    if len(parts) == 4 and parts[:3] == [\"\
+    api\", \"v1\", \"widgets\"] and parts[3].isdecimal():\n        item_id = int(parts[3])\n        item_route =\
+    \ True\n    else:\n        item_route = False\n\n    if not collection_route and not item_route:\n        return\
+    \ 404, None, items\n\n    if collection_route:\n        if method == \"GET\":\n            return 200, list(items),\
+    \ items\n        if method == \"POST\":\n            new_id = max((item[\"id\"] for item in items), default=0)\
+    \ + 1\n            created = {\"id\": new_id, \"name\": body[\"name\"]}\n            return 201, created, items\
+    \ + [created]\n        return 405, None, items\n\n    if method == \"GET\":\n        for item in items:\n  \
+    \          if item[\"id\"] == item_id:\n                return 200, item, items\n        return 404, None, items\n\
+    \n    if method == \"DELETE\":\n        for index, item in enumerate(items):\n            if item[\"id\"] ==\
+    \ item_id:\n                return 204, None, items[:index] + items[index + 1:]\n        return 404, None, items\n\
+    \n    return 405, None, items"
+  packages: []
+  topic: 3. API Design & Implementation
+  wrong_solutions:
+  - "def handle_request(method, path, body, items):\n    parts = path.strip(\"/\").split(\"/\")\n    collection\
+    \ = parts == [\"api\", \"v1\", \"widgets\"]\n    item_id = int(parts[3]) if len(parts) == 4 and parts[:3] ==\
+    \ [\"api\", \"v1\", \"widgets\"] and parts[3].isdecimal() else None\n    if not collection and item_id is None:\n\
+    \        return 404, None, items\n    if collection and method == \"GET\":\n        return 200, list(items),\
+    \ items\n    if collection and method == \"POST\":\n        created = {\"id\": max((x[\"id\"] for x in items),\
+    \ default=0) + 1, \"name\": body[\"name\"]}\n        return 200, created, items + [created]\n    if item_id\
+    \ is not None and method == \"GET\":\n        for item in items:\n            if item[\"id\"] == item_id:\n\
+    \                return 200, item, items\n        return 404, None, items\n    if item_id is not None and method\
+    \ == \"DELETE\":\n        for i, item in enumerate(items):\n            if item[\"id\"] == item_id:\n      \
+    \          return 204, None, items[:i] + items[i + 1:]\n        return 404, None, items\n    return 405, None,\
+    \ items"
+  - "def handle_request(method, path, body, items):\n    parts = path.strip(\"/\").split(\"/\")\n    collection\
+    \ = parts == [\"api\", \"v1\", \"widgets\"]\n    item_id = int(parts[3]) if len(parts) == 4 and parts[:3] ==\
+    \ [\"api\", \"v1\", \"widgets\"] and parts[3].isdecimal() else None\n    if not collection and item_id is None:\n\
+    \        return 404, None, items\n    if collection and method == \"GET\":\n        return 200, list(items),\
+    \ items\n    if collection and method == \"POST\":\n        created = {\"id\": max((x[\"id\"] for x in items),\
+    \ default=0) + 1, \"name\": body[\"name\"]}\n        return 201, created, items + [created]\n    if item_id\
+    \ is not None and method == \"GET\":\n        for item in items:\n            if item[\"id\"] == item_id:\n\
+    \                return 200, item, items\n        return 404, None, items\n    if item_id is not None and method\
+    \ == \"DELETE\":\n        for i, item in enumerate(items):\n            if item[\"id\"] == item_id:\n      \
+    \          return 204, None, items[:i] + items[i + 1:]\n        return 404, None, items\n    return 404, None,\
+    \ items"
+  - "def handle_request(method, path, body, items):\n    parts = path.strip(\"/\").split(\"/\")\n    collection\
+    \ = parts == [\"api\", \"v1\", \"widgets\"]\n    item_id = int(parts[3]) if len(parts) == 4 and parts[:3] ==\
+    \ [\"api\", \"v1\", \"widgets\"] and parts[3].isdecimal() else None\n    if not collection and item_id is None:\n\
+    \        return 404, None, items\n    if collection and method == \"GET\":\n        return 200, list(items),\
+    \ items\n    if collection and method == \"POST\":\n        created = {\"id\": len(items) + 1, \"name\": body[\"\
+    name\"]}\n        return 201, created, items + [created]\n    if item_id is not None and method == \"GET\":\n\
+    \        for item in items:\n            if item[\"id\"] == item_id:\n                return 200, item, items\n\
+    \        return 404, None, items\n    if item_id is not None and method == \"DELETE\":\n        for i, item\
+    \ in enumerate(items):\n            if item[\"id\"] == item_id:\n                return 204, None, items[:i]\
+    \ + items[i + 1:]\n        return 404, None, items\n    return 405, None, items"
+- title: Order Revenue Query
+  prompt: 'Write `customer_order_totals(conn)`, using SQLite to query a database with these tables:
+
+
+    - `customers(id, name)`
+
+    - `orders(id, customer_id)`
+
+    - `order_items(order_id, product_id, quantity, unit_price_cents)`
+
+
+    Return a list of tuples `(customer_id, name, order_count, total_units, revenue_cents)`, ordered by `customer_id`.
+    Include every customer, even if they have no orders. Count each order once, even when it has multiple items.
+    Sum item quantities for `total_units` and `quantity * unit_price_cents` for `revenue_cents`. Treat missing orders
+    or items as zero.
+
+
+    Example call and result:
+
+
+    ```python
+
+    # Customer 7 has one order with two items: 2 × 300 cents and 1 × 150 cents.
+
+    customer_order_totals(conn)
+
+    # [(7, "Mina", 1, 3, 750)]
+
+    ```
+
+
+    Use only the supplied database connection; do not create or modify tables.'
+  starter_code: "def customer_order_totals(conn):\n    \"\"\"Return ordered customer order counts, units, and revenue\
+    \ in cents.\"\"\"\n    ..."
+  tests: "import sqlite3\n\n\ndef make_db():\n    conn = sqlite3.connect(\":memory:\")\n    conn.executescript(\"\
+    \"\"\n        CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\n        CREATE TABLE orders\
+    \ (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL);\n        CREATE TABLE order_items (\n            order_id\
+    \ INTEGER NOT NULL,\n            product_id INTEGER NOT NULL,\n            quantity INTEGER NOT NULL,\n    \
+    \        unit_price_cents INTEGER NOT NULL\n        );\n        INSERT INTO customers VALUES (1, 'Ari'), (2,\
+    \ 'Bo'), (3, 'Ari');\n        INSERT INTO orders VALUES (10, 1), (11, 1), (12, 2);\n        INSERT INTO order_items\
+    \ VALUES\n            (10, 100, 2, 100), (10, 101, 1, 250), (11, 100, 3, 100);\n    \"\"\")\n    return conn\n\
+    \n\nconn = make_db()\nrows = customer_order_totals(conn)\nassert rows == [(1, 'Ari', 2, 6, 750), (2, 'Bo', 1,\
+    \ 0, 0), (3, 'Ari', 0, 0, 0)], 'aggregates, zero cases, or ordering are incorrect'\nassert rows[0][2] == 2,\
+    \ 'an order with multiple items must be counted once'\nassert rows[0][4] == 750, 'revenue must multiply each\
+    \ price by its quantity'\nassert rows[1] == (2, 'Bo', 1, 0, 0), 'an order with no items must still be counted'\n\
+    assert rows[2] == (3, 'Ari', 0, 0, 0), 'customers without orders must be included'\n\nempty = sqlite3.connect(\"\
+    :memory:\")\nempty.executescript(\"CREATE TABLE customers (id INTEGER, name TEXT); CREATE TABLE orders (id INTEGER,\
+    \ customer_id INTEGER); CREATE TABLE order_items (order_id INTEGER, product_id INTEGER, quantity INTEGER, unit_price_cents\
+    \ INTEGER);\")\nassert customer_order_totals(empty) == [], 'an empty database should return an empty list'"
+  solution: "def customer_order_totals(conn):\n    \"\"\"Return ordered customer order counts, units, and revenue\
+    \ in cents.\"\"\"\n    cursor = conn.execute(\"\"\"\n        SELECT\n            c.id,\n            c.name,\n\
+    \            COUNT(DISTINCT o.id) AS order_count,\n            COALESCE(SUM(oi.quantity), 0) AS total_units,\n\
+    \            COALESCE(SUM(oi.quantity * oi.unit_price_cents), 0) AS revenue_cents\n        FROM customers AS\
+    \ c\n        LEFT JOIN orders AS o ON o.customer_id = c.id\n        LEFT JOIN order_items AS oi ON oi.order_id\
+    \ = o.id\n        GROUP BY c.id, c.name\n        ORDER BY c.id\n    \"\"\")\n    return cursor.fetchall()"
+  packages: []
+  topic: 4. Database Design & Management
+  wrong_solutions:
+  - "def customer_order_totals(conn):\n    \"\"\"Incorrectly omits customers without orders.\"\"\"\n    return conn.execute(\"\
+    \"\"\n        SELECT c.id, c.name, COUNT(DISTINCT o.id),\n               COALESCE(SUM(oi.quantity), 0),\n  \
+    \             COALESCE(SUM(oi.quantity * oi.unit_price_cents), 0)\n        FROM customers c\n        JOIN orders\
+    \ o ON o.customer_id = c.id\n        LEFT JOIN order_items oi ON oi.order_id = o.id\n        GROUP BY c.id,\
+    \ c.name\n        ORDER BY c.id\n    \"\"\").fetchall()"
+  - "def customer_order_totals(conn):\n    \"\"\"Incorrectly counts an order once per item row.\"\"\"\n    return\
+    \ conn.execute(\"\"\"\n        SELECT c.id, c.name, COUNT(o.id),\n               COALESCE(SUM(oi.quantity),\
+    \ 0),\n               COALESCE(SUM(oi.quantity * oi.unit_price_cents), 0)\n        FROM customers c\n      \
+    \  LEFT JOIN orders o ON o.customer_id = c.id\n        LEFT JOIN order_items oi ON oi.order_id = o.id\n    \
+    \    GROUP BY c.id, c.name\n        ORDER BY c.id\n    \"\"\").fetchall()"
+  - "def customer_order_totals(conn):\n    \"\"\"Incorrectly adds item prices without multiplying by quantity.\"\
+    \"\"\n    return conn.execute(\"\"\"\n        SELECT c.id, c.name, COUNT(DISTINCT o.id),\n               COALESCE(SUM(oi.quantity),\
+    \ 0),\n               COALESCE(SUM(oi.unit_price_cents), 0)\n        FROM customers c\n        LEFT JOIN orders\
+    \ o ON o.customer_id = c.id\n        LEFT JOIN order_items oi ON oi.order_id = o.id\n        GROUP BY c.id,\
+    \ c.name\n        ORDER BY c.id\n    \"\"\").fetchall()"
+- title: Calculate Line Coverage
+  prompt: 'Write `coverage_report(executable_lines, executed_lines)` to produce a simple line-coverage report. Treat
+    line numbers as unique: ignore duplicates in either input, and ignore executed line numbers that are not executable.
+    Return a dictionary with:
+
+
+    - `total`: number of unique executable lines
+
+    - `covered`: number of those lines that were executed
+
+    - `missed`: sorted list of executable lines that were not executed
+
+    - `percent`: coverage percentage rounded to one decimal place; use `0.0` when there are no executable lines
+
+
+    Example:
+
+
+    ```python
+
+    coverage_report([1, 2, 3], [1, 3])
+
+    # {''total'': 3, ''covered'': 2, ''missed'': [2], ''percent'': 66.7}
+
+    ```'
+  starter_code: "def coverage_report(executable_lines, executed_lines):\n    \"\"\"Return counts, missed line numbers,\
+    \ and percentage line coverage.\"\"\"\n    ..."
+  tests: 'assert coverage_report([1, 2, 3], [1, 3]) == {"total": 3, "covered": 2, "missed": [2], "percent": 66.7},
+    "reports basic line coverage"
+
+    assert coverage_report([8, 2, 5], [8]) == {"total": 3, "covered": 1, "missed": [2, 5], "percent": 33.3}, "sorts
+    missed lines and rounds the percentage"
+
+    assert coverage_report([1, 1, 2], [1, 1]) == {"total": 2, "covered": 1, "missed": [2], "percent": 50.0}, "does
+    not count duplicate line numbers twice"
+
+    assert coverage_report([1, 2], [1, 99]) == {"total": 2, "covered": 1, "missed": [2], "percent": 50.0}, "ignores
+    executed lines that are not executable"
+
+    assert coverage_report([], [4, 5]) == {"total": 0, "covered": 0, "missed": [], "percent": 0.0}, "handles no
+    executable lines"
+
+    assert coverage_report([1, 2, 3], [1]) == {"total": 3, "covered": 1, "missed": [2, 3], "percent": 33.3}, "rounds
+    repeating percentages to one decimal place"'
+  solution: "def coverage_report(executable_lines, executed_lines):\n    \"\"\"Return counts, missed line numbers,\
+    \ and percentage line coverage.\"\"\"\n    executable = set(executable_lines)\n    executed = set(executed_lines)\n\
+    \    covered_lines = executable & executed\n    missed = sorted(executable - executed)\n    total = len(executable)\n\
+    \    covered = len(covered_lines)\n    percent = round(covered / total * 100, 1) if total else 0.0\n    return\
+    \ {\n        \"total\": total,\n        \"covered\": covered,\n        \"missed\": missed,\n        \"percent\"\
+    : percent,\n    }"
+  packages: []
+  topic: 5. Testing Strategies
+  wrong_solutions:
+  - "def coverage_report(executable_lines, executed_lines):\n    executable = list(executable_lines)\n    executed\
+    \ = set(executed_lines)\n    covered = sum(1 for line in executable if line in executed)\n    missed = sorted(set(executable)\
+    \ - executed)\n    total = len(executable)\n    percent = round(covered / total * 100, 1) if total else 0.0\n\
+    \    return {\"total\": total, \"covered\": covered, \"missed\": missed, \"percent\": percent}\n\n# This counts\
+    \ duplicate executable line numbers more than once."
+  - "def coverage_report(executable_lines, executed_lines):\n    executable = set(executable_lines)\n    executed\
+    \ = set(executed_lines)\n    missed = sorted(executable - executed)\n    total = len(executable)\n    covered\
+    \ = len(executed)\n    percent = round(covered / total * 100, 1) if total else 0.0\n    return {\"total\": total,\
+    \ \"covered\": covered, \"missed\": missed, \"percent\": percent}\n\n# This incorrectly counts executed line\
+    \ numbers that are not executable."
+  - "def coverage_report(executable_lines, executed_lines):\n    executable = set(executable_lines)\n    executed\
+    \ = set(executed_lines)\n    missed = sorted(executable - executed)\n    total = len(executable)\n    covered\
+    \ = len(executable & executed)\n    percent = covered / total * 100 if total else 0.0\n    return {\"total\"\
+    : total, \"covered\": covered, \"missed\": missed, \"percent\": percent}\n\n# This does not round the percentage\
+    \ to one decimal place."
+- title: Plan a CI Pipeline
+  prompt: 'Write `pipeline_for(event, branch)`, which returns a dictionary mapping CI job names to lists of prerequisite
+    job names. Assume `event` is either `"push"` or `"pull_request"`.
+
+
+    - Every pipeline runs `test` and `lint`, with no prerequisites.
+
+    - A `push` also runs `build`, which depends on both `test` and `lint`.
+
+    - Only a push to the `main` branch runs `deploy`, which depends on `build`.
+
+    - A pull request never runs `build` or `deploy`.
+
+
+    For example:
+
+
+    ```python
+
+    pipeline_for("push", "main")
+
+    # {''test'': [], ''lint'': [], ''build'': [''test'', ''lint''], ''deploy'': [''build'']}
+
+    ```'
+  starter_code: "def pipeline_for(event, branch):\n    \"\"\"Return CI job names mapped to lists of prerequisite\
+    \ job names.\"\"\"\n    ..."
+  tests: 'assert pipeline_for("pull_request", "feature") == {"test": [], "lint": []}, "Pull requests should run
+    only test and lint"
+
+    assert pipeline_for("pull_request", "main") == {"test": [], "lint": []}, "Pull requests to main must not deploy"
+
+    assert pipeline_for("push", "feature") == {"test": [], "lint": [], "build": ["test", "lint"]}, "Pushes should
+    build after test and lint"
+
+    assert pipeline_for("push", "main") == {"test": [], "lint": [], "build": ["test", "lint"], "deploy": ["build"]},
+    "Pushes to main should deploy after building"
+
+    assert pipeline_for("push", "release") == {"test": [], "lint": [], "build": ["test", "lint"]}, "Pushes to branches
+    other than main should not deploy"
+
+    assert pipeline_for("pull_request", "feature") .get("build") is None, "Pull requests should not include a build
+    job"'
+  solution: "def pipeline_for(event, branch):\n    \"\"\"Return CI job names mapped to lists of prerequisite job\
+    \ names.\"\"\"\n    jobs = {\"test\": [], \"lint\": []}\n    if event == \"push\":\n        jobs[\"build\"]\
+    \ = [\"test\", \"lint\"]\n        if branch == \"main\":\n            jobs[\"deploy\"] = [\"build\"]\n    return\
+    \ jobs"
+  packages: []
+  topic: 6. DevOps & Deployment
+  wrong_solutions:
+  - "def pipeline_for(event, branch):\n    jobs = {\"test\": [], \"lint\": []}\n    if event == \"push\":\n    \
+    \    jobs[\"build\"] = [\"test\", \"lint\"]\n        jobs[\"deploy\"] = [\"build\"]\n    return jobs"
+  - "def pipeline_for(event, branch):\n    jobs = {\"test\": [], \"lint\": []}\n    if event == \"push\":\n    \
+    \    jobs[\"build\"] = [\"test\", \"lint\"]\n    if branch == \"main\":\n        jobs[\"deploy\"] = [\"build\"\
+    ]\n    return jobs"
+  - "def pipeline_for(event, branch):\n    jobs = {\"test\": [], \"lint\": []}\n    if event == \"push\" and branch\
+    \ == \"main\":\n        jobs[\"build\"] = [\"test\", \"lint\"]\n        jobs[\"deploy\"] = [\"build\"]\n   \
+    \ return jobs"

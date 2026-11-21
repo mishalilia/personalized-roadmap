@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
 class Level(StrEnum):
@@ -38,6 +38,8 @@ class Topic(BaseModel):
 
     title: str
     outcomes: list[str] = []
+    # The heading's id on the page, as its authors set it ("{#terminal}"), so a link can open the topic.
+    anchor: str | None = None
 
 
 class Module(BaseModel):
@@ -59,10 +61,19 @@ class Module(BaseModel):
     # The authors' estimate of the module's workload, or the sum of its resources' durations; None when
     # neither is stated.
     hours: Hours | None = None
+    # For a capstone: what the project must solve and deliver, and its evaluation rubric, as Markdown. A review
+    # of a submitted project grades against it, from the curriculum version the path was planned for.
+    project_brief: str = ""
 
     @property
     def can_be_proved(self) -> bool:
         return bool(self.checklist)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_project(self) -> bool:
+        """A capstone: the learner builds a project and submits it for review instead of a checkpoint."""
+        return self.id.rsplit("/", 1)[-1] == "capstone"
 
     @property
     def full_title(self) -> str:

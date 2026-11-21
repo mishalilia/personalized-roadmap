@@ -1,0 +1,88 @@
+/* A module's status in the learner's path, beside its name in the docs sidebar. The sidebar link wrapper
+   (theme/DocSidebarItem/Link) adds pp-side--<status> to the item. */
+
+.pp-side > .menu__link {
+  gap: 0.5rem;
+}
+
+.pp-side > .menu__link::after {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  border-radius: 50%;
+  border: 2px solid hsl(0, 0%, 38%);
+  box-sizing: border-box;
+  background: none;
+  mask: none;
+}
+
+.pp-side--next > .menu__link::after {
+  border-color: var(--pp-gold, #fff500);
+  background: radial-gradient(circle, var(--pp-gold, #fff500) 0 30%, transparent 36%);
+  box-shadow: 0 0 0 3px rgba(255, 245, 0, 0.12);
+}
+
+.pp-side--practice > .menu__link::after {
+  border-color: var(--pp-gold, #fff500);
+  background: linear-gradient(90deg, var(--pp-gold, #fff500) 50%, transparent 50%);
+}
+
+.pp-side--finished > .menu__link::after {
+  border: none;
+  background: var(--pp-green, hsl(142, 60%, 50%))
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / 9px no-repeat;
+}
+
+.pp-side--failed > .menu__link::after {
+  border-color: var(--pp-red, hsl(0, 75%, 65%));
+}
+
+.pp-side--locked > .menu__link::after {
+  border: none;
+  border-radius: 0;
+  background: hsl(0, 0%, 50%);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.pp-side--skipped > .menu__link {
+  color: hsl(0, 0%, 50%);
+  text-decoration: line-through;
+  text-decoration-color: hsl(0, 0%, 40%);
+}
+
+/* A skip-forward mark: the module is left out of the path. */
+.pp-side--skipped > .menu__link::after {
+  border: none;
+  border-radius: 0;
+  background: hsl(0, 0%, 62%);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='5 4 15 12 5 20 5 4'/%3E%3Cline x1='19' x2='19' y1='5' y2='19' stroke-width='3'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.pp-side--skipped > .menu__link--active {
+  color: var(--ifm-menu-color-active);
+}
+
+.pp-side--submitted > .menu__link::after {
+  border-color: var(--pp-blue, hsl(206, 90%, 68%));
+  background: radial-gradient(circle, var(--pp-blue, hsl(206, 90%, 68%)) 0 30%, transparent 36%);
+}
+
+.pp-side--returned > .menu__link::after {
+  border-color: var(--accent-amber, #ffb902);
+}
+
+/* A category whose modules the path all leaves out: dimmed and struck through like a skipped module. */
+.pp-cat--skipped > .menu__list-item-collapsible > .menu__link {
+  color: hsl(0, 0%, 50%);
+  text-decoration: line-through;
+  text-decoration-color: hsl(0, 0%, 40%);
+}
+
+.pp-cat--skipped > .menu__list-item-collapsible > .menu__link--active {
+  color: var(--ifm-menu-color-active);
+}

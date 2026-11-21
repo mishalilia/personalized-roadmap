@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/terminal-algorithmic-basics
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Terminal and Filesystem
@@ -191,30 +191,525 @@ questions:
   answer: 0
   explanation: 'A set of previously seen values lets you check each item as you scan: an item already in the set
     is a repeat. You can stop immediately when one is found.'
+- id: q16
+  topic: Terminal and Filesystem
+  text: A log file is too long to read comfortably all at once. Which command lets you inspect it a screen at a
+    time?
+  options:
+  - '`file server.log`'
+  - '`less server.log`'
+  - '`touch server.log`'
+  - '`pwd server.log`'
+  answer: 1
+  explanation: '`less` displays a file one screen at a time and lets you move through it. `file` identifies the
+    file type, while `touch` changes its timestamp or creates it.'
+- id: q17
+  topic: Terminal and Filesystem
+  text: You run `touch notes.txt` when `notes.txt` already contains your meeting notes. What happens to the notes?
+  options:
+  - They are printed in the terminal.
+  - They are moved to a new file.
+  - They are deleted from the file.
+  - They remain, and the timestamp is updated.
+  answer: 3
+  explanation: '`touch` updates the timestamp of an existing file without changing its contents. If the file did
+    not exist, it would create an empty one.'
+- id: q18
+  topic: Terminal and Filesystem
+  text: You want to rename `draft.txt` to `final.txt` in the same directory. Which command should you use?
+  options:
+  - '`mv draft.txt final.txt`'
+  - '`cp draft.txt final.txt`'
+  - '`cat draft.txt final.txt`'
+  - '`file draft.txt final.txt`'
+  answer: 0
+  explanation: '`mv` moves a file, and using a new name in the same directory renames it. `cp` would leave the original
+    and create another copy.'
+- id: q19
+  topic: Terminal and Filesystem
+  text: You want to create a new directory named `backup` in your current location. Which command does this?
+  options:
+  - '`touch backup`'
+  - '`cd backup`'
+  - '`mkdir backup`'
+  - '`cp backup`'
+  answer: 2
+  explanation: '`mkdir backup` creates a directory named `backup` in the current location. `cd backup` only changes
+    into a directory that already exists.'
+- id: q20
+  topic: Terminal and Filesystem
+  text: You want to review the commands you previously entered in the current shell. Which command should you run?
+  options:
+  - '`pwd`'
+  - '`history`'
+  - '`whatis`'
+  - '`ls`'
+  answer: 1
+  explanation: '`history` displays commands entered in the shell. `pwd` shows the current directory, and `ls` lists
+    its contents.'
+- id: q21
+  topic: Python Environment Setup
+  text: You are in a project directory and want to create an isolated environment named `.venv` before installing
+    packages. Which command should you run?
+  options:
+  - '`python -m venv .venv`'
+  - '`python -m pip install .venv`'
+  - '`python .venv`'
+  - '`pip freeze > .venv`'
+  answer: 0
+  explanation: '`python -m venv .venv` creates a virtual environment in the `.venv` directory. The other commands
+    install a package, try to run a directory, or write a package list.'
+- id: q22
+  topic: Python Environment Setup
+  text: You created `.venv` and are using Windows PowerShell. Which command activates that environment?
+  options:
+  - '`source .venv/bin/activate`'
+  - '`.\.venv\Scripts\Activate.ps1`'
+  - '`python -m venv .venv`'
+  - '`\.venv\Scripts\activate.bat`'
+  answer: 1
+  explanation: In Windows PowerShell, run the `Activate.ps1` script from the environment’s `Scripts` directory.
+    The `source` command is used in common Unix-like shells, while the batch file is for Command Prompt.
+- id: q23
+  topic: Python Environment Setup
+  text: After installing your project's packages in its environment, you want to save a list of installed packages
+    to share with a teammate. Which command does that?
+  options:
+  - '`python -m pip install -r requirements.txt`'
+  - '`python -m venv requirements.txt`'
+  - '`python -m pip freeze > requirements.txt`'
+  - '`python requirements.txt`'
+  answer: 2
+  explanation: '`pip freeze` lists installed packages and their versions, and `>` saves that output to `requirements.txt`.
+    The install command reads a requirements file rather than creating one.'
+- id: q24
+  topic: Python Environment Setup
+  text: You have activated a new project environment, and the project includes a `requirements.txt` file. Which
+    command installs the listed dependencies?
+  options:
+  - '`python -m pip freeze requirements.txt`'
+  - '`python -m venv -r requirements.txt`'
+  - '`python requirements.txt`'
+  - '`python -m pip install -r requirements.txt`'
+  answer: 3
+  explanation: The `install -r` command tells pip to install the packages listed in the requirements file. The other
+    commands do not install dependencies from that file.
+- id: q25
+  topic: Python Environment Setup
+  text: You are finished working in an activated virtual environment and want to return to the normal shell environment.
+    What should you type?
+  options:
+  - '`deactivate`'
+  - '`exit`'
+  - '`python -m venv --off`'
+  - '`deactivate .venv`'
+  answer: 0
+  explanation: Typing `deactivate` leaves the active virtual environment while keeping the shell open. `exit` closes
+    the shell instead.
+- id: q26
+  topic: Python Environment Setup
+  text: You want to check which Python executable your current terminal session will use. What does `python -c "import
+    sys; print(sys.executable)"` print?
+  options:
+  - The names of packages installed in the environment
+  - The path to the Python executable currently in use
+  - The path to the project's `requirements.txt` file
+  - The version numbers of all installed packages
+  answer: 1
+  explanation: '`sys.executable` contains the path to the Python interpreter running the command. This lets you
+    check whether the terminal is using the project environment''s interpreter.'
+- id: q27
+  topic: Git and GitHub
+  text: A repository already tracks `debug.log`. You add `debug.log` to `.gitignore` and then edit the file. What
+    should you expect?
+  options:
+  - Git removes the file from tracking and ignores it.
+  - Git ignores the file only after you commit `.gitignore`.
+  - Git still reports changes to the tracked file.
+  - Git ignores the file only on the next branch.
+  answer: 2
+  explanation: '`.gitignore` prevents untracked files from being noticed, but it does not stop Git from tracking
+    a file already in the repository. Changes to `debug.log` will still appear in Git status.'
+- id: q28
+  topic: Git and GitHub
+  text: You want to learn whether `origin/main` has new commits, but you do not want to merge them into your current
+    branch or change your working files. Which command should you use?
+  options:
+  - '`git fetch origin`'
+  - '`git pull origin main`'
+  - '`git push origin main`'
+  - '`git checkout origin/main`'
+  answer: 0
+  explanation: '`git fetch` downloads updates and refreshes remote-tracking information without merging into the
+    current branch. `git pull` also integrates the fetched changes.'
+- id: q29
+  topic: Git and GitHub
+  text: A reviewer requests changes on your pull request. You make the fixes on the same feature branch. What should
+    you do so the pull request includes them?
+  options:
+  - Create a second pull request from the feature branch.
+  - Commit the fixes directly to `main`.
+  - Close the pull request and reopen it from a new branch.
+  - Commit the fixes and push the feature branch.
+  answer: 3
+  explanation: A pull request reflects new commits pushed to its source branch, so pushing your fixes to that branch
+    updates the existing pull request.
+- id: q33
+  topic: Debugging Fundamentals
+  text: A fix changes an age check so that age 18 qualifies. Which set of tests best checks both the boundary and
+    ordinary behavior?
+  options:
+  - Ages 17, 18, and 25
+  - Ages 18 and 25 only
+  - Ages 10, 12, and 15
+  - Age 25 tested three times
+  answer: 0
+  explanation: Age 18 checks the boundary, while 17 checks just below it and 25 checks a typical qualifying case.
+    Together, these tests help verify the fix without overlooking nearby behavior.
+- id: q35
+  topic: Algorithms and Problem Solving
+  text: "What does this code print? `values = [2, 7, 4, 5]\ntotal = 0\nfor value in values:\n    if value % 2 ==\
+    \ 0: total += value\nprint(total)`"
+  options:
+  - '6'
+  - '11'
+  - '18'
+  - '4'
+  answer: 0
+  explanation: The loop adds only the even values, 2 and 4, so the total is 6.
+- id: q36
+  topic: Algorithms and Problem Solving
+  text: You need to count how many times `4` occurs in `[4, 2, 4, 4]`. Which approach returns the correct count?
+  options:
+  - Stop at the first `4` and return 1.
+  - Add 1 for each item equal to `4`, then return the total.
+  - Add 1 for each item that is not `4`, then return the total.
+  - Return the index of the first item equal to `4`.
+  answer: 1
+  explanation: The count must be updated for every matching item in the list. There are three items equal to `4`.
+- id: q37
+  topic: Algorithms and Problem Solving
+  text: A non-empty list is unsorted, and you need its smallest value without reordering the list. Which approach
+    fits?
+  options:
+  - Check only the first and last values.
+  - Sort the list and return its last value.
+  - Start with the first value, then compare each remaining value and update the smallest when needed.
+  - Return the first value that is smaller than the second.
+  answer: 2
+  explanation: Starting with a value from the list gives a candidate minimum, and checking each remaining value
+    ensures no smaller one is missed.
+- id: q38
+  topic: Algorithms and Problem Solving
+  text: You need to check whether `23` is in a long, already sorted list of numbers. Which approach can narrow the
+    search range after each check?
+  options:
+  - Check every item from the beginning until reaching `23`.
+  - Compare the target with the middle item, then continue in the half where it could still be.
+  - Sort the list again, then check every item from the beginning.
+  - Check only the first and last items.
+  answer: 1
+  explanation: Because the list is sorted, a middle-item comparison can rule out half of the remaining values each
+    time.
+- id: q39
+  topic: Algorithms and Problem Solving
+  text: To find pairs of distinct positions whose values add to a target, which nested-loop pattern checks each
+    pair once and never pairs an item with itself?
+  options:
+  - For each `i`, compare it with every `j` starting at `0`.
+  - For each `i`, compare it only with `j` equal to `i`.
+  - For each `i`, compare it with every `j` greater than `i`.
+  - For each `i`, compare it only with the final list position.
+  answer: 2
+  explanation: Starting `j` after `i` ensures the positions are distinct and avoids checking the same pair in reverse
+    order.
+- id: q40
+  topic: Algorithms and Problem Solving
+  text: "What does this code print? `values = [3, 6, 9]\ntotal = 0\nfor value in values:\n    total += value\nprint(total\
+    \ / len(values))`"
+  options:
+  - '18'
+  - '6.0'
+  - '9.0'
+  - '3.0'
+  answer: 1
+  explanation: The loop adds the values to get 18, and dividing by the three values gives an average of 6.0.
+- id: q41
+  topic: Debugging Fundamentals
+  text: Running `items = 4; print(item)` raises a `NameError`. Which change fixes the likely cause?
+  options:
+  - Change `items = 4` to `items = '4'`
+  - Change `print(item)` to `print('item')`
+  - Change `print(item)` to `print(items)`
+  - Add `item = 0` before the print statement
+  answer: 2
+  explanation: The variable is named `items`, but the print statement refers to `item`. Using the same name fixes
+    the undefined-variable error.
+- id: q42
+  topic: Debugging Fundamentals
+  text: 'This loop should add every price, but it returns only the last one. Which edit fixes the logic error? `total
+    = 0; for price in prices: total = price`'
+  options:
+  - Change `total = price` to `total += price`
+  - Change `total = 0` to `total = 1`
+  - Change `total = price` to `total -= price`
+  - Move `total = 0` inside the loop
+  answer: 0
+  explanation: Each iteration should add the current price to the running total. Assigning `price` directly replaces
+    the previous total.
+- id: q43
+  topic: Debugging Fundamentals
+  text: 'A function produces an incorrect result for a particular item in `values`. Which basic IDE debugging action
+    best helps find the iteration where the result first goes wrong? `result = 1; for n in values: result *= n;
+    return result`'
+  options:
+  - Set a breakpoint after the function returns and restart the program
+  - Set a breakpoint on the function definition and continue without stepping
+  - Set a breakpoint on the return and inspect only `values`
+  - Set a breakpoint inside the loop, step through iterations, and inspect `n` and `result`
+  answer: 3
+  explanation: Stepping through the loop lets you compare the inputs and running result at each iteration. This
+    can reveal exactly when the value becomes incorrect.
+- id: q44
+  topic: Debugging Fundamentals
+  text: 'A traceback ends at `print(user["name"])` with `KeyError: ''name''`. The program builds `user` from input
+    data and must display a name. Which fix addresses the likely cause?'
+  options:
+  - Convert `user` to a string before printing it
+  - Check where `user` is built and ensure it contains the key `name`
+  - Change the print statement to `print(user.name)`
+  - Catch the error and print the word `name` instead
+  answer: 1
+  explanation: A `KeyError` here means the dictionary does not contain the requested key. Check the data-building
+    code and make sure it supplies `name` as expected.
+open_questions:
+- id: o1
+  topic: Terminal and Filesystem
+  text: You open a terminal and need to locate a project file, then read it without changing it. How would you work
+    out where you are, navigate or search for the file, and choose a command to read it? Explain why you would use
+    those steps.
+  rubric:
+  - Uses `pwd` to check the current directory and `cd` or `ls` to navigate or inspect locations.
+  - Uses `find` or another appropriate directory listing to locate the file.
+  - Chooses a read-only command such as `cat` or `less` to inspect the file.
+  required: 2
+  model_answer: I would use `pwd` to see my current location and `ls` to check what is in that directory. If the
+    project is elsewhere, I would use `cd` to move there, or use `find` to search for the file. I would use `less`
+    to read it without editing it, or `cat` if it is short.
+- id: o2
+  topic: Terminal and Filesystem
+  text: You need to remove an old file from a project, but you are not completely sure which file it is or where
+    it is. How would you check before removing anything, and why is that caution useful?
+  rubric:
+  - Checks the current directory or file location before acting.
+  - Inspects the target with a command such as `ls` or `file` to confirm it is the intended file.
+  - Explains that `rm` removes files and that checking first helps avoid deleting the wrong item.
+  required: 2
+  model_answer: I would use `pwd` to confirm where I am and `ls` to inspect the files there. If I am unsure about
+    the target, I would use `file` to check what it is before removing it. Since `rm` deletes the specified file,
+    these checks help prevent accidentally removing something important or the wrong file.
+- id: o3
+  topic: Python Environment Setup
+  text: A project needs a Python package, but you also work on other projects that may need different package versions.
+    How would you set up and use the project’s environment, and why would you record its dependencies?
+  rubric:
+  - Creates and activates a virtual environment for the project.
+  - Installs the needed package in that environment rather than relying on a shared global installation.
+  - Records dependencies so the environment can be recreated consistently.
+  required: 2
+  model_answer: I would create a virtual environment for the project and activate it before installing the package.
+    This keeps the project’s packages separate from those used by other projects. I would record the dependencies
+    so that I or another person can install the same requirements later.
+- id: o4
+  topic: Python Environment Setup
+  text: A notebook opens, but it cannot import a package that you installed for your project. What would you check
+    or change, and why might this fix the problem?
+  rubric:
+  - Checks that the package was installed in the project environment.
+  - Checks that the notebook is using a kernel associated with that same environment.
+  - Explains that a notebook using a different environment may not see the installed package.
+  required: 2
+  model_answer: I would first check that I installed the package while the project environment was active. Then
+    I would check that the notebook is using the kernel for that environment and select it if needed. A notebook
+    attached to a different environment may not have access to the package I installed.
+- id: o5
+  topic: Git and GitHub
+  text: You are asked to make a small change to a shared project and propose it for review. How would you work from
+    getting the repository to asking for review, and why use a separate branch?
+  rubric:
+  - Clones the repository and creates or switches to a feature branch before making the change.
+  - Inspects and stages the intended changes, then makes a meaningful commit.
+  - Pushes the branch to GitHub and opens a pull request for review.
+  - Explains that a branch keeps the proposed work separate from the main line of work while it is developed or
+    reviewed.
+  required: 3
+  model_answer: I would clone the repository, create a feature branch, and make the change there. I would inspect
+    the changes, stage the intended files, and commit them with a message that describes the work. I would push
+    the branch to GitHub and open a pull request so others can review it. The branch keeps this work separate from
+    the main line until it is ready to merge.
+- id: o6
+  topic: Git and GitHub
+  text: A merge stops because both your branch and another branch changed the same part of a file. How would you
+    resolve the conflict and finish the work, and why should you inspect the result before completing the merge?
+  rubric:
+  - Inspects the conflicted file and understands that the conflicting sections represent changes that need a deliberate
+    choice or combination.
+  - Edits the file to keep the intended result and removes the conflict markers.
+  - Checks or tests the resolved result, then stages it and completes the merge with a commit if needed.
+  required: 2
+  model_answer: I would open the conflicted file and compare the changes from both branches rather than choosing
+    blindly. I would edit the file to keep the intended code, remove the conflict markers, and inspect or test the
+    result. Then I would stage the resolved file and complete the merge with a commit if Git requires one. Checking
+    the result helps catch accidentally lost or broken changes.
+- id: o7
+  topic: Debugging Fundamentals
+  text: A Python program crashes when you give it a particular input. How would you use the traceback and a repeatable
+    test to find and fix the problem? Explain why reproducing the failure helps.
+  rubric:
+  - Repeats the failure with the input that triggers it.
+  - Uses the traceback to identify where the runtime error occurred and what kind of operation failed.
+  - Inspects or isolates relevant values and code, then changes the cause rather than only hiding the symptom.
+  required: 2
+  model_answer: I would run the program again with the input that caused the crash so I can reliably observe the
+    failure. I would read the traceback to find the relevant line and understand what operation failed. Then I would
+    inspect the values involved, isolate the cause, and change the code that produced the error. Reproducing the
+    problem lets me check whether the fix addresses the same failure.
+- id: o8
+  topic: Debugging Fundamentals
+  text: A function runs without crashing but gives the wrong answer for an ordinary input and also fails on an empty
+    input. How would you investigate and verify a fix, and how can you tell these failures apart from a runtime
+    error?
+  rubric:
+  - Recognizes that a wrong result without a crash is a logic error.
+  - Recognizes the empty-input failure as an edge-case problem and reproduces it.
+  - Uses inspection such as print statements or a breakpoint to follow relevant values and isolate the faulty behavior.
+  - Tests the fix with both ordinary and edge-case inputs.
+  required: 3
+  model_answer: The incorrect result on an ordinary input is a logic error because the program runs but does the
+    wrong thing. I would reproduce both that result and the empty-input failure, which is an edge case the function
+    may not handle. I would use print statements or a breakpoint to inspect the values as the function runs and
+    isolate the faulty behavior. After changing it, I would test both ordinary inputs and the empty input again.
+- id: o9
+  topic: Algorithms and Problem Solving
+  text: You need to find a person’s name in a short, unsorted list, and the name may not be present. How would you
+    describe a reliable step-by-step approach, and why must it account for the name being absent?
+  rubric:
+  - Checks the list entries one at a time until the name is found or all entries have been checked.
+  - Stops searching once a match is found.
+  - Reports that the name is absent after checking every entry without a match.
+  required: 2
+  model_answer: I would start at the first entry and compare each name with the one I am looking for. If I find
+    a match, I can stop and report that it is present. If I reach the end without a match, I would report that it
+    is absent. Checking for that outcome prevents the search from assuming every requested name is in the list.
+- id: o10
+  topic: Algorithms and Problem Solving
+  text: You need to calculate the total of a list of numbers and explain how you know your approach works. How would
+    you break the task into steps, and what examples would you use to check it?
+  rubric:
+  - Describes starting with a total and adding each list value to it.
+  - Uses a small ordinary example to check that the procedure produces the expected total.
+  - Considers an edge case such as an empty list and explains the expected result.
+  required: 2
+  model_answer: I would start the total at zero and add each number in the list one at a time. For example, I would
+    check that the list 2, 3, and 4 produces a total of 9. I would also test an empty list, where the total should
+    remain zero. These checks help show that the steps handle both a typical input and an edge case.
 problem:
-  title: Longest Increasing Run
-  prompt: 'Write `longest_increasing_run(nums)` to return the length of the longest contiguous run in which each
-    number is strictly greater than the number before it. An empty list has a run length of `0`, and a list with
-    one item has a run length of `1`.
+  title: Debug a Reading Summary
+  prompt: "Debug the reading-summary routine below. Trace it with an empty list, a list whose average is fractional,\
+    \ and lists containing only positive or only negative values. Then implement `summarize_readings` so it returns\
+    \ a dictionary with `count`, `min`, `max`, and `mean`. For an empty list, return `count: 0` and `None` for the\
+    \ other values. Add brief comments explaining the fixes for the runtime error, logic error, and edge-case failure.\n\
+    \n```python\ndef summarize_readings(readings):\n    count = len(readings)\n    total = 0\n    lowest = 0\n \
+    \   highest = 0\n    for value in readings:\n        total += value\n        lowest = min(lowest, value)\n \
+    \       highest = max(highest, value)\n    return {\n        \"count\": count,\n        \"min\": lowest,\n \
+    \       \"max\": highest,\n        \"mean\": total // count,\n    }\n```\n\nExample call and result:\n\n```python\n\
+    summarize_readings([4, 7, 1])\n# {'count': 3, 'min': 1, 'max': 7, 'mean': 4.0}\n```"
+  starter_code: "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list\
+    \ of readings.\"\"\"\n    ..."
+  tests: 'assert summarize_readings([4, 7, 1]) == {"count": 3, "min": 1, "max": 7, "mean": 4.0}, "summarize a mixed
+    list"
 
+    assert summarize_readings([1, 2]) == {"count": 2, "min": 1, "max": 2, "mean": 1.5}, "preserve a fractional mean"
 
-    Example: `longest_increasing_run([1, 3, 2, 4, 5])` returns `3`, because `[2, 4, 5]` is the longest strictly
-    increasing contiguous run.'
-  starter_code: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly\
-    \ increasing run.\"\"\"\n    ..."
-  tests: 'assert longest_increasing_run([]) == 0, "empty list should have run length 0"
+    assert summarize_readings([3, 8]) == {"count": 2, "min": 3, "max": 8, "mean": 5.5}, "handle readings that are
+    all positive"
 
-    assert longest_increasing_run([7]) == 1, "one item should have run length 1"
+    assert summarize_readings([-4, -2]) == {"count": 2, "min": -4, "max": -2, "mean": -3.0}, "handle readings that
+    are all negative"
 
-    assert longest_increasing_run([1, 2, 3, 4]) == 4, "fully increasing list should use the whole list"
+    assert summarize_readings([0, 0]) == {"count": 2, "min": 0, "max": 0, "mean": 0.0}, "handle zero readings"
 
-    assert longest_increasing_run([4, 3, 2]) == 1, "decreasing list should have run length 1"
+    assert summarize_readings([6]) == {"count": 1, "min": 6, "max": 6, "mean": 6.0}, "handle a single reading"
 
-    assert longest_increasing_run([1, 3, 2, 4, 5]) == 3, "should find the longest contiguous run"
-
-    assert longest_increasing_run([1, 2, 2, 3]) == 2, "equal neighboring values should break a run"'
-  solution: "def longest_increasing_run(nums):\n    \"\"\"Return the length of the longest contiguous strictly increasing\
-    \ run.\"\"\"\n    if not nums:\n        return 0\n\n    longest = 1\n    current = 1\n    for i in range(1,\
-    \ len(nums)):\n        if nums[i] > nums[i - 1]:\n            current += 1\n        else:\n            current\
-    \ = 1\n        longest = max(longest, current)\n    return longest"
+    assert summarize_readings([]) == {"count": 0, "min": None, "max": None, "mean": None}, "handle an empty list
+    without a runtime error"'
+  solution: "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of\
+    \ readings.\"\"\"\n    count = len(readings)\n    if count == 0:\n        # Avoid dividing by zero; there are\
+    \ no extrema or mean for an empty list.\n        return {\"count\": 0, \"min\": None, \"max\": None, \"mean\"\
+    : None}\n\n    # Derive extrema from the readings rather than assuming zero is a valid bound.\n    lowest =\
+    \ min(readings)\n    highest = max(readings)\n    total = sum(readings)\n    # Use true division so fractional\
+    \ means are retained.\n    mean = total / count\n    return {\"count\": count, \"min\": lowest, \"max\": highest,\
+    \ \"mean\": mean}"
   packages: []
+  topic: Debugging Fundamentals
+  wrong_solutions:
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"min\": None, \"max\": None,\
+    \ \"mean\": None}\n    return {\"count\": count, \"min\": min(readings), \"max\": max(readings), \"mean\": sum(readings)\
+    \ // count}"
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    total = sum(readings)\n    return {\"count\": count, \"min\": min(readings),\
+    \ \"max\": max(readings), \"mean\": total / count}"
+  - "def summarize_readings(readings):\n    \"\"\"Return count, minimum, maximum, and mean for a list of readings.\"\
+    \"\"\n    count = len(readings)\n    if count == 0:\n        return {\"count\": 0, \"min\": None, \"max\": None,\
+    \ \"mean\": None}\n    lowest = 0\n    highest = 0\n    for value in readings:\n        lowest = min(lowest,\
+    \ value)\n        highest = max(highest, value)\n    return {\"count\": count, \"min\": lowest, \"max\": highest,\
+    \ \"mean\": sum(readings) / count}"
+problems:
+- title: Encode Consecutive Runs
+  prompt: 'Write `encode_runs(items)` to scan a list of strings from left to right and return a list of `(value,
+    count)` pairs. Each pair represents one maximal run of identical **adjacent** values. Keep runs in their original
+    order, and do not combine equal values that are separated by another value. Return an empty list for an empty
+    input, and include runs of length one.
+
+
+    Example:
+
+    ```python
+
+    encode_runs(["red", "red", "blue", "red"])
+
+    # [("red", 2), ("blue", 1), ("red", 1)]
+
+    ```'
+  starter_code: "def encode_runs(items: list[str]) -> list[tuple[str, int]]:\n    \"\"\"Return (value, count) pairs\
+    \ for maximal runs of adjacent equal strings.\"\"\"\n    ..."
+  tests: 'assert encode_runs([]) == [], "empty input should produce no runs"
+
+    assert encode_runs(["solo"]) == [("solo", 1)], "a single item should form a run of length one"
+
+    assert encode_runs(["a", "a", "a"]) == [("a", 3)], "all identical adjacent items should form one run"
+
+    assert encode_runs(["a", "b", "c"]) == [("a", 1), ("b", 1), ("c", 1)], "distinct items should remain as singleton
+    runs"
+
+    assert encode_runs(["a", "a", "b", "a"]) == [("a", 2), ("b", 1), ("a", 1)], "separated equal values must remain
+    separate runs"
+
+    assert encode_runs(["x", "y", "y", "x", "x", "z"]) == [("x", 1), ("y", 2), ("x", 2), ("z", 1)], "each adjacent
+    run should retain its order and count"'
+  solution: "def encode_runs(items: list[str]) -> list[tuple[str, int]]:\n    \"\"\"Return (value, count) pairs\
+    \ for maximal runs of adjacent equal strings.\"\"\"\n    if not items:\n        return []\n\n    runs = []\n\
+    \    current = items[0]\n    count = 1\n\n    for item in items[1:]:\n        if item == current:\n        \
+    \    count += 1\n        else:\n            runs.append((current, count))\n            current = item\n    \
+    \        count = 1\n\n    runs.append((current, count))\n    return runs"
+  packages: []
+  topic: Algorithms and Problem Solving
+  wrong_solutions:
+  - "def encode_runs(items: list[str]) -> list[tuple[str, int]]:\n    \"\"\"Count each distinct value globally,\
+    \ preserving its first-seen order.\"\"\"\n    counts = {}\n    for item in items:\n        counts[item] = counts.get(item,\
+    \ 0) + 1\n    return list(counts.items())"
+  - "def encode_runs(items: list[str]) -> list[tuple[str, int]]:\n    \"\"\"Return only runs that contain repeated\
+    \ adjacent values.\"\"\"\n    runs = []\n    i = 0\n    while i < len(items):\n        j = i + 1\n        while\
+    \ j < len(items) and items[j] == items[i]:\n            j += 1\n        if j - i > 1:\n            runs.append((items[i],\
+    \ j - i))\n        i = j\n    return runs"

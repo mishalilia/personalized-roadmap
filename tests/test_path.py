@@ -122,9 +122,18 @@ def test_a_failed_prove_becomes_study_and_the_path_stays_confirmed(curriculum):
     failed = path.with_checkpoint_result(TERMINAL, 1, 5, passed=False)
 
     item = failed.item(TERMINAL)
-    assert item.choice is Choice.STUDY and item.suggested is Choice.PROVE
+    # The path made the change, so it is its suggestion, not the learner's own choice.
+    assert item.choice is Choice.STUDY and item.suggested is Choice.STUDY
     assert item.adjustment and "1/5" in item.adjustment
     assert failed.confirmed
+
+    passed = failed.with_checkpoint_result(TERMINAL, 5, 5, passed=True)
+    note = passed.item(TERMINAL).adjustment
+    assert (
+        note
+        and "passed on attempt 2 (5/5)" in note
+        and "take the checkpoint again" not in note
+    )
 
 
 def test_progress_needs_a_confirmed_path_and_an_included_module(curriculum):
@@ -273,3 +282,293 @@ def test_the_time_estimate_counts_studied_modules_fully_and_proved_ones_in_part(
     assert (estimate.path_low, estimate.path_high) == (12, 24)
     assert (estimate.course_low, estimate.course_high) == (20, 40)
     assert estimate.modules_without_estimate == 1  # vision is included and has none
+
+
+def test_the_learner_studies_skims_or_skips_a_topic_without_a_new_confirmation(
+    curriculum,
+):
+    from roadmap.curriculum import Topic
+    from roadmap.path import PathStateError, SkimTopic, TopicChoice
+
+    first, second, third = "1. Shell Basics", "2. Files", "3. Git"
+    module = curriculum.modules[0].model_copy(
+        update={"topics": [Topic(title=first), Topic(title=second), Topic(title=third)]}
+    )
+    items = [
+        PathItem.suggestion(
+            module if i == 0 else m,
+            Choice.STUDY,
+            "Study it.",
+            skim=(
+                [SkimTopic(topic=second, reason="You use it daily.")]
+                if i == 0
+                else None
+            ),
+        )
+        for i, m in enumerate(curriculum.modules)
+    ]
+    path = path_with(curriculum, {}).model_copy(update={"items": items}).confirm()
+
+    marked = path.with_topic(module.id, first, TopicChoice.SKIM).with_topic(
+        module.id, third, TopicChoice.SKIP
+    )
+    item = marked.item(module.id)
+    assert [s.topic for s in item.skim] == [first, second]  # in the module's order
+    assert item.skim[0].chosen and not item.skim[1].chosen
+    assert item.skipped_topics == {third} and marked.confirmed
+
+    moved = marked.with_topic(module.id, second, TopicChoice.SKIP)  # from skim to skip
+    assert moved.item(module.id).skipped_topics == {second, third}
+    assert [s.topic for s in moved.item(module.id).skim] == [first]
+    back = moved.with_topic(module.id, second, TopicChoice.STUDY)
+    assert (
+        back.item(module.id).skipped_topics == {third}
+        and second not in back.item(module.id).skimmed_topics
+    )
+
+    with pytest.raises(
+        PathStateError
+    ):  # every topic left out: that is skipping the module
+        moved.with_topic(module.id, first, TopicChoice.SKIP)
+    with pytest.raises(KeyError):
+        path.with_topic(module.id, "No such topic", TopicChoice.SKIP)
+    proved = marked.with_choice(module.id, Choice.PROVE)
+    assert (
+        proved.item(module.id).skipped_topics == frozenset()
+    )  # a module proved is checked whole
+    with pytest.raises(PathStateError):
+        proved.with_topic(module.id, first, TopicChoice.SKIP)
+
+
+def test_a_projects_parts_cannot_be_skimmed_or_skipped(curriculum):
+    from roadmap.curriculum import Topic
+    from roadmap.path import PathStateError, TopicChoice
+
+    project = curriculum.modules[0].model_copy(
+        update={
+            "id": "track/capstone",
+            "topics": [Topic(title="Deliverables"), Topic(title="Rubric")],
+        }
+    )
+    items = [
+        PathItem.suggestion(project if i == 0 else m, Choice.STUDY, "Build it.")
+        for i, m in enumerate(curriculum.modules)
+    ]
+    path = path_with(curriculum, {}).model_copy(update={"items": items})
+
+    with pytest.raises(PathStateError):
+        path.with_topic(project.id, "Deliverables", TopicChoice.SKIP)
+
+
+def _with_topics(
+    curriculum: Curriculum, module_id: str, titles: list[str], skim: list[str]
+) -> LearningPath:
+    """A confirmed path studying every module; `module_id` has the given topics and skims some of them."""
+    from roadmap.curriculum import Topic
+    from roadmap.path import SkimTopic
+
+    items = []
+    for module in curriculum.modules:
+        if module.id == module_id:
+            module = module.model_copy(
+                update={"topics": [Topic(title=t) for t in titles]}
+            )
+        marks = (
+            [SkimTopic(topic=t, reason="You know it.") for t in skim]
+            if module.id == module_id
+            else None
+        )
+        items.append(PathItem.suggestion(module, Choice.STUDY, "Study it.", skim=marks))
+    return path_with(curriculum, {}).model_copy(update={"items": items}).confirm()
+
+
+def test_a_failed_checkpoint_turns_the_skimmed_topics_it_got_wrong_to_study(curriculum):
+    path = _with_topics(
+        curriculum,
+        TERMINAL,
+        ["1. Shell Basics", "2. Files", "3. Git"],
+        ["2. Files", "3. Git"],
+    )
+
+    failed = path.with_checkpoint_result(
+        TERMINAL, 1, 5, passed=False, missed_topics=["Files", "Shell Basics"]
+    )
+
+    item = failed.item(TERMINAL)
+    assert [marked.topic for marked in item.skim] == [
+        "3. Git"
+    ]  # the skimmed topic it got right stays
+    assert "Changed to study in full: 2. Files" in (item.adjustment or "")
+
+
+def test_after_a_failure_only_heavier_suggestions_are_kept_even_for_locked_modules(
+    curriculum,
+):
+    from roadmap.path import TopicChoice
+
+    path = _with_topics(curriculum, NOTES, ["Intro", "Practice"], ["Intro"])
+    path = (
+        path.with_choice(VISION, Choice.STUDY)
+        .with_choice("tracks/speech/resources", Choice.SKIP)
+        .confirm()
+    )
+    failed = path.with_checkpoint_result(
+        TERMINAL, 1, 5, passed=False, missed_topics=["Shell Basics"]
+    )
+    assert NOTES in failed.locked_module_ids
+
+    suggested = failed.with_proposals(
+        [
+            Proposal(
+                module_id="tracks/speech/resources",
+                choice=Choice.STUDY,
+                reason="Skipped.",
+                after_failure=True,
+            ),
+            Proposal(
+                module_id=ALGEBRA,
+                choice=Choice.SKIP,
+                reason="Lighter.",
+                after_failure=True,
+            ),
+            Proposal(
+                module_id=NOTES,
+                topic="Intro",
+                topic_choice=TopicChoice.STUDY,
+                reason="Uses the shell.",
+                after_failure=True,
+            ),
+            Proposal(
+                module_id=NOTES,
+                topic="Practice",
+                topic_choice=TopicChoice.SKIM,
+                reason="Lighter.",
+                after_failure=True,
+            ),
+        ]
+    )
+
+    # The skipped module stays skipped, the lighter one is dropped; the topic of a kept module gets heavier.
+    assert [(p.module_id, p.topic) for p in suggested.proposals] == [(NOTES, "Intro")]
+
+
+def test_the_learner_accepts_or_declines_a_suggestion_about_one_topic(curriculum):
+    from roadmap.path import TopicChoice
+
+    path = _with_topics(
+        curriculum, NOTES, ["Intro", "Practice"], ["Intro", "Practice"]
+    ).with_proposals(
+        [
+            Proposal(
+                module_id=NOTES,
+                topic=t,
+                topic_choice=TopicChoice.STUDY,
+                reason="Needed.",
+                after_failure=True,
+            )
+            for t in ("Intro", "Practice")
+        ]
+    )
+
+    accepted = path.accept(NOTES, "Intro")
+    assert accepted.item(NOTES).topic_choice("Intro") is TopicChoice.STUDY
+    assert accepted.item(NOTES).topic_choice("Practice") is TopicChoice.SKIM
+    assert accepted.confirmed
+    declined = accepted.decline(NOTES, "Practice")
+    assert (
+        declined.proposals == []
+        and declined.item(NOTES).topic_choice("Practice") is TopicChoice.SKIM
+    )
+
+
+def test_a_proposal_changes_a_module_or_a_topic_not_both(curriculum):
+    from roadmap.path import TopicChoice
+
+    with pytest.raises(ValidationError):
+        Proposal(
+            module_id=NOTES,
+            choice=Choice.STUDY,
+            topic="Intro",
+            topic_choice=TopicChoice.STUDY,
+            reason="x",
+        )
+    with pytest.raises(ValidationError):
+        Proposal(module_id=NOTES, reason="Nothing to change.")
+
+
+def test_suggestions_for_a_checkpoint_taken_again_meanwhile_are_dropped(curriculum):
+    path = confirmed(
+        curriculum, {TERMINAL: Choice.STUDY, NOTES: Choice.PROVE}
+    ).model_copy(update={"suggestions_pending": f"{TERMINAL}:2"})
+    late = [
+        Proposal(
+            module_id=NOTES, choice=Choice.STUDY, reason="Needed.", after_failure=True
+        )
+    ]
+
+    assert path.with_suggestions(f"{TERMINAL}:1", late).proposals == []
+    landed = path.with_suggestions(f"{TERMINAL}:2", late)
+    assert [p.module_id for p in landed.proposals] == [
+        NOTES
+    ] and landed.suggestions_pending is None
+
+
+def test_the_learner_marks_topics_of_a_module_they_study_as_finished(curriculum):
+    from roadmap.curriculum import Topic
+    from roadmap.path import TopicChoice
+
+    first, second, third = "1. Shell Basics", "2. Files", "3. Git"
+    module = curriculum.modules[0].model_copy(
+        update={"topics": [Topic(title=first), Topic(title=second), Topic(title=third)]}
+    )
+    items = [
+        PathItem.suggestion(module if i == 0 else m, Choice.STUDY, "Study it.")
+        for i, m in enumerate(curriculum.modules)
+    ]
+    unconfirmed = path_with(curriculum, {}).model_copy(update={"items": items})
+    with pytest.raises(
+        PathStateError
+    ):  # as with all progress: only on a confirmed path
+        unconfirmed.with_topic_finished(module.id, first, True)
+    path = unconfirmed.confirm()
+
+    marked = path.with_topic_finished(module.id, third, True).with_topic_finished(
+        module.id, first, True
+    )
+    assert marked.item(module.id).finished_topics == [
+        first,
+        third,
+    ]  # in the module's order
+    assert (
+        marked.item(module.id).progress is Progress.NOT_STARTED and marked.confirmed
+    )  # a tally, not a pass
+    assert marked.with_topic_finished(module.id, third, False).item(
+        module.id
+    ).finished_topics == [first]
+
+    # A topic left out is not one to finish, and skipping it takes the mark away.
+    skipped = marked.with_topic(module.id, third, TopicChoice.SKIP)
+    assert skipped.item(module.id).finished_topics == [first]
+    with pytest.raises(PathStateError):
+        skipped.with_topic_finished(module.id, third, True)
+    with pytest.raises(KeyError):
+        path.with_topic_finished(module.id, "No such topic", True)
+    with pytest.raises(PathStateError):  # a module proved is checked whole
+        path.with_choice(module.id, Choice.PROVE).confirm().with_topic_finished(
+            module.id, first, True
+        )
+
+
+def test_a_finished_modules_decision_no_longer_changes(curriculum):
+    module_id = curriculum.modules[0].id
+    path = confirmed(curriculum, {m.id: Choice.STUDY for m in curriculum.modules})
+    done = path.with_checkpoint_result(module_id, 5, 5, True, False)
+    assert done.item(module_id).progress is Progress.PASSED
+    with pytest.raises(PathStateError):
+        done.with_choice(module_id, Choice.SKIP)
+    assert (
+        done.with_choice(module_id, done.item(module_id).choice)
+        .item(module_id)
+        .progress
+        is Progress.PASSED
+    )

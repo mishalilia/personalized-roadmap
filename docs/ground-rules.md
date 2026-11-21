@@ -23,11 +23,14 @@ Course rules on data, attribution and repositories apply regardless of what is w
 
 - Data collected from real learners during testing is kept minimal, participants are told what is collected,
   and it is not published or committed to this repository.
+- Progress that learners choose to share stays on the server; only counts per module leave it, through the
+  report.
 
 ## API keys and cost
 
-- No API key in code, notebooks, commits or presentations. Secrets live in a local `.env`, which is
-  git-ignored; `.env.example` holds the variable names with blank values.
+- No API key in code, notebooks, commits or presentations. Secrets live in a local `.env` (on the server,
+  `deploy/.env`), which is git-ignored; `.env.example` and `deploy/.env.example` hold the variable names with
+  blank values.
 - If a key is ever committed, deleting it is not enough — it is revoked and rotated immediately.
 - The Baseline must be reachable on free tiers or open models. We ask before paying for anything.
 

@@ -22,7 +22,20 @@ How to judge:
 - If you are told what the learner has shown since onboarding, such as a checkpoint passed without a mistake,
   count it as evidence alongside their answers, for that module's content and for what builds on it.
 
+For a module to study, decide its topics one by one, from the titles you are given, each with a short reason
+tied to the learner's answers:
+- `skip_topics`: topics the answers show the learner already knows, such as algorithm basics for someone who
+  regularly solves programming puzzles, or Git for someone who uses it at work. The checkpoint leaves them out.
+- `skim`: topics the learner has met but should refresh; they go through them quickly, and the checkpoint still
+  asks about them.
+Judge each topic on its own: knowing one topic of a module says nothing about the others. Leave at least one
+topic to study in full; when the answers show the learner knows the whole module, choose prove or skip for the
+module instead. Leave both lists empty when the answers say nothing specific about a topic, and for modules
+to prove or skip.
+
 Write each reason to the learner in one or two sentences and tie it to what they wrote or to their goal. The
 reason for a skip says why skipping is safe; the reason for prove names what the learner already knows.
 
-Return exactly one decision for every module, with the module id exactly as given.
+Return exactly one decision for every module, with the module id exactly as given. Also give the path a
+title: the learner's goal in two to six plain words, such as "Computer vision research" or "LLM applications",
+without filler such as "I want to" or "nevermind".

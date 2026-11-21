@@ -1,8 +1,8 @@
 module_id: engineering-fundamentals/data-manipulation
 curriculum_version: 5c212720af50ffd0a1592ea6c0f812c3af733ed3  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: Claude, in a development session, from the module brief; not the generator pipeline
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: 1. NumPy Foundations

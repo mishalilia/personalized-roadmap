@@ -1,3 +1,6 @@
 # The HTTP API (src/roadmap/api.py) for browser interfaces, such as a page on the curriculum site.
 fastapi>=0.115,<1.0
 uvicorn>=0.30,<1.0
+httpx>=0.27,<1.0  # sign-in with Google: the API trades Google's code for an ID token
+python-multipart>=0.0.9,<1.0  # project submissions: a link or an archive, sent as a form
+psycopg[binary,pool]>=3.2,<4.0  # PostgreSQL (DATABASE_URL); without it the API keeps SQLite files

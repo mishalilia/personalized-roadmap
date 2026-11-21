@@ -7,15 +7,21 @@ import logging
 import sys
 from pathlib import Path
 
-from .checkpoints import CheckpointGenerator, CheckpointStore, Status, verify_problem
+from .checkpoints import (
+    QUESTIONS_PER_TOPIC,
+    CheckpointGenerator,
+    CheckpointStore,
+    Status,
+    verify_problem,
+)
 from .curriculum import Module
 from .events import EventLog
 from .config import Settings
 from .curriculum import Level
-from .onboarding import LearnerProfile, load_profiles
+from .onboarding import LearnerProfile, answer_texts, load_profiles
 from .path import Choice, LearningPath, path_difference
 from .service import Roadmap
-from .llm import LLMUnavailable, connect
+from .llm import UnusableAnswer, LLMUnavailable, connect
 from .source import CurriculumSource, checkout, load_curriculum
 
 
@@ -94,6 +100,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     generate.add_argument("--all", action="store_true", help="every module")
     generate.add_argument(
+        "--topic-pools",
+        action="store_true",
+        help="for modules with several topics: questions until each topic has its own pool, and a problem per topic",
+    )
+    generate.add_argument(
+        "--open-questions",
+        action="store_true",
+        help="add open questions, marked by a model against a rubric, to checkpoints that have none",
+    )
+    generate.add_argument(
+        "--problems-only",
+        action="store_true",
+        help="write new coding problems for checkpoints that have one, keeping their questions",
+    )
+    generate.add_argument(
         "--force", action="store_true", help="also replace reviewed checkpoints"
     )
     generate.set_defaults(command=_checkpoints)
@@ -146,10 +167,11 @@ def _build_path(
     roadmap: Roadmap, profile: LearnerProfile, level: Level | None = None
 ) -> LearningPath:
     """Plan for the given level, or for the suggested one when none is given."""
-    assessment = None if level else roadmap.assess_level(profile.answers)
+    answers = answer_texts(roadmap.questions, profile.answers)
+    assessment = None if level else roadmap.assess_level(answers)
     if assessment is not None:
         level = assessment.level
-    return roadmap.build_path(profile.answers, level, assessment)
+    return roadmap.build_path(answers, level, assessment)
 
 
 def _find_profile(settings: Settings, profile_id: str) -> LearnerProfile:
@@ -208,6 +230,17 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
     if llm is None:
         sys.exit("Generating checkpoints needs a model key in .env.")
     generator = CheckpointGenerator(llm, ", ".join(llm.models))
+    if args.problems_only:
+        _new_problems(generator, store, [modules[module_id] for module_id in wanted])
+        return
+    if args.topic_pools:
+        _topic_pools(generator, store, [modules[module_id] for module_id in wanted])
+        return
+    if args.open_questions:
+        _open_questions(
+            generator, store, [modules[module_id] for module_id in wanted], args.force
+        )
+        return
     for module_id in wanted:
         existing = store.load(module_id)
         if (
@@ -225,18 +258,124 @@ def _checkpoints(args: argparse.Namespace, settings: Settings) -> None:
         print(f"Draft for {module_id} written to {store.save(checkpoint)}: review it")
 
 
+def _new_problems(
+    generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module]
+) -> None:
+    """New coding problems, checked against wrong solutions, for the checkpoints that have a problem."""
+    for module in modules:
+        existing = store.load(module.id)
+        if existing is None or existing.problem is None:
+            continue
+        try:
+            checkpoint = generator.generate_problem(module, existing)
+        except (LLMUnavailable, UnusableAnswer) as error:
+            print(f"Kept the old problem for {module.id}: {error}")
+            continue
+        print(
+            f"New problem for {module.id} written to {store.save(checkpoint)}: review it"
+        )
+
+
+def _open_questions(
+    generator: CheckpointGenerator,
+    store: CheckpointStore,
+    modules: list[Module],
+    force: bool,
+) -> None:
+    """Open questions for checkpoints that have none (with --force, new ones for all). The checkpoint becomes a
+    draft again: a person reviews the questions and their rubrics."""
+    for module in modules:
+        checkpoint = store.load(module.id)
+        if checkpoint is None or (checkpoint.open_questions and not force):
+            continue
+        try:
+            added = generator.open_questions(module, checkpoint)
+        except (LLMUnavailable, UnusableAnswer) as error:
+            print(f"No open questions for {module.id}: {error}")
+            continue
+        checkpoint = checkpoint.model_copy(
+            update={
+                "open_questions": added,
+                "status": Status.DRAFT,
+                "reviewed_by": None,
+            }
+        )
+        print(
+            f"{len(added)} open questions for {module.id} written to {store.save(checkpoint)}: review them"
+        )
+
+
+def _topic_pools(
+    generator: CheckpointGenerator, store: CheckpointStore, modules: list[Module]
+) -> None:
+    """For modules with several topics: questions until each topic has its own pool, and a coding problem on
+    each topic that can be practised in code, for checkpoints that have a problem. What is added is a draft.
+    """
+    for module in modules:
+        checkpoint = store.load(module.id)
+        if checkpoint is None or len(module.topics) < 2:
+            continue
+        changed = False
+        for topic in (t.title for t in module.topics):
+            for _ in range(
+                3
+            ):  # repeats are left out, so ask again for what is still missing
+                missing = QUESTIONS_PER_TOPIC - checkpoint.topic_counts().get(topic, 0)
+                if missing <= 0:
+                    break
+                try:
+                    added = generator.topic_questions(
+                        module, topic, missing, checkpoint
+                    )
+                except (LLMUnavailable, UnusableAnswer) as error:
+                    print(f"  no questions on {topic}: {error}")
+                    break
+                checkpoint = checkpoint.model_copy(
+                    update={"questions": [*checkpoint.questions, *added]}
+                )
+                changed = changed or bool(added)
+                print(f"  {len(added)} questions on {topic}")
+            covered = {
+                p.topic
+                for p in (checkpoint.problem, *checkpoint.problems)
+                if p is not None
+            }
+            if checkpoint.problem is not None and topic not in covered:
+                try:
+                    problem = generator.topic_problem(module, topic)
+                except (LLMUnavailable, UnusableAnswer) as error:
+                    print(f"  no problem on {topic}: {error}")
+                    continue
+                if problem is None:
+                    print(f"  no problem on {topic}: not a topic to practise in code")
+                    continue
+                checkpoint = checkpoint.model_copy(
+                    update={"problems": [*checkpoint.problems, problem]}
+                )
+                changed = True
+                print(f"  a problem on {topic}: {problem.title}")
+        if changed:
+            checkpoint = checkpoint.model_copy(
+                update={"status": Status.DRAFT, "reviewed_by": None}
+            )
+            print(f"{module.id}: written to {store.save(checkpoint)}: review it")
+
+
 def _verify(store: CheckpointStore, modules: list[Module]) -> None:
     failed = False
     for module in modules:
         checkpoint = store.load(module.id)
-        if checkpoint is None or checkpoint.problem is None:
+        if checkpoint is None:
             continue
-        error = verify_problem(checkpoint.problem)
-        failed = failed or error is not None
-        print(
-            f"{'ok  ' if error is None else 'FAIL'} {module.id}"
-            + (f"\n{error}" if error else "")
-        )
+        for problem in (checkpoint.problem, *checkpoint.problems):
+            if problem is None:
+                continue
+            error = verify_problem(problem)
+            failed = failed or error is not None
+            print(
+                f"{'ok  ' if error is None else 'FAIL'} {module.id} · {problem.topic}"
+                + (f"\n{error}" if error else "")
+            )
     if failed:
         sys.exit(1)
 

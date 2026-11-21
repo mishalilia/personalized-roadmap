@@ -8,7 +8,7 @@ from .level import LevelAssessment, LevelAssessor
 from .llm import LLMClient, LLMUnavailable, connect
 from .onboarding import Answers, Question, load_questions
 from .checkpoints import Grade
-from .path import LearningPath, PathItem, Proposal
+from .path import Choice, LearningPath, PathItem, Proposal
 from .planner import CourseOrderPlanner, LLMPlanner, Planner
 from .source import CurriculumSource, load_curriculum
 
@@ -21,6 +21,7 @@ class Roadmap:
     ) -> None:
         self.curriculum = curriculum
         self.questions = questions
+        self.llm = llm  # also reviews submitted projects
         self._assessor = LevelAssessor(llm, questions) if llm is not None else None
         self._planner: Planner | None = (
             LLMPlanner(llm, curriculum, questions) if llm is not None else None
@@ -60,12 +61,13 @@ class Roadmap:
         assessment: LevelAssessment | None = None,
     ) -> LearningPath:
         """Plan for `level`, the learner's own choice, which may differ from the suggested `assessment`."""
-        items = self._personal_plan(answers, level)
+        items, title = self._personal_plan(answers, level)
         return LearningPath(
             level=level,
             assessment=assessment,
             items=items if items is not None else self._fallback.plan(answers, level),
             personalization_unavailable=items is None,
+            title=title,
             curriculum_version=self.curriculum.version,
             curriculum_site_version=self.curriculum.site_version,
             attribution=self.curriculum.attribution,
@@ -73,17 +75,39 @@ class Roadmap:
         )
 
     def after_checkpoint(
-        self, path: LearningPath, module_id: str, grade: Grade
+        self, path: LearningPath, module_id: str, grade: Grade, suggest: bool = True
     ) -> LearningPath:
-        """The path with the learner's checkpoint result. After a checkpoint passed without a mistake
-        at the first try, the model may suggest lightening the modules that follow."""
+        """The path with the learner's checkpoint result. After a checkpoint passed without a mistake at the
+        first try, the model may suggest lightening the modules and topics that follow; after a failed one,
+        making heavier those that build on the topics the learner got wrong. `suggest` False leaves the
+        model out, as when the learner is over their quota."""
         path = path.with_checkpoint_result(
-            module_id, grade.score, grade.total, grade.passed, grade.problem_pending
+            module_id,
+            grade.score,
+            grade.total,
+            grade.passed,
+            grade.problem_pending,
+            missed_topics=grade.review_topics,
         )
-        if not grade.effortless:
+        if not suggest or not self.wants_suggestions(grade):
             return path
-        topics = list(dict.fromkeys(feedback.topic for feedback in grade.feedback))
-        return path.with_proposals(self._lighter_after(path, module_id, topics))
+        return path.with_proposals(self.suggestions_after(path, module_id, grade))
+
+    def wants_suggestions(self, grade: Grade) -> bool:
+        """Whether a checkpoint result asks the model for changes to the rest of the path."""
+        return self._planner is not None and (
+            grade.effortless or (not grade.passed and bool(grade.review_topics))
+        )
+
+    def suggestions_after(
+        self, path: LearningPath, module_id: str, grade: Grade
+    ) -> list[Proposal]:
+        """Lighter modules and topics after an easy pass, heavier after a failure. Slow: one model call over
+        the whole course, so the API runs it after answering."""
+        if grade.effortless:
+            topics = list(dict.fromkeys(feedback.topic for feedback in grade.feedback))
+            return self._proposals_after(path, module_id, topics, failed=False)
+        return self._proposals_after(path, module_id, grade.review_topics, failed=True)
 
     def change_goal(self, path: LearningPath, goal: str) -> LearningPath:
         """The path replanned for a new goal, keeping what the learner has started. Raises
@@ -100,21 +124,34 @@ class Roadmap:
             f" They have already worked on: {'; '.join(started)}." if started else ""
         )
         answers = {**path.answers, "goal": goal}
-        return path.with_new_goal(goal, self._planner.plan(answers, path.level, note))
+        items, title = self._titled_plan(answers, path.level, note)
+        return path.with_new_goal(goal, items, title)
 
-    def _lighter_after(
-        self, path: LearningPath, module_id: str, topics: list[str]
+    def _proposals_after(
+        self, path: LearningPath, module_id: str, topics: list[str], failed: bool
     ) -> list[Proposal]:
+        """The planner asked again with the checkpoint's result; what it would change in the modules after
+        this one, as proposals for whole modules and for single topics."""
         if self._planner is None:
             return []
         title = path.item(module_id).module.full_title
-        current = "; ".join(f"{item.module.id}: {item.choice}" for item in path.items)
-        note = (
-            f"the learner passed the checkpoint of '{title}' without a mistake at the first try, "
-            f"answering questions on: {'; '.join(topics)}. Their current decisions are: {current}. "
-            "Return these decisions unchanged, except for a later module that teaches these topics again "
-            "or builds directly on them, which may now be lighter."
-        )
+        current = "; ".join(_decision(item) for item in path.items)
+        if failed:
+            note = (
+                f"the learner failed the checkpoint of '{title}', getting wrong the questions on: "
+                f"{'; '.join(topics)}. Their current decisions are: {current}. Return these decisions "
+                "unchanged, except for a later module or topic that builds directly on these topics, which "
+                "may now need more: to study instead of prove, or a topic studied in full instead of skimmed "
+                "or skipped. A module that is skipped stays skipped. Keep everything else exactly as it is."
+            )
+        else:
+            note = (
+                f"the learner passed the checkpoint of '{title}' without a mistake at the first try, "
+                f"answering questions on: {'; '.join(topics)}. Their current decisions are: {current}. "
+                "Return these decisions unchanged, except for a later module that teaches these topics again "
+                "or builds directly on them, which may now be lighter, as a whole or by skimming or skipping "
+                "some of its topics."
+            )
         try:
             items = self._planner.plan(path.answers, path.level, note)
         except LLMUnavailable as error:
@@ -122,21 +159,73 @@ class Roadmap:
             return []
         ids = [item.module.id for item in path.items]
         later = set(ids[ids.index(module_id) + 1 :])
-        return [
-            Proposal(module_id=item.module.id, choice=item.choice, reason=item.reason)
-            for item in items
-            if item.module.id in later
-        ]
+        proposals = []
+        for planned in items:
+            if planned.module.id not in later:
+                continue
+            current_item = path.item(planned.module.id)
+            if planned.choice is not current_item.choice:
+                proposals.append(
+                    Proposal(
+                        module_id=planned.module.id,
+                        choice=planned.choice,
+                        reason=planned.reason,
+                        after_failure=failed,
+                    )
+                )
+                continue
+            if planned.choice is not Choice.STUDY:
+                continue
+            reasons = {
+                marked.topic: marked.reason
+                for marked in [*planned.skim, *planned.skip_topics]
+            }
+            for topic in current_item.module.topics:
+                old, new = current_item.topic_choice(topic.title), planned.topic_choice(
+                    topic.title
+                )
+                if old is not new:
+                    proposals.append(
+                        Proposal(
+                            module_id=planned.module.id,
+                            topic=topic.title,
+                            topic_choice=new,
+                            reason=reasons.get(topic.title, planned.reason),
+                            after_failure=failed,
+                        )
+                    )
+        return proposals
 
     def _personal_plan(
         self, answers: Answers, level: Level | None
-    ) -> list[PathItem] | None:
+    ) -> tuple[list[PathItem] | None, str | None]:
         if self._planner is None:
-            return None
+            return None, None
         try:
-            return self._planner.plan(answers, level)
+            return self._titled_plan(answers, level)
         except LLMUnavailable as error:
             logger.warning(
                 "Personal planning unavailable, following the course order: %s", error
             )
-            return None
+            return None, None
+
+    def _titled_plan(
+        self, answers: Answers, level: Level | None, progress: str | None = None
+    ) -> tuple[list[PathItem], str | None]:
+        """The planner's decisions, and a title when the planner gives one."""
+        assert self._planner is not None  # nosec B101: callers check
+        titled = getattr(self._planner, "plan_with_title", None)
+        if titled is not None:
+            return titled(answers, level, progress)
+        return self._planner.plan(answers, level, progress), None
+
+
+def _decision(item: PathItem) -> str:
+    """A module's decision as the planner is told it, with the topics the learner skims or skips."""
+    text = f"{item.module.id}: {item.choice}"
+    parts = []
+    if item.skimmed_topics:
+        parts.append("skim " + ", ".join(sorted(item.skimmed_topics)))
+    if item.skipped_topics:
+        parts.append("skip " + ", ".join(sorted(item.skipped_topics)))
+    return text + (f" ({'; '.join(parts)})" if parts else "")

@@ -1,8 +1,8 @@
 module_id: softlanding/core-systems/applied-ml-deep-learning
 curriculum_version: 9fc5573ddbd7be5d5da997a26c49afeafbfe6210  # pragma: allowlist secret
-status: draft
+status: reviewed
 generated_by: gpt-6-luna
-reviewed_by: null
+reviewed_by: Li Mikhail
 questions:
 - id: q1
   topic: Applied ML and evaluation
@@ -186,28 +186,251 @@ questions:
   answer: 0
   explanation: A state dict contains learned parameter values, so the inference script must create a compatible
     model and load those values into it. Evaluation mode sets inference behavior for modules such as dropout.
+- id: q16
+  topic: Deep learning and pretrained models
+  text: A small neural network's training loss keeps decreasing, but its validation loss starts increasing after
+    several epochs. What is the most useful next step?
+  options:
+  - Train for more epochs so the model can reduce both losses further.
+  - Use the checkpoint from an earlier epoch when validation loss was lower.
+  - Increase the learning rate so the model can adapt to validation examples.
+  - Choose the checkpoint with the lowest training loss for best generalization.
+  answer: 1
+  explanation: The widening gap suggests overfitting, so an earlier checkpoint with lower validation loss is likely
+    to generalize better. Continuing to optimize training loss alone may make validation performance worse.
+open_questions:
+- id: o1
+  topic: Applied ML and evaluation
+  text: You are building a classifier to flag a rare but important condition, and missing a true case is costly.
+    How would you choose an evaluation metric and set up your data split and preprocessing so your evaluation is
+    trustworthy?
+  rubric:
+  - Explains that recall is useful when missing true cases is costly, or otherwise connects the metric choice to
+    the task’s error costs.
+  - Keeps the final test set separate until model and preprocessing choices are complete.
+  - Fits preprocessing only on training data, such as by using a pipeline, to prevent leakage.
+  required: 2
+  model_answer: Because missing a true case is costly, I would pay close attention to recall, while also checking
+    precision to understand how many flagged cases are false alarms. I would split off a final test set and avoid
+    using it to choose models or settings. I would fit preprocessing on training data only, ideally within a pipeline,
+    so information from validation or test data cannot leak into training.
+- id: o2
+  topic: Applied ML and evaluation
+  text: You have a baseline and two candidate models for a prediction task. How would you compare them fairly, and
+    what would you do if the strongest model still makes a recurring kind of mistake?
+  rubric:
+  - Compares the baseline and candidates using the same split and preprocessing rules.
+  - Uses a metric suited to the task to judge whether a candidate improves on the baseline.
+  - Inspects mistakes to identify a useful next improvement, rather than relying only on the overall score.
+  required: 2
+  model_answer: I would run the baseline and both candidates on the same data split, using the same preprocessing
+    rules, so their results are comparable. I would compare their scores using a metric that reflects the task’s
+    goal and check whether they improve on the baseline. Then I would inspect examples of the recurring mistakes
+    to look for a useful change, such as addressing a data issue or improving the relevant features.
+- id: o3
+  topic: Deep learning and pretrained models
+  text: A small neural network’s training loss is changing erratically and its predictions are not improving. How
+    would you use the training loop and training behavior to diagnose and repair a possible learning-rate problem?
+  rubric:
+  - Explains that the forward pass produces predictions and the loss measures their error.
+  - Explains that backpropagation and the optimizer use gradients to update the weights.
+  - Connects an unsuitable learning rate to unstable or ineffective learning and proposes changing it and checking
+    training behavior again.
+  required: 2
+  model_answer: The forward pass uses the current weights to produce predictions, and the loss measures how far
+    those predictions are from the targets. Backpropagation calculates gradients, which the optimizer uses to update
+    the weights. If the learning rate is too high, updates may overshoot and make loss unstable; if it is too low,
+    learning may be very slow. I would adjust the learning rate and check whether the loss becomes more stable and
+    predictions improve.
+- id: o4
+  topic: Deep learning and pretrained models
+  text: You need to classify short text and are considering running a pretrained transformer or fine-tuning one.
+    How would you explain the difference between these choices, and what would you check before trusting the pretrained
+    model’s output?
+  rubric:
+  - Distinguishes pretrained inference, which uses existing weights without updating them, from fine-tuning, which
+    updates weights using task data.
+  - Identifies the model’s expected input and the kind of output it returns for the task.
+  - Recognizes a limitation or reason to check the output, such as errors on the task’s language or examples unlike
+    the model’s training data.
+  required: 2
+  model_answer: With pretrained inference, I would pass text in the format the model expects and use its output
+    without changing its weights. Fine-tuning would update the weights using examples for my classification task,
+    which may help adapt the model to that task. I would check how the model expects text to be provided and whether
+    its output is a label, score, or probability. I would also test representative examples because it can make
+    mistakes, especially on language or cases unlike those it learned from.
 problem:
-  title: Compute binary classification metrics
-  prompt: 'Write `classification_metrics(y_true, y_pred)` for binary labels, where `1` is the positive class. Return
-    a dictionary with `accuracy`, `precision`, `recall`, and `f1`. If precision or recall has a zero denominator,
-    use `0.0` for that metric; if precision and recall are both zero, use `0.0` for F1. For example, `classification_metrics([1,
-    0], [1, 1])` should return `{"accuracy": 0.5, "precision": 0.5, "recall": 1.0, "f1": 0.6666666666666666}`.'
-  starter_code: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and\
-    \ F1 for binary labels.\"\"\"\n    ..."
-  tests: "assert classification_metrics([1, 0, 1, 0], [1, 0, 0, 0]) == {\n    \"accuracy\": 0.75, \"precision\"\
-    : 1.0, \"recall\": 0.5, \"f1\": 2 / 3\n}, \"Metrics should use positive label 1.\"\nassert classification_metrics([1,\
-    \ 1], [0, 0]) == {\n    \"accuracy\": 0.0, \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"Zero denominators\
-    \ should produce zero metrics.\"\nassert classification_metrics([0, 0], [0, 0]) == {\n    \"accuracy\": 1.0,\
-    \ \"precision\": 0.0, \"recall\": 0.0, \"f1\": 0.0\n}, \"All-negative predictions should handle missing positives.\"\
-    \nassert classification_metrics([1, 0], [1, 1]) == {\n    \"accuracy\": 0.5, \"precision\": 0.5, \"recall\"\
-    : 1.0, \"f1\": 2 / 3\n}, \"Precision and recall should use their respective denominators.\""
-  solution: "def classification_metrics(y_true, y_pred):\n    \"\"\"Return accuracy, precision, recall, and F1 for\
-    \ binary labels.\"\"\"\n    if len(y_true) != len(y_pred):\n        raise ValueError(\"y_true and y_pred must\
-    \ have the same length\")\n    if not y_true:\n        raise ValueError(\"inputs must not be empty\")\n\n  \
-    \  tp = sum(true == 1 and pred == 1 for true, pred in zip(y_true, y_pred))\n    fp = sum(true == 0 and pred\
-    \ == 1 for true, pred in zip(y_true, y_pred))\n    fn = sum(true == 1 and pred == 0 for true, pred in zip(y_true,\
-    \ y_pred))\n    correct = sum(true == pred for true, pred in zip(y_true, y_pred))\n\n    precision = tp / (tp\
-    \ + fp) if tp + fp else 0.0\n    recall = tp / (tp + fn) if tp + fn else 0.0\n    f1 = 2 * precision * recall\
-    \ / (precision + recall) if precision + recall else 0.0\n    return {\n        \"accuracy\": correct / len(y_true),\n\
-    \        \"precision\": precision,\n        \"recall\": recall,\n        \"f1\": f1,\n    }"
+  title: Binary Classification Metrics
+  prompt: "Write `binary_metrics(y_true, y_pred)` to calculate binary classification metrics, treating `1` as the\
+    \ positive class. Return a dictionary with `tp`, `fp`, `fn`, and `tn` counts, plus `accuracy`, `precision`,\
+    \ `recall`, and `f1` as numbers. If a metric's denominator is zero, return `0` for that metric. Assume both\
+    \ inputs are non-empty lists of equal length containing only `0` and `1`.\n\nExample:\n```python\nbinary_metrics([1,\
+    \ 0, 1, 0], [1, 1, 0, 0])\n```\nResult:\n```python\n{\n    'tp': 1, 'fp': 1, 'fn': 1, 'tn': 1,\n    'accuracy':\
+    \ 0.5, 'precision': 0.5, 'recall': 0.5, 'f1': 0.5\n}\n```"
+  starter_code: "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary confusion counts and accuracy, precision,\
+    \ recall, and F1.\"\"\"\n    ..."
+  tests: 'result = binary_metrics([1, 0, 1, 0], [1, 1, 0, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 1, ''tn'': 1, ''accuracy'': 0.5, ''precision'': 0.5, ''recall'':
+    0.5, ''f1'': 0.5}, "Should count each outcome and compute metrics."
+
+
+    result = binary_metrics([1, 1, 1, 0, 0], [1, 0, 0, 1, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 2, ''tn'': 1, ''accuracy'': 0.4, ''precision'': 0.5, ''recall'':
+    1 / 3, ''f1'': 0.4}, "F1 must be the harmonic mean of precision and recall."
+
+
+    result = binary_metrics([0, 0], [0, 0])
+
+    assert result == {''tp'': 0, ''fp'': 0, ''fn'': 0, ''tn'': 2, ''accuracy'': 1.0, ''precision'': 0, ''recall'':
+    0, ''f1'': 0}, "Zero denominators should produce zero for those metrics."
+
+
+    result = binary_metrics([1, 0], [0, 0])
+
+    assert result == {''tp'': 0, ''fp'': 0, ''fn'': 1, ''tn'': 1, ''accuracy'': 0.5, ''precision'': 0, ''recall'':
+    0, ''f1'': 0}, "No positive predictions should have zero precision."
+
+
+    result = binary_metrics([1, 1], [1, 1])
+
+    assert result == {''tp'': 2, ''fp'': 0, ''fn'': 0, ''tn'': 0, ''accuracy'': 1.0, ''precision'': 1.0, ''recall'':
+    1.0, ''f1'': 1.0}, "Perfect positive predictions should score one on every defined metric."
+
+
+    result = binary_metrics([0, 1, 0], [1, 1, 0])
+
+    assert result == {''tp'': 1, ''fp'': 1, ''fn'': 0, ''tn'': 1, ''accuracy'': 2 / 3, ''precision'': 0.5, ''recall'':
+    1.0, ''f1'': 2 / 3}, "Precision and recall must use the correct false-positive and false-negative counts."'
+  solution: "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary confusion counts and accuracy, precision,\
+    \ recall, and F1.\"\"\"\n    tp = fp = fn = tn = 0\n    for actual, predicted in zip(y_true, y_pred):\n    \
+    \    if actual == 1 and predicted == 1:\n            tp += 1\n        elif actual == 0 and predicted == 1:\n\
+    \            fp += 1\n        elif actual == 1 and predicted == 0:\n            fn += 1\n        else:\n   \
+    \         tn += 1\n\n    total = len(y_true)\n    accuracy = (tp + tn) / total\n    precision = tp / (tp + fp)\
+    \ if tp + fp else 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = 2 * precision * recall / (precision\
+    \ + recall) if precision + recall else 0\n\n    return {\n        'tp': tp,\n        'fp': fp,\n        'fn':\
+    \ fn,\n        'tn': tn,\n        'accuracy': accuracy,\n        'precision': precision,\n        'recall':\
+    \ recall,\n        'f1': f1,\n    }"
   packages: []
+  topic: Applied ML and evaluation
+  wrong_solutions:
+  - "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary classification metrics.\"\"\"\n    tp = sum(a\
+    \ == 1 and p == 1 for a, p in zip(y_true, y_pred))\n    fp = sum(a == 0 and p == 1 for a, p in zip(y_true, y_pred))\n\
+    \    fn = sum(a == 1 and p == 0 for a, p in zip(y_true, y_pred))\n    tn = sum(a == 0 and p == 0 for a, p in\
+    \ zip(y_true, y_pred))\n    accuracy = (tp + tn) / len(y_true)\n    precision = tp / (tp + fp) if tp + fp else\
+    \ 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = (precision + recall) / 2\n    return {'tp': tp,\
+    \ 'fp': fp, 'fn': fn, 'tn': tn, 'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1': f1}"
+  - "def binary_metrics(y_true, y_pred):\n    \"\"\"Return binary classification metrics.\"\"\"\n    tp = sum(a\
+    \ == 1 and p == 1 for a, p in zip(y_true, y_pred))\n    fp = sum(a == 1 and p == 0 for a, p in zip(y_true, y_pred))\n\
+    \    fn = sum(a == 0 and p == 1 for a, p in zip(y_true, y_pred))\n    tn = sum(a == 0 and p == 0 for a, p in\
+    \ zip(y_true, y_pred))\n    accuracy = (tp + tn) / len(y_true)\n    precision = tp / (tp + fp) if tp + fp else\
+    \ 0\n    recall = tp / (tp + fn) if tp + fn else 0\n    f1 = 2 * precision * recall / (precision + recall) if\
+    \ precision + recall else 0\n    return {'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn, 'accuracy': accuracy, 'precision':\
+    \ precision, 'recall': recall, 'f1': f1}"
+problems:
+- title: One Step of Logistic Training
+  prompt: 'Write `sigmoid_training_step(features, labels, weights, bias, learning_rate)`, which performs **one full-batch
+    gradient-descent step** for a sigmoid neuron trained with binary cross-entropy.
+
+
+    - `features` is a non-empty list of feature rows; `labels` contains one `0` or `1` per row. `weights` has one
+    value per feature.
+
+    - Compute the mean binary cross-entropy and mean gradients over the batch using the **original** weights and
+    bias. Update all weights and the bias simultaneously.
+
+    - Return `(updated_weights, updated_bias, loss_before_update)`.
+
+    - Use numerically stable calculations for the sigmoid and loss. Assume the input dimensions and labels are valid.
+
+
+    Example:
+
+    ```python
+
+    sigmoid_training_step([[0], [1]], [0, 1], [0], 0, 1)
+
+    # ([0.25], 0.0, 0.6931471805599453)
+
+    ```
+
+
+    A zero learning rate should leave the parameters unchanged while still returning the loss.'
+  starter_code: "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    \"\"\"Perform one\
+    \ full-batch sigmoid-neuron gradient step.\n\n    Return (updated_weights, updated_bias, loss_before_update).\n\
+    \    \"\"\"\n    ..."
+  tests: 'weights, bias, loss = sigmoid_training_step([[0], [1]], [0, 1], [0], 0, 1)
+
+    assert abs(weights[0] - 0.25) < 1e-12 and bias == 0.0, "should average the batch gradients"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "should return the pre-update mean loss"
+
+
+    weights, bias, _ = sigmoid_training_step([[0], [0]], [1, 1], [0], 0, 0.2)
+
+    assert weights == [0.0] and abs(bias - 0.1) < 1e-12, "should update the bias from the batch"
+
+
+    weights, bias, loss = sigmoid_training_step([[1, 2]], [0], [0, 0], 0, 0.4)
+
+    assert all(abs(a - b) < 1e-12 for a, b in zip(weights, [-0.2, -0.4])), "should update every feature weight"
+
+    assert abs(bias + 0.2) < 1e-12 and abs(loss - 0.6931471805599453) < 1e-12, "should handle a single multi-feature
+    example"
+
+
+    weights, bias, loss = sigmoid_training_step([[1]], [1], [0], 0, 0)
+
+    assert weights == [0.0] and bias == 0.0, "zero learning rate should not change parameters"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "zero learning rate should still report loss"
+
+
+    weights, bias, loss = sigmoid_training_step([[1]], [1], [0], 0, 2)
+
+    assert abs(weights[0] - 1.0) < 1e-12 and abs(bias - 1.0) < 1e-12, "should apply the learning rate to the gradients"
+
+    assert abs(loss - 0.6931471805599453) < 1e-12, "loss must be measured before the update"
+
+
+    _, _, loss = sigmoid_training_step([[1]], [0], [1000], 0, 0)
+
+    assert abs(loss - 1000.0) < 1e-9, "loss calculation should remain stable for a large logit"'
+  solution: "import math\n\n\ndef sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    \"\
+    \"\"Perform one full-batch sigmoid-neuron gradient step.\n\n    Return (updated_weights, updated_bias, loss_before_update).\n\
+    \    \"\"\"\n    count = len(features)\n    weight_gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n\
+    \    loss = 0.0\n\n    for row, label in zip(features, labels):\n        logit = sum(weight * value for weight,\
+    \ value in zip(weights, row)) + bias\n        if logit >= 0:\n            probability = 1.0 / (1.0 + math.exp(-logit))\n\
+    \        else:\n            exp_logit = math.exp(logit)\n            probability = exp_logit / (1.0 + exp_logit)\n\
+    \n        # Stable binary cross-entropy expressed directly in terms of the logit.\n        loss += max(logit,\
+    \ 0.0) - logit * label + math.log1p(math.exp(-abs(logit)))\n        error = probability - label\n        for\
+    \ index, value in enumerate(row):\n            weight_gradients[index] += error * value\n        bias_gradient\
+    \ += error\n\n    mean_loss = loss / count\n    updated_weights = [\n        weight - learning_rate * gradient\
+    \ / count\n        for weight, gradient in zip(weights, weight_gradients)\n    ]\n    updated_bias = bias -\
+    \ learning_rate * bias_gradient / count\n    return updated_weights, updated_bias, mean_loss"
+  packages: []
+  topic: Deep learning and pretrained models
+  wrong_solutions:
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    loss = 0.0\n    for row, label in zip(features,\
+    \ labels):\n        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n\
+    \        loss += -label * math.log(p) - (1 - label) * math.log(1 - p)\n        error = p - label\n        for\
+    \ i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient += error\n    return\
+    \ ([w - learning_rate * g / count for w, g in zip(weights, gradients)],\n            bias - learning_rate *\
+    \ bias_gradient / count, loss / count)"
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    loss = 0.0\n    for row, label in zip(features,\
+    \ labels):\n        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n\
+    \        loss += max(z, 0.0) - z * label + math.log1p(math.exp(-abs(z)))\n        error = p - label\n      \
+    \  for i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient += error\n    return\
+    \ ([w - learning_rate * g for w, g in zip(weights, gradients)],\n            bias - learning_rate * bias_gradient,\
+    \ loss / count)"
+  - "def sigmoid_training_step(features, labels, weights, bias, learning_rate):\n    import math\n    count = len(features)\n\
+    \    gradients = [0.0] * len(weights)\n    bias_gradient = 0.0\n    for row, label in zip(features, labels):\n\
+    \        z = sum(w * x for w, x in zip(weights, row)) + bias\n        p = 1 / (1 + math.exp(-z))\n        error\
+    \ = p - label\n        for i, x in enumerate(row):\n            gradients[i] += error * x\n        bias_gradient\
+    \ += error\n    updated_weights = [w - learning_rate * g / count for w, g in zip(weights, gradients)]\n    updated_bias\
+    \ = bias - learning_rate * bias_gradient / count\n    loss = 0.0\n    for row, label in zip(features, labels):\n\
+    \        z = sum(w * x for w, x in zip(updated_weights, row)) + updated_bias\n        loss += max(z, 0.0) -\
+    \ z * label + math.log1p(math.exp(-abs(z)))\n    return updated_weights, updated_bias, loss / count"

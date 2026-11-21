@@ -1,0 +1,144 @@
+/* The course team's drop-off report. Colours come from the --pp-* tokens in path.module.css. */
+
+/* One column that may shrink below its content, so the table scrolls instead of widening the page. */
+.page {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A grid item of the page: without min-width 0 the wide table would widen the page on a phone. */
+.body {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.note {
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: var(--pp-gold-soft);
+  border: 1px solid var(--pp-gold-line);
+  font-size: 0.9rem;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--pp-radius);
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+}
+
+.tile strong {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.tile span {
+  color: var(--pp-muted);
+  font-size: 0.85rem;
+}
+
+.tileAlert strong {
+  color: var(--pp-red);
+}
+
+.scroll {
+  overflow-x: auto;
+  border: 1px solid var(--pp-border);
+  border-radius: var(--pp-radius);
+}
+
+.table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.55rem 0.8rem;
+  border: none;
+  border-bottom: 1px solid var(--pp-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table thead th {
+  color: var(--pp-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.table tbody th {
+  font-weight: 500;
+  white-space: normal;
+  min-width: 11rem;
+}
+
+.table tr:last-child th,
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:nth-child(2n) {
+  background: transparent;
+}
+
+.worst {
+  background: var(--pp-red-soft) !important;
+}
+
+.warn {
+  color: var(--pp-red);
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.track {
+  width: 70px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--pp-border-strong);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--pp-green);
+}
+
+.stopCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 90px;
+}
+
+.stopBar {
+  display: inline-block;
+  height: 6px;
+  max-width: 60px;
+  border-radius: 3px;
+  background: var(--pp-red);
+}
+
+.after {
+  margin-top: 0.75rem;
+}

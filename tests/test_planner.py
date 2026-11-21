@@ -4,7 +4,13 @@ from pydantic import ValidationError
 
 from roadmap import Choice, Level
 from roadmap.llm import LLMUnavailable
-from roadmap.planner import CourseOrderPlanner, LLMPlanner, ModuleDecision, prompt_ids
+from roadmap.planner import (
+    CourseOrderPlanner,
+    LLMPlanner,
+    ModuleDecision,
+    SkimSuggestion,
+    prompt_ids,
+)
 
 
 def plan(curriculum, questions, response, level=None):
@@ -118,3 +124,59 @@ def test_course_order_planner_keeps_every_module_to_study(curriculum, module_ids
 
     assert [item.module.id for item in items] == module_ids
     assert all(item.choice is Choice.STUDY and item.reason for item in items)
+
+
+def test_a_module_to_study_may_name_topics_to_skim_and_only_its_own(
+    curriculum, questions
+):
+    from roadmap.curriculum import Topic
+
+    three = [Topic(title=f"{n}. Part {n}") for n in (1, 2, 3)]
+    module = curriculum.modules[0].model_copy(update={"topics": three})
+    course = curriculum.model_copy(
+        update={"modules": [module, *curriculum.modules[1:]]}
+    )
+    response = study_all(course)
+    response["decisions"][0]["skim"] = [
+        {"topic": "Part 2", "reason": "You use it daily."},  # named without its number
+        {"topic": "Something else", "reason": "Not in the module."},
+    ]
+    response["decisions"][1]["choice"] = "skip"
+    response["decisions"][1]["skim"] = [{"topic": "Anything", "reason": "Ignored."}]
+
+    items = plan(course, questions, response)
+
+    assert [(s.topic, s.reason) for s in items[0].skim] == [
+        ("2. Part 2", "You use it daily.")
+    ]
+    assert items[1].skim == []
+
+
+def test_a_module_to_study_may_skip_topics_but_keeps_one_to_study(
+    curriculum, questions
+):
+    from roadmap.curriculum import Topic
+    from roadmap.planner import ModuleDecision, _topics_for
+
+    three = [Topic(title=f"{n}. Part {n}") for n in (1, 2, 3)]
+    module = curriculum.modules[0].model_copy(update={"topics": three})
+
+    def decide(skip, skim=()):
+        return ModuleDecision(
+            module_id="m1",
+            choice=Choice.STUDY,
+            reason="Study it.",
+            skip_topics=[SkimSuggestion(topic=t, reason="Known.") for t in skip],
+            skim=[SkimSuggestion(topic=t, reason="Refresh.") for t in skim],
+        )
+
+    skim, skip = _topics_for(module, decide(["Part 1"], ["Part 1", "2. Part 2"]))
+    assert [s.topic for s in skip] == ["1. Part 1"] and [s.topic for s in skim] == [
+        "2. Part 2"
+    ]
+    _, everything = _topics_for(module, decide(["Part 1", "Part 2", "Part 3"]))
+    assert (
+        everything == []
+    )  # the whole module known: that is prove or skip, not three skipped topics
+    skim, skip = _topics_for(module, decide(["Part 1", "Part 2"], ["Part 3"]))
+    assert len(skip) == 2 and skim == []  # one topic is always left to study in full

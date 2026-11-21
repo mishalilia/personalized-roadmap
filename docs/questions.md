@@ -1,8 +1,6 @@
 # Question Log
 
-Open questions, who to ask, and what was decided. Updated whenever a question is answered.
-
-Status values: Not checked / Under review / Decided.
+Questions we had, who we asked, and what was decided.
 
 ---
 
@@ -11,15 +9,19 @@ Status values: Not checked / Under review / Decided.
 - **Related DoD item:** Baseline — licence attribution correctly implemented
 - **Why it matters:** The answer decides how much of this repository share-alike reaches. Attribution is
   required either way, and licence compliance is graded.
-- **Our reading:** A path orders the modules and includes their titles, descriptions and checklists, so it
-  may count as an adaptation rather than a collection. "Prove" needs the checklists, so we keep them.
+- **Our reading:** A path orders the modules and includes their titles, descriptions, topics and completion
+  criteria, so it may count as an adaptation rather than a collection. "Prove" needs the completion criteria,
+  so we keep them. Checkpoint questions are written from the same material, so the same question applies to
+  them.
 - **What we have tried:** Read the licence in the source repository, where it is stated inconsistently (see
   the licence section of the README), and applied the stricter option to ourselves. That is safe under
   either answer.
 - **Ask:** Professor
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** use the professor's answer when we are asked about the licence at the demo.
+- **Status:** Decided
+- **Decision and date:** 20 November 2026: no longer relevant. HumbleBeeAI is the project's partner and gave us
+  its course to use; DotPath runs only on HumbleBeeAI's course site. We keep the attribution and the
+  curriculum's licence, CC BY-NC-SA 4.0, on paths and checkpoints.
+- **Follow-up:** none.
 
 ### Q-002 — In what form should AI assistance be recorded?
 
@@ -60,10 +62,13 @@ Status values: Not checked / Under review / Decided.
     of 9 paths.
 - **Ask:** Team decision; assistant if no free option holds
 - **Status:** Decided
-- **Decision and date:** `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` as the
-  second provider; `gpt-oss-20b` dropped (22 October 2026). Pinned in `config/llm.yaml`.
-- **Follow-up:** before real learners use it (Target), decide whether their answers may go to the Gemini free
-  tier, which may use requests to improve Google's products.
+- **Decision and date:** 22 October 2026: `gemini-3.5-flash-lite`, then `gemini-3.8-flash`; Groq
+  `openai/gpt-oss-120b` as the second provider; `gpt-oss-20b` dropped. November 2026:
+  OpenAI `gpt-6-luna` became the default, so learners' answers do not go to a free tier that may use them to
+  improve the provider's products. It costs about $0.002 a path ($0.10 per million input tokens, $0.50 per
+  million output; token counts from our server's log on 20 November). Gemini and Groq stay in `config/llm.yaml`,
+  so the Baseline still runs on a free tier.
+- **Follow-up:** none.
 
 ### Q-004 — What can checkpoint questions actually be generated from?
 
@@ -74,16 +79,31 @@ Status values: Not checked / Under review / Decided.
   third-party ("Third party sources: under their original licence" in the source README), so copying from it
   is not open to us either. This gates the whole Target tier.
 - **What we have tried:** Measured the corpus as above, and confirmed that `llms-full.txt` cannot replace
-  parsing the content: 10,646 characters, 4 URLs, no resource metadata. The check is 10 questions generated
-  for one module from repository content only, rated by someone who knows the topic for how many test
-  application rather than recall.
+  parsing the content: 10,646 characters, 4 URLs, no resource metadata. Built on the working answer below:
+  `python -m roadmap checkpoints` gives the model a module's topics, stated outcomes, resource notes and
+  completion criteria, and asks for questions on each topic. Run with GPT-6 Luna for 13 modules of the current
+  version; every question was then reviewed by a person.
 - **Working answer:** Generate questions about the topic the section defines. Its heading and structure,
   stated learning outcomes, declared difficulty and the authors' per-resource notes specify what to test; the
   model supplies the subject knowledge. Nothing is copied from third-party sites and it scales across all 126
   sections. Known risk to report as a limitation: questions can drift from what a specific linked resource
   actually covered. Fetching openly licensed sources stays available as a Stretch refinement.
 - **Ask:** Team experiment first
-- **Status:** Under review
-- **Decision and date:** —
-- **Follow-up:** TBD — if the approach holds, build the question generation around it; if it does not,
-  narrow the checkpoint scope and say so in the README.
+- **Status:** Decided
+- **Decision and date:** November 2026: the working answer, with a pool of questions per topic, an open
+  question marked against a rubric, and a coding problem per topic. Every question is reviewed by a person
+  before learners see it; learners can report a wrong question in one click.
+- **Follow-up:** none.
+
+### Q-005 — Where is a learner's path kept: in their browser or on our server?
+
+- **Related DoD item:** Target — progress blocked past a failed checkpoint; a usable web interface
+- **Why it matters:** At first accounts were out of scope, so the path and its progress lived in the learner's
+  browser and in the file they downloaded. That loses the path on another device or after clearing the browser,
+  and a learner who edited the saved path could undo a lock or replay an attempt.
+- **Ask:** Professor
+- **Status:** Decided
+- **Decision and date:** 8 November 2026: on the server. The professors' feedback asked for login, so the path
+  is kept under the learner's account (Google, or email and password) and every change goes through the API. A
+  path planned before signing up is kept for a day; the learner can delete the account with everything in it.
+- **Follow-up:** none.
