@@ -135,7 +135,7 @@ documentation and curriculum-derived material carry CC BY-NC-SA 4.0, with attrib
 | **Model** | OpenAI `gpt-6-luna` by default, about $0.002 a path; Gemini and Groq free tiers as alternatives (Q-003). |
 | **Fallback** | The provider's next model; if none answers, the whole course in its order, and the learner is told. |
 | **Interface** | A React page in the curriculum site (Docusaurus). The Baseline prototype used Streamlit, which it replaced. |
-| **Hosting** | One server with Docker Compose and Caddy for HTTPS ([deploy/](../deploy/README.md)). |
+| **Hosting** | One server with Docker Compose and Caddy for HTTPS ([deploy/](../deploy/README.md)). Live at https://polarislearning.me since 21 November 2026. |
 | **Hardware** | Team laptops and one small server. No GPU, no training. Coding problems run in the learner's browser. |
 
 ## 11. Hard parts and how they were settled

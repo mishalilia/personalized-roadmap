@@ -106,3 +106,41 @@ one listed for as long as learners may still be working through paths planned fo
   instead, copy the files of Pyodide 0.26.4 into the site's `static/pyodide/` and set `PYODIDE_URL=/pyodide/`
   in `.env` before building.
 - **Model data:** learners' answers go to the model provider in `config/llm.yaml`, OpenAI by default (Q-003).
+
+## Behind a reverse proxy that is already running
+
+If ports 80 and 443 already belong to a reverse proxy, such as Traefik serving other sites on the same server,
+leave Caddy off and let that proxy reach the site and the API. With Traefik on a Docker network named `web`, a
+`compose.override.yml` next to `compose.yml` does it (the entry point and certificate resolver names are the
+proxy's own; check its command line):
+
+```yaml
+name: dotpath
+services:
+  caddy:
+    profiles: ["caddy"]  # not started
+  site:
+    networks: [default, web]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: web
+      traefik.http.routers.dotpath-site.rule: Host(`${SITE_DOMAIN}`)
+      traefik.http.routers.dotpath-site.entrypoints: websecure
+      traefik.http.routers.dotpath-site.tls.certresolver: le-http
+      traefik.http.services.dotpath-site.loadbalancer.server.port: "80"
+  api:
+    networks: [default, web]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: web
+      traefik.http.routers.dotpath-api.rule: Host(`${API_DOMAIN}`)
+      traefik.http.routers.dotpath-api.entrypoints: websecure
+      traefik.http.routers.dotpath-api.tls.certresolver: le-http
+      traefik.http.services.dotpath-api.loadbalancer.server.port: "8000"
+networks:
+  web:
+    external: true
+```
+
+The database stays on the project's own network. Project archives can be up to 20 MB; if the proxy limits request
+bodies, allow at least 21 MB for the API.

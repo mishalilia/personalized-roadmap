@@ -139,7 +139,8 @@ flowchart TB
 
 On one server, Docker Compose runs the curriculum site (nginx), the API, PostgreSQL and Caddy, which serves the
 site and the API over HTTPS under two domain names ([deploy/](../deploy/README.md)). Only Caddy is reachable from
-outside.
+outside. Live since 21 November 2026 at https://polarislearning.me (the site) and https://api.polarislearning.me
+(the API), on the team's VPS, where an existing reverse proxy serves HTTPS in Caddy's place.
 
 ### Changes since the first draft
 

@@ -17,6 +17,8 @@ COPY config ./config
 COPY checkpoints ./checkpoints
 # The curriculum versions in config/curriculum.yaml, checked out at build time so the API starts offline.
 RUN python -m roadmap fetch
+# The checkouts belong to root, the API runs as roadmap: without this git refuses to read them ("dubious ownership").
+RUN git config --system --add safe.directory '*'
 
 RUN useradd --create-home roadmap && mkdir -p /app/state && chown roadmap /app/state
 USER roadmap

@@ -7,6 +7,8 @@ Curriculum ([roadmap.humblebee.ai](https://roadmap.humblebee.ai)). It suggests t
 marks every module to study, prove or skip with a reason, and checks understanding after each module before the
 learner moves on.
 
+**Live:** https://polarislearning.me/personal-path (since 21 November 2026).
+
 Capstone project **S2** — Convergence of Business Administration & Engineering Capstone Design,
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI. Team 3, Polaris.
 
