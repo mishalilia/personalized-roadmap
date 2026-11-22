@@ -51,7 +51,6 @@ import {
   type QuestionsResponse,
 } from "./model";
 import {
-  getPathState,
   handleSignedOut,
   openAuth,
   setDraft,
@@ -60,6 +59,7 @@ import {
   useCheckpoints,
   usePathState,
 } from "./store";
+import { changePath, withChoice } from "./changes";
 import { useModulePages, useVersionLabel } from "./useModulePages";
 import {
   CHOICE_HINT,
@@ -535,20 +535,14 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
   function choose(item: PathItem, choice: Choice) {
     if (!signedIn) return openAuth("sign-up", "Create an account to change and keep your path.");
     if (choice === item.choice) return;
-    // Shown at once, as the API will store it (the path then asks to be confirmed again); the API's answer
-    // replaces it, and a refusal puts the path back as it was.
-    const before = path;
-    setPath({
-      ...path,
-      confirmed_at: null,
-      items: path.items.map((candidate) => (candidate === item ? { ...candidate, choice } : candidate)),
-      proposals: path.proposals?.filter((proposal) => proposal.module_id !== item.module.id),
-    });
-    void run(item.module.id, () => api.choose(item.module.id, choice)).then((ok) => {
-      // Signed out meanwhile: the path is gone from the page, and stays gone.
-      if (!ok && getPathState().account) setPath(before);
-    });
+    changePath(
+      api,
+      (current) => withChoice(current, item.module.id, choice),
+      () => api.choose(item.module.id, choice),
+      setError,
+    );
   }
+
 
   return (
     <div className={styles.pathPage}>
@@ -688,7 +682,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
               item={item}
               href={pageOf(item.module.id)}
               hasCheckpoint={item.module.id in checkpoints}
-              busy={busy === item.module.id}
+              busy={false}
               onChoose={(choice) => choose(item, choice)}
             />
           ));

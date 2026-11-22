@@ -33,6 +33,7 @@ import {
   useCheckpoints,
   usePathState,
 } from "./store";
+import { changePath, withChoice } from "./changes";
 import { useModulePages, useVersionLabel } from "./useModulePages";
 import { ChoiceChip, ReviewTopics, STATUS_LABEL, Spinner, StatusIcon } from "./ui";
 import styles from "./path.module.css";
@@ -69,7 +70,6 @@ export function ModulePanel(): ReactNode {
   const versionLabel = useVersionLabel(anyPath?.curriculum_site_version ?? null);
   const checkpoints = useCheckpoints(api, path?.curriculum_version);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const { metadata } = useDoc();
 
   if (otherVersion) {
@@ -93,14 +93,20 @@ export function ModulePanel(): ReactNode {
   const signedIn = account !== null;
 
   // A decision made on the module page is the learner's own approval, so a confirmed path stays confirmed.
-  async function choose(choice: Choice) {
+  // Changing a module on its page is the learner's own approval: a confirmed path stays confirmed.
+  function choose(choice: Choice) {
     if (!signedIn) return openAuth("sign-up", "Create an account to change and keep your path.");
-    setBusy(true);
-    await change(async () => {
-      const changed = await api!.choose(item!.module.id, choice);
-      return path!.confirmed_at ? api!.confirm() : changed;
-    }, setError);
-    setBusy(false);
+    if (choice === item!.choice) return;
+    const confirmed = Boolean(path!.confirmed_at);
+    changePath(
+      api!,
+      (current) => withChoice(current, item!.module.id, choice, confirmed),
+      async () => {
+        const changed = await api!.choose(item!.module.id, choice);
+        return confirmed ? api!.confirm() : changed;
+      },
+      setError,
+    );
   }
 
   return (
@@ -181,8 +187,8 @@ export function ModulePanel(): ReactNode {
             Review and confirm your path
           </button>
         ) : item.choice === "skip" ? (
-          <button type="button" className={styles.ghostSm} disabled={busy} onClick={() => void choose("study")}>
-            {busy && <Spinner />} Add it to my path
+          <button type="button" className={styles.ghostSm} onClick={() => choose("study")}>
+            Add it to my path
           </button>
         ) : (
           status !== "locked" &&

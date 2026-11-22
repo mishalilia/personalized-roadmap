@@ -13,7 +13,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { message, usePathApi } from "./api";
+import { usePathApi } from "./api";
 import {
   bySection,
   canBeProved,
@@ -29,7 +29,8 @@ import {
   CHECKPOINT_ANCHOR,
   allTopicsFinished,
 } from "./model";
-import { handleSignedOut, openAuth, setPath, useCheckpoints, usePathState } from "./store";
+import { openAuth, useCheckpoints, usePathState } from "./store";
+import { changePath, withChoice, withTopic, withTopicFinished } from "./changes";
 import { useModulePages } from "./useModulePages";
 import {
   CHOICE_HINT,
@@ -38,7 +39,6 @@ import {
   Reveal,
   SmoothHeight,
   STATUS_LABEL,
-  Spinner,
   StatusIcon,
 } from "./ui";
 import styles from "./map.module.css";
@@ -342,7 +342,6 @@ function PeekCard({
     }
     onLeave();
   };
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const item = path.items.find((candidate) => candidate.module.id === peek.moduleId);
   if (!item) return null;
@@ -374,48 +373,45 @@ function PeekCard({
       : `Your own choice. The planner suggested to ${item.suggested} it: ${item.reason}`);
 
   // Changing a module here is the learner's own approval, as on its page: a confirmed path stays confirmed.
-  async function choose(choice: Choice) {
+  function choose(choice: Choice) {
     if (!api || choice === item!.choice) return;
     if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
-    setBusy(true);
-    setError(null);
-    try {
-      const changed = await api.choose(item!.module.id, choice);
-      setPath(path.confirmed_at ? await api.confirm() : changed);
-    } catch (reason) {
-      if (!handleSignedOut(reason)) setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
+    const moduleId = item!.module.id;
+    const confirmed = Boolean(path.confirmed_at);
+    changePath(
+      api,
+      (current) => withChoice(current, moduleId, choice, confirmed),
+      async () => {
+        const changed = await api.choose(moduleId, choice);
+        return confirmed ? api.confirm() : changed;
+      },
+      setError,
+    );
   }
 
   // A topic of a module the learner studies: read it in full, skim it, or skip it out of the checkpoint. The
   // learner decides it here, so the path stays confirmed.
-  async function chooseTopic(title: string, choice: TopicChoice) {
+  function chooseTopic(title: string, choice: TopicChoice) {
     if (!api || choice === topicChoice) return;
     if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
-    setBusy(true);
-    setError(null);
-    try {
-      setPath(await api.chooseTopic(item!.module.id, title, choice));
-    } catch (reason) {
-      if (!handleSignedOut(reason)) setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
+    const moduleId = item!.module.id;
+    changePath(
+      api,
+      (current) => withTopic(current, moduleId, title, choice),
+      () => api.chooseTopic(moduleId, title, choice),
+      setError,
+    );
   }
 
-  async function finishTopic(title: string, finished: boolean) {
+  function finishTopic(title: string, finished: boolean) {
     if (!api) return;
-    setBusy(true);
-    setError(null);
-    try {
-      setPath(await api.finishTopic(item!.module.id, title, finished));
-    } catch (reason) {
-      if (!handleSignedOut(reason)) setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
+    const moduleId = item!.module.id;
+    changePath(
+      api,
+      (current) => withTopicFinished(current, moduleId, title, finished),
+      () => api.finishTopic(moduleId, title, finished),
+      setError,
+    );
   }
 
   // Beside the element where there is room, else under it (or above it near the bottom), inside the window.
@@ -485,8 +481,7 @@ function PeekCard({
               <input
                 type="checkbox"
                 checked={done}
-                disabled={busy}
-                onChange={(event) => void finishTopic(topic.title, event.target.checked)}
+                onChange={(event) => finishTopic(topic.title, event.target.checked)}
               />
               I have finished this topic
             </label>
@@ -545,9 +540,8 @@ function PeekCard({
                   role="radio"
                   aria-checked={topicChoice === choice}
                   data-choice={choice}
-                  disabled={busy}
                   title={TOPIC_HINT[choice]}
-                  onClick={() => void chooseTopic(topic.title, choice)}
+                  onClick={() => chooseTopic(topic.title, choice)}
                 >
                   {TOPIC_LABEL[choice]}
                 </button>
@@ -563,16 +557,14 @@ function PeekCard({
               role="radio"
               aria-checked={item.choice === choice}
               data-choice={choice}
-              disabled={busy}
               title={CHOICE_HINT[choice]}
-              onClick={() => void choose(choice)}
+              onClick={() => choose(choice)}
             >
               {CHOICE_LABEL[choice]}
             </button>
           ))}
         </div>
         )}
-        {busy && <Spinner />}
         {href && (
           <Link
             to={topic ? `${href}#${topic.anchor ?? headingAnchor(topic.title)}` : href}

@@ -4,7 +4,7 @@
 import React, { useState, type ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import { ArrowRight } from "lucide-react";
-import { message, usePathApi } from "./api";
+import { usePathApi } from "./api";
 import {
   CHECKPOINT_ANCHOR,
   allTopicsFinished,
@@ -13,7 +13,8 @@ import {
   type PathItem,
   type TopicChoice,
 } from "./model";
-import { handleSignedOut, openAuth, setPath, usePathState } from "./store";
+import { openAuth, usePathState } from "./store";
+import { changePath, withTopic, withTopicFinished } from "./changes";
 import { Reveal } from "./ui";
 import styles from "./path.module.css";
 
@@ -39,7 +40,6 @@ export default function ModuleTopics({
 }): ReactNode {
   const api = usePathApi();
   const { account, path } = usePathState();
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const topics = item.module.topics ?? [];
   if (item.choice !== "study" || item.module.is_project || topics.length < 2) return null;
@@ -54,31 +54,25 @@ export default function ModuleTopics({
   const reasonOf = (title: string) =>
     [...(item.skip_topics ?? []), ...(item.skim ?? [])].find((marked) => bare(marked.topic) === bare(title));
 
-  async function choose(title: string, choice: TopicChoice) {
+  function choose(title: string, choice: TopicChoice) {
     if (!api) return;
     if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
-    setBusy(true);
-    setError(null);
-    try {
-      setPath(await api.chooseTopic(item.module.id, title, choice));
-    } catch (reason) {
-      if (!handleSignedOut(reason)) setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
+    changePath(
+      api,
+      (current) => withTopic(current, item.module.id, title, choice),
+      () => api.chooseTopic(item.module.id, title, choice),
+      setError,
+    );
   }
 
-  async function finish(title: string, done: boolean) {
+  function finish(title: string, done: boolean) {
     if (!api) return;
-    setBusy(true);
-    setError(null);
-    try {
-      setPath(await api.finishTopic(item.module.id, title, done));
-    } catch (reason) {
-      if (!handleSignedOut(reason)) setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
+    changePath(
+      api,
+      (current) => withTopicFinished(current, item.module.id, title, done),
+      () => api.finishTopic(item.module.id, title, done),
+      setError,
+    );
   }
 
   return (
@@ -108,8 +102,8 @@ export default function ModuleTopics({
                       data-hidden={current === "skip"}
                       tabIndex={current === "skip" ? -1 : undefined}
                       checked={finished.has(topic.title)}
-                      disabled={busy || passed || current === "skip"}
-                      onChange={(event) => void finish(topic.title, event.target.checked)}
+                      disabled={passed || current === "skip"}
+                      onChange={(event) => finish(topic.title, event.target.checked)}
                       aria-label={`${bare(topic.title)}: finished`}
                     />
                     <span>{bare(topic.title)}</span>
@@ -126,9 +120,8 @@ export default function ModuleTopics({
                       role="radio"
                       aria-checked={current === choice}
                       data-choice={choice}
-                      disabled={busy}
                       title={TOPIC_HINT[choice]}
-                      onClick={() => current !== choice && void choose(topic.title, choice)}
+                      onClick={() => current !== choice && choose(topic.title, choice)}
                     >
                       {TOPIC_LABEL[choice]}
                     </button>
