@@ -5,7 +5,7 @@ import Link from "@docusaurus/Link";
 import { useActiveVersion } from "@docusaurus/plugin-content-docs/client";
 import { ArrowRight, Route } from "lucide-react";
 import { completion, nextUp, statusOf, type Status } from "./model";
-import { setDrawer, usePathState } from "./store";
+import { setDrawer, showConfirmation, usePathState } from "./store";
 import { useModulePages } from "./useModulePages";
 import { ProgressBar } from "./ui";
 import styles from "./path.module.css";
@@ -65,7 +65,7 @@ export function SidebarPathCard(): ReactNode {
       </div>
       <ProgressBar finished={finished} total={total} />
       {!path.confirmed_at ? (
-        <button type="button" className={styles.sideNext} onClick={() => setDrawer(true)}>
+        <button type="button" className={styles.sideNext} onClick={showConfirmation}>
           Review and confirm your path <ArrowRight size={14} aria-hidden />
         </button>
       ) : next && href ? (

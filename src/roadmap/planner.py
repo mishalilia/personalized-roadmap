@@ -39,22 +39,23 @@ class ModuleDecision(BaseModel):
     )
     skim: list[SkimSuggestion] = Field(
         default=[],
-        description="For a module to study only: topics the learner knows but should refresh. Empty otherwise.",
+        description="For a module to study or prove: topics the learner knows but should refresh. Empty for a "
+        "module to skip.",
     )
     skip_topics: list[SkimSuggestion] = Field(
         default=[],
-        description="For a module to study only: topics the learner's answers show they already know, which "
-        "the checkpoint then leaves out. Empty otherwise.",
+        description="For a module to study or prove: topics the learner's answers show they already know, "
+        "which the checkpoint then leaves out if the module is studied. Empty for a module to skip.",
     )
 
 
 def _topics_for(
     module: Module, decision: ModuleDecision
 ) -> tuple[list[SkimTopic], list[SkimTopic]]:
-    """The topics to skim and to skip, as the module's own titles: only for a module to study, never a topic
-    the module does not have, and at least one topic left to study in full; else the module would be one to
-    prove or skip."""
-    if decision.choice is not Choice.STUDY or module.is_project:
+    """The topics to skim and to skip, as the module's own titles: for a module to study, and for one to prove,
+    where they count only if the learner studies it instead; never a topic the module does not have, and at
+    least one topic left to study in full."""
+    if decision.choice is Choice.SKIP or module.is_project:
         return [], []
 
     def key(title: str) -> str:
@@ -169,7 +170,10 @@ class LLMPlanner:
             logger.warning(
                 "The model suggested proving %s, which has no checklist", module.id
             )
-            return PathItem.suggestion(module, Choice.STUDY, self.NO_CHECKLIST)
+            skim, skip = _topics_for(module, decision)
+            return PathItem.suggestion(
+                module, Choice.STUDY, self.NO_CHECKLIST, skim, skip
+            )
         skim, skip = _topics_for(module, decision)
         return PathItem.suggestion(module, decision.choice, decision.reason, skim, skip)
 

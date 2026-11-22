@@ -1244,6 +1244,12 @@
   color: var(--pp-gold);
 }
 
+.exampleChip[aria-pressed="true"] {
+  border-color: var(--pp-gold);
+  background: var(--pp-gold-soft);
+  color: var(--pp-gold);
+}
+
 .questionHead {
   display: grid;
   gap: 0.5rem;
@@ -1503,6 +1509,27 @@
 .banner[data-tone="gold"] {
   border-color: var(--pp-gold-line);
   background: linear-gradient(135deg, rgba(255, 245, 0, 0.08), rgba(255, 185, 2, 0.03)), var(--pp-surface);
+}
+
+/* Pointed to from elsewhere on the page ("Review and confirm your path"): a gold glow that pulses twice. */
+.banner[data-flash="true"] {
+  animation: callout 0.9s ease-in-out 2;
+}
+
+@keyframes callout {
+  50% {
+    border-color: var(--pp-gold);
+    box-shadow:
+      0 0 0 3px var(--pp-gold-soft),
+      0 0 22px rgba(255, 245, 0, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner[data-flash="true"] {
+    animation: none;
+    border-color: var(--pp-gold);
+  }
 }
 
 .banner[data-tone="gold"] > svg {

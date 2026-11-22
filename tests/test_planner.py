@@ -180,3 +180,25 @@ def test_a_module_to_study_may_skip_topics_but_keeps_one_to_study(
     )  # the whole module known: that is prove or skip, not three skipped topics
     skim, skip = _topics_for(module, decide(["Part 1", "Part 2"], ["Part 3"]))
     assert len(skip) == 2 and skim == []  # one topic is always left to study in full
+
+
+def test_a_module_to_prove_keeps_its_topics_for_studying_it_instead(
+    curriculum, questions
+):
+    from roadmap.curriculum import Topic
+    from roadmap.planner import ModuleDecision, _topics_for
+
+    three = [Topic(title=f"{n}. Part {n}") for n in (1, 2, 3)]
+    module = curriculum.modules[0].model_copy(update={"topics": three})
+    decision = ModuleDecision(
+        module_id="m1",
+        choice=Choice.PROVE,
+        reason="You use it at work.",
+        skip_topics=[SkimSuggestion(topic="Part 1", reason="Known.")],
+        skim=[SkimSuggestion(topic="Part 2", reason="Refresh.")],
+    )
+    skim, skip = _topics_for(module, decision)
+    assert [s.topic for s in skip] == ["1. Part 1"]
+    assert [s.topic for s in skim] == ["2. Part 2"]
+    skipped = decision.model_copy(update={"choice": Choice.SKIP})
+    assert _topics_for(module, skipped) == ([], [])

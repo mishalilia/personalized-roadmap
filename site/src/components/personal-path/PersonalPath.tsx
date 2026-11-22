@@ -51,6 +51,7 @@ import {
   type QuestionsResponse,
 } from "./model";
 import {
+  getPathState,
   handleSignedOut,
   openAuth,
   setDraft,
@@ -172,6 +173,11 @@ const QUESTION_HINT: Record<Question["kind"], string> = {
     "Tick everything you have used. The details are optional, but they make the suggested level more precise.",
   check: "Answer without running the code. A wrong answer is fine: it only helps suggest your level.",
 };
+
+function sameAnswers(answers: Answers, example: Answers): boolean {
+  const ids = new Set([...Object.keys(answers), ...Object.keys(example)]);
+  return [...ids].every((id) => JSON.stringify(answers[id] ?? null) === JSON.stringify(example[id] ?? null));
+}
 
 function Onboarding({ api }: { api: PathApi }): ReactNode {
   const [setup, setSetup] = useState<QuestionsResponse | null>(null);
@@ -396,6 +402,9 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
                   key={profile.id}
                   type="button"
                   className={styles.exampleChip}
+                  // Lit while the answers are this example's: it stays so after a reload, and goes out once
+                  // the learner changes an answer.
+                  aria-pressed={sameAnswers(answers, profile.answers)}
                   onClick={() => setAnswers({ ...profile.answers })}
                 >
                   {profile.title}
@@ -476,7 +485,7 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
 // The path: review, confirm, follow.
 
 function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNode {
-  const { account } = usePathState();
+  const { account, confirmCall } = usePathState();
   const siteVersion = path.curriculum_site_version ?? null;
   const pageOf = useModulePages(siteVersion);
   const versionLabel = useVersionLabel(siteVersion);
@@ -492,6 +501,21 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
   const estimate = path.time_estimate;
   const working = count(path, "study") + count(path, "prove");
   const estimated = estimate ? working - estimate.modules_without_estimate : 0;
+
+  // "Review and confirm your path" pressed elsewhere on the page while this is open: bring the confirmation
+  // into view and make it blink, so the learner sees where to go. Not on mounting, which a new page also does.
+  const callout = useRef<HTMLDivElement>(null);
+  const seenCall = useRef(confirmCall);
+  useEffect(() => {
+    if (confirmCall === seenCall.current) return;
+    seenCall.current = confirmCall;
+    const banner = callout.current;
+    if (!banner) return;
+    banner.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    banner.removeAttribute("data-flash");
+    void banner.offsetWidth; // restart the animation when pressed again
+    banner.setAttribute("data-flash", "true");
+  }, [confirmCall]);
 
   async function run(label: string, action: () => Promise<LearningPath | void>): Promise<boolean> {
     setBusy(label);
@@ -510,7 +534,20 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
 
   function choose(item: PathItem, choice: Choice) {
     if (!signedIn) return openAuth("sign-up", "Create an account to change and keep your path.");
-    if (choice !== item.choice) void run(item.module.id, () => api.choose(item.module.id, choice));
+    if (choice === item.choice) return;
+    // Shown at once, as the API will store it (the path then asks to be confirmed again); the API's answer
+    // replaces it, and a refusal puts the path back as it was.
+    const before = path;
+    setPath({
+      ...path,
+      confirmed_at: null,
+      items: path.items.map((candidate) => (candidate === item ? { ...candidate, choice } : candidate)),
+      proposals: path.proposals?.filter((proposal) => proposal.module_id !== item.module.id),
+    });
+    void run(item.module.id, () => api.choose(item.module.id, choice)).then((ok) => {
+      // Signed out meanwhile: the path is gone from the page, and stays gone.
+      if (!ok && getPathState().account) setPath(before);
+    });
   }
 
   return (
@@ -537,7 +574,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
       </header>
 
       {!signedIn ? (
-        <div className={styles.banner} data-tone="gold">
+        <div ref={callout} className={styles.banner} data-tone="gold">
           <Sparkles size={20} aria-hidden />
           <div>
             <strong>Your path is ready. Save it to start.</strong>
@@ -557,7 +594,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
         </div>
       ) : (
         !confirmed && (
-          <div className={clsx(styles.banner, styles.sticky)} data-tone="gold">
+          <div ref={callout} className={clsx(styles.banner, styles.sticky)} data-tone="gold">
             <ListChecks size={20} aria-hidden />
             <div>
               <strong>Review your path, then confirm it</strong>

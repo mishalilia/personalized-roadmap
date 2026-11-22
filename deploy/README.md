@@ -137,6 +137,9 @@ services:
       traefik.http.routers.dotpath-api.entrypoints: websecure
       traefik.http.routers.dotpath-api.tls.certresolver: le-http
       traefik.http.services.dotpath-api.loadbalancer.server.port: "8000"
+      # Caddy compresses the API's answers; Traefik does it only when asked. A path is about 150 KB of JSON.
+      traefik.http.middlewares.dotpath-api-compress.compress: "true"
+      traefik.http.routers.dotpath-api.middlewares: dotpath-api-compress@docker
 networks:
   web:
     external: true

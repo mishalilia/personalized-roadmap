@@ -19,6 +19,8 @@ export interface PathState {
   panelTab: PanelTab; // what the panel shows: the path, or the assistant
   // A question another part of the page puts in the assistant's box, such as "why does my code fail".
   pendingQuestion: PendingQuestion | null;
+  // Counts the requests to show the path's confirmation; the panel draws the learner's eye to it on each.
+  confirmCall: number;
 }
 
 export interface PendingQuestion {
@@ -37,6 +39,7 @@ const INITIAL: PathState = {
   drawer: false,
   panelTab: "path",
   pendingQuestion: null,
+  confirmCall: 0,
 };
 let state: PathState = INITIAL;
 const listeners = new Set<() => void>();
@@ -152,6 +155,13 @@ export function setDrawer(open: boolean): void {
 
 export function setPanelTab(tab: PanelTab): void {
   set({ panelTab: tab });
+}
+
+// "Review and confirm your path": opens the panel at the path and points to the confirmation, also when the
+// panel is open already and nothing would seem to happen.
+export function showConfirmation(): void {
+  setDrawer(true);
+  set({ panelTab: "path", confirmCall: state.confirmCall + 1 });
 }
 
 // The assistant's button: opens the panel at its Ask tab.

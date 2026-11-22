@@ -24,7 +24,15 @@ import {
   type PathItem,
   CHECKPOINT_ANCHOR,
 } from "./model";
-import { handleSignedOut, openAuth, setDrawer, setPath, useCheckpoints, usePathState } from "./store";
+import {
+  handleSignedOut,
+  openAuth,
+  setDrawer,
+  setPath,
+  showConfirmation,
+  useCheckpoints,
+  usePathState,
+} from "./store";
 import { useModulePages, useVersionLabel } from "./useModulePages";
 import { ChoiceChip, ReviewTopics, STATUS_LABEL, Spinner, StatusIcon } from "./ui";
 import styles from "./path.module.css";
@@ -169,7 +177,7 @@ export function ModulePanel(): ReactNode {
             <span className={styles.muted}>Create a free account to track your progress.</span>
           </>
         ) : !path.confirmed_at ? (
-          <button type="button" className={styles.primarySm} onClick={() => setDrawer(true)}>
+          <button type="button" className={styles.primarySm} onClick={showConfirmation}>
             Review and confirm your path
           </button>
         ) : item.choice === "skip" ? (
@@ -289,7 +297,7 @@ function CheckpointWaiting(): ReactNode {
       : [
           "Confirm your path to open this checkpoint: review what to study, prove or skip, then confirm.",
           "Review and confirm my path",
-          () => setDrawer(true),
+          showConfirmation,
         ];
 
   return (
