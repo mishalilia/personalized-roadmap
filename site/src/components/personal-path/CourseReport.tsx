@@ -80,6 +80,9 @@ function Body({ data }: { data: Report }): ReactNode {
   const top = (key: (row: ModuleReport) => number) =>
     rows.reduce((best, row) => (key(row) > key(best) ? row : best), rows[0]);
   const stop = top((row) => row.stopped_here);
+  // Every module where the most learners stopped, not only the first of them.
+  const mostStopped = rows.filter((row) => stop.stopped_here > 0 && row.stopped_here === stop.stopped_here);
+  const shortTitle = (row: ModuleReport) => row.title.split(" › ").slice(-1)[0];
   const fail = top((row) => (row.included ? row.failed_once / row.included : 0));
   const finishedAll = data.paths - rows.reduce((sum, row) => sum + row.stopped_here, 0);
   const maxStopped = Math.max(...rows.map((row) => row.stopped_here), 1);
@@ -97,7 +100,15 @@ function Body({ data }: { data: Report }): ReactNode {
         <Tile value={finishedAll} label="finished every module on their path" />
         <Tile
           value={stop.stopped_here}
-          label={stop.stopped_here ? `the most stopped at one module: ${stop.title}` : "stopped anywhere"}
+          label={
+            !stop.stopped_here
+              ? "stopped anywhere"
+              : mostStopped.length === 1
+                ? `the most stopped at one module: ${stop.title}`
+                : `stopped at each of ${mostStopped.length} modules, the most at any one: ${mostStopped
+                    .map(shortTitle)
+                    .join(", ")}`
+          }
           alert={stop.stopped_here > 0}
         />
         <Tile
@@ -133,7 +144,7 @@ function Body({ data }: { data: Report }): ReactNode {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.module_id} className={row === stop && row.stopped_here ? report.worst : undefined}>
+                <tr key={row.module_id} className={mostStopped.includes(row) ? report.worst : undefined}>
                   <th scope="row">{row.title}</th>
                   <td>{row.included}</td>
                   <td>

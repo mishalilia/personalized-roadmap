@@ -1,7 +1,6 @@
 // For reviewers: the projects learners submitted, to accept or send back with a comment.
 import React, { useEffect, useState, type ReactNode } from "react";
-import useBaseUrl from "@docusaurus/useBaseUrl";
-import { BarChart3, Download, ExternalLink } from "lucide-react";
+import { ChevronDown, Download, ExternalLink } from "lucide-react";
 import { message, usePathApi, type PathApi, type ReportedQuestion, type ReportReason } from "./api";
 import { InlineMarkdown } from "./InlineMarkdown";
 import type { Submission } from "./model";
@@ -16,7 +15,6 @@ export default function Review(): ReactNode {
   const { ready, account } = usePathState();
   const [queue, setQueue] = useState<{ waiting: Submission[]; reviewed: Submission[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const reportPage = useBaseUrl("/report");
 
   const load = () => {
     if (!api) return;
@@ -52,13 +50,7 @@ export default function Review(): ReactNode {
           <h1>Submitted projects</h1>
           <p className={styles.muted}>
             An AI reviewer grades every project against its rubric as soon as it is submitted. Here you see its
-            decisions, criterion by criterion, and can change them. Open archives on a machine you trust: they are
-            learners' code.
-          </p>
-          <p>
-            <a href={reportPage}>
-              <BarChart3 size={15} aria-hidden /> Where learners stop
-            </a>
+            decisions, criterion by criterion, and can change them.
           </p>
         </header>
         {error && <p className={styles.error}>{error}</p>}
@@ -245,6 +237,7 @@ function ReviewItem({
   const [error, setError] = useState<string | null>(null);
   const page = useAnyModulePage()(submission.module_id);
   const review = submission.ai_review;
+  const [showReview, setShowReview] = useState(false);
 
   async function decide(accept: boolean) {
     setBusy(true);
@@ -282,10 +275,17 @@ function ReviewItem({
       )}
       {submission.review_comment && <p>{submission.review_comment}</p>}
       {review && review.levels.some((level) => level.criteria.length > 0) && (
-        <details className={styles.reviewDetails}>
-          <summary>The AI's review, criterion by criterion</summary>
-          <Rubric review={review} forReviewer />
-        </details>
+        <div>
+          <button
+            type="button"
+            className={styles.reviewToggle}
+            aria-expanded={showReview}
+            onClick={() => setShowReview(!showReview)}
+          >
+            The AI's review, criterion by criterion <ChevronDown size={16} aria-hidden />
+          </button>
+          {showReview && <Rubric review={review} forReviewer />}
+        </div>
       )}
       <div className={styles.submission}>
         {submission.link && (

@@ -2826,20 +2826,30 @@ button.sideNext {
 }
 
 /* The AI's review on the reviewers' page: folded until asked for. */
-.reviewDetails {
-  border-top: 1px solid hsl(0, 0%, 20%);
-  padding-top: 0.6rem;
-}
-
-.reviewDetails > summary {
-  cursor: pointer;
+.reviewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--accent-gold);
-  font-weight: 600;
+  font: inherit;
   font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.reviewDetails[open] > summary {
-  margin-bottom: 0.5rem;
+.reviewToggle svg {
+  transition: transform 0.15s ease;
+}
+
+.reviewToggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.reviewToggle + .rubric {
+  margin-top: 0.6rem;
 }
 
 .menu > a {

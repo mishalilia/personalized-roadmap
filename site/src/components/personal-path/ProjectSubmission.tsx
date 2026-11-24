@@ -142,6 +142,7 @@ const VERDICT: Record<ReviewedCriterion["verdict"], string> = {
 export function Rubric({ review, forReviewer = false }: { review: ProjectReview; forReviewer?: boolean }): ReactNode {
   const [all, setAll] = useState(false);
   const levels = all ? review.levels : review.levels.filter((level) => level.passing);
+  const higher = review.levels.some((level) => !level.passing && level.criteria.length > 0);
   return (
     <div className={styles.rubric}>
       {levels.map((level) => (
@@ -187,14 +188,18 @@ export function Rubric({ review, forReviewer = false }: { review: ProjectReview;
           </ul>
         </div>
       ))}
-      <button type="button" className={styles.link} onClick={() => setAll(!all)}>
-        {all ? "Show only what is needed to pass" : "Show the higher levels too"}
-      </button>
-      <p className={styles.fine}>
-        {forReviewer
-          ? `Reviewed by AI from ${review.files_read} of the ${review.files_listed} files; each criterion is decided by a majority of independent reviews. It reads the code but does not run it.`
-          : `Reviewed by AI from ${review.files_read} of the ${review.files_listed} files in your project. It does not run your code: how your project works counts only with what your code produced, such as notebook outputs or the logs and results it wrote.`}
-      </p>
+      {higher && (
+        <button type="button" className={styles.link} onClick={() => setAll(!all)}>
+          {all ? "Show only what is needed to pass" : "Show the higher levels too"}
+        </button>
+      )}
+      {!forReviewer && (
+        <p className={styles.fine}>
+          Reviewed by AI from {review.files_read} of the {review.files_listed} files in your project. It does not run
+          your code: how your project works counts only with what your code produced, such as notebook outputs or the
+          logs and results it wrote.
+        </p>
+      )}
     </div>
   );
 }
