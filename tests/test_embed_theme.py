@@ -24,6 +24,7 @@ SITES = {
 }
 LIGHT = {
     "mode": "light",
+    "background": "#fdf6e3",
     "accent": "#c2410c",
     "font": "serif",
     "corners": "round",
@@ -120,6 +121,7 @@ def test_a_look_carries_no_css_of_its_own(curriculum, questions):
     for bad in (
         {"accent": "red; background: url(x)"},
         {"accent": "#12345"},
+        {"background": "white; color: red"},
         {"font": "Comic Sans"},
         {"logo": "javascript:alert(1)"},
         {"logo": "https://x.example/a.png) ; color: red"},

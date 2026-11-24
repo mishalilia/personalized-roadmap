@@ -8,20 +8,18 @@ import { config } from "./config";
 import {
   DEFAULT_THEME,
   LIGHT_ACCENT,
-  SURFACE,
-  contrast,
   getTheme,
   isHex,
-  nearProveBlue,
+  modeOf,
   setTheme,
   siteFonts,
   type Corners,
   type Font,
-  type Mode,
   type Theme,
 } from "./theme";
 
 const SWATCHES = ["#fff500", "#ff7a1a", "#c2410c", "#2f6fed", "#12a37a", "#d6336c", "#7c3aed", "#111111"];
+const BACKGROUNDS = ["#181818", "#0f1b2d", "#13261f", "#1e1a2e", "#ffffff", "#f5f4f0", "#fdf6e3", "#eef4fb"];
 const FONTS: { value: Font; label: string; family: string }[] = [
   { value: "dotpath", label: "DotPath", family: '"Space Grotesk", "Inter", sans-serif' },
   { value: "site", label: "The site's", family: "inherit" },
@@ -64,6 +62,7 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
   const [saved, setSaved] = useState<Theme>(getTheme);
   const [draft, setDraft] = useState<Theme>(getTheme);
   const [hex, setHex] = useState(draft.accent);
+  const [backgroundHex, setBackgroundHex] = useState(draft.background);
   const [logo, setLogo] = useState(draft.logo ?? "");
   const [status, setStatus] = useState<{ kind: "ok" | "error" | "busy"; text: string } | null>(null);
 
@@ -74,16 +73,18 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
     setStatus(null);
     setDraft((before) => {
       const theme = { ...before, ...next };
-      // DotPath's yellow cannot be read on white: a light theme starts from a darker accent.
-      if (next.mode === "light" && before.accent.toLowerCase() === DEFAULT_THEME.accent) theme.accent = LIGHT_ACCENT;
-      if (next.mode === "dark" && before.accent.toLowerCase() === LIGHT_ACCENT) theme.accent = DEFAULT_THEME.accent;
+      theme.mode = modeOf(theme.background);
+      // DotPath's yellow cannot be read on a light background: it starts from a darker accent there.
+      if (theme.mode === "light" && before.mode === "dark" && before.accent.toLowerCase() === DEFAULT_THEME.accent)
+        theme.accent = LIGHT_ACCENT;
+      if (theme.mode === "dark" && before.mode === "light" && before.accent.toLowerCase() === LIGHT_ACCENT)
+        theme.accent = DEFAULT_THEME.accent;
       if (theme.accent !== before.accent) setHex(theme.accent);
       return theme;
     });
   };
 
   const changed = JSON.stringify(draft) !== JSON.stringify(saved);
-  const readable = contrast(draft.accent, SURFACE[draft.mode]);
   const logoOk = !logo.trim() || /^https?:\/\/[^\s"'()<>]+$/.test(logo.trim());
 
   function close() {
@@ -115,13 +116,45 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
       </header>
 
       <fieldset>
-        <legend>Theme</legend>
-        <div className="segmented">
-          {(["dark", "light"] as Mode[]).map((mode) => (
-            <button key={mode} type="button" aria-pressed={draft.mode === mode} onClick={() => change({ mode })}>
-              <span className={`chip ${mode}`} aria-hidden /> {mode === "dark" ? "Dark" : "Light"}
-            </button>
+        <legend>Background colour</legend>
+        <div className="swatches">
+          {BACKGROUNDS.map((colour) => (
+            <button
+              key={colour}
+              type="button"
+              className="swatch"
+              style={{ background: colour }}
+              aria-label={`Background ${colour}`}
+              aria-pressed={draft.background.toLowerCase() === colour}
+              onClick={() => {
+                setBackgroundHex(colour);
+                change({ background: colour });
+              }}
+            />
           ))}
+        </div>
+        <div className="row">
+          <input
+            type="color"
+            aria-label="Any background colour"
+            value={draft.background}
+            onChange={(event) => {
+              setBackgroundHex(event.target.value);
+              change({ background: event.target.value });
+            }}
+          />
+          <input
+            type="text"
+            className="hex"
+            aria-label="Background colour code"
+            spellCheck={false}
+            value={backgroundHex}
+            onChange={(event) => {
+              const value = event.target.value.trim();
+              setBackgroundHex(value);
+              if (isHex(value)) change({ background: value.toLowerCase() });
+            }}
+          />
         </div>
       </fieldset>
 
@@ -143,14 +176,14 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
         <div className="row">
           <input
             type="color"
-            aria-label="Any colour"
+            aria-label="Any accent colour"
             value={draft.accent}
             onChange={(event) => change({ accent: event.target.value })}
           />
           <input
             type="text"
             className="hex"
-            aria-label="Colour code"
+            aria-label="Accent colour code"
             spellCheck={false}
             value={hex}
             onChange={(event) => {
@@ -160,17 +193,6 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
             }}
           />
         </div>
-        {readable < 3 && (
-          <p className="warn">
-            Text in this colour is hard to read on the {draft.mode} panel ({readable.toFixed(1)}:1, 3:1 at least).
-            {draft.mode === "light" ? " Pick a darker one." : " Pick a lighter one."}
-          </p>
-        )}
-        {nearProveBlue(draft.accent) && (
-          <p className="warn">
-            Close to the blue of modules to prove: on the path and the map they will look like modules to study.
-          </p>
-        )}
       </fieldset>
 
       <fieldset>
@@ -235,11 +257,12 @@ export default function Designer({ onClose }: { onClose: () => void }): ReactNod
           onClick={() => {
             setLogo("");
             setHex(DEFAULT_THEME.accent);
+            setBackgroundHex(DEFAULT_THEME.background);
             setStatus(null);
             setDraft(DEFAULT_THEME);
           }}
         >
-          DotPath's look
+          Default
         </button>
         <span className="spacer" />
         <button type="button" className="ghost" onClick={close}>
@@ -285,8 +308,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 3px; border-radius: 10px; background: #f0efeb; }
 .segmented button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; padding: 7px 6px; border-radius: 7px; background: none; white-space: nowrap; }
 .segmented button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); font-weight: 600; }
-.chip { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.2); }
-.chip.dark { background: #181818; } .chip.light { background: #fff; }
 .corner { width: 14px; height: 14px; border-top: 2px solid currentColor; border-left: 2px solid currentColor; }
 .swatches { display: flex; flex-wrap: wrap; gap: 7px; }
 .swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); padding: 0; }

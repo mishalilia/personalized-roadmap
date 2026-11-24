@@ -2,7 +2,7 @@
 // runs it on each component stylesheet before esbuild reads it. Every value it rewrites falls back to the
 // original, so with no theme set the widget looks exactly as the course site does.
 //
-// - Neutral greys (#111, #141414, hsl(0, 0%, 75%) ...) become hsl(0 0% <lightness>) with the lightness
+// - Neutral greys (#111, #141414, hsl(0, 0%, 75%) ...) become hsl(<hue> <saturation> <lightness>) with the lightness
 //   mapped by two variables, one for text and one for surfaces: the dark theme keeps them, the light theme
 //   turns them over (dark surfaces light, light text dark), so pairs that were readable stay readable.
 // - Text on the accent (#111 where the background is the accent) follows --dp-on-accent.
@@ -25,10 +25,12 @@ function hexToRgb(hex) {
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 }
 
-// A grey's lightness, mapped for text (f) or for surfaces and lines (b).
+// A grey's lightness, mapped for text (f) or for surfaces and lines (b). Surfaces and lines also take the hue
+// of the school's background (--dp-h, --dp-s); text stays neutral.
 function grey(lightness, kind, alpha) {
   const l = `calc(var(--dp-${kind}a, 0%) + var(--dp-${kind}s, 1) * ${+lightness.toFixed(2)}%)`;
-  return alpha === undefined ? `hsl(0 0% ${l})` : `hsl(0 0% ${l} / ${alpha})`;
+  const hs = kind === "b" ? "var(--dp-h, 0) var(--dp-s, 0%)" : "0 0%";
+  return alpha === undefined ? `hsl(${hs} ${l})` : `hsl(${hs} ${l} / ${alpha})`;
 }
 
 function rewriteValue(value, prop, onAccent) {

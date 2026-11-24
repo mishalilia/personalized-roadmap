@@ -361,7 +361,10 @@ class EmbedTheme(BaseModel):
     of a few choices or a checked value, so a theme cannot carry arbitrary CSS into the page.
     """
 
-    mode: Literal["dark", "light"] = "dark"
+    mode: Literal["dark", "light"] = (
+        "dark"  # follows the background: light text on a dark one, and back
+    )
+    background: str = Field(default="#181818", pattern=r"^#[0-9a-fA-F]{6}$")
     accent: str = Field(default="#fff500", pattern=r"^#[0-9a-fA-F]{6}$")
     # "dotpath": Inter and Space Grotesk; "site": the school's own font, as its page has it.
     font: Literal["dotpath", "site", "system", "serif"] = "dotpath"
