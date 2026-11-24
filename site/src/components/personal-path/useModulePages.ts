@@ -11,6 +11,18 @@ export function useModulePages(
   return (moduleId) => pages.get(moduleId);
 }
 
+// For pages that are not about one path (the reviewers' pages): a module's page in any version, the newest first.
+export function useAnyModulePage(): (moduleId: string) => string | undefined {
+  const versions = useAllDocsData().default?.versions ?? [];
+  return (moduleId) => {
+    for (const version of versions) {
+      const doc = version.docs.find((candidate) => candidate.id === moduleId);
+      if (doc) return doc.path;
+    }
+    return undefined;
+  };
+}
+
 export function useVersionLabel(siteVersion: string | null): string | undefined {
   const versions = useAllDocsData().default?.versions ?? [];
   return versions.find((candidate) => candidate.name === siteVersion)?.label;

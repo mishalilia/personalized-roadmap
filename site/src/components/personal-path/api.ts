@@ -101,6 +101,7 @@ export interface ReportedQuestion {
   comment: string;
   reported_at: string;
   resolved: boolean;
+  retired: boolean; // taken out of the checkpoint: learners no longer get it
   question: {
     id: string;
     topic: string;
@@ -235,6 +236,7 @@ export interface PathApi {
   reportQuestion(moduleId: string, questionId: string, reason: ReportReason, comment: string): Promise<unknown>;
   questionReports(): Promise<ReportedQuestion[]>;
   resolveQuestionReport(reportId: string, resolved: boolean): Promise<unknown>;
+  retireQuestion(reportId: string, retired: boolean): Promise<unknown>;
 
   // `version` is the path's curriculum version: a path keeps working after the course moves on.
   checkpoints(version: string): Promise<Record<string, CheckpointSummary>>;
@@ -384,6 +386,8 @@ export function pathApi(base: string): PathApi {
     questionReports: () => call("/review/question-reports"),
     resolveQuestionReport: (reportId, resolved) =>
       call(`/review/question-reports/${encodeURIComponent(reportId)}`, { resolved }),
+    retireQuestion: (reportId, retired) =>
+      call(`/review/question-reports/${encodeURIComponent(reportId)}/retire`, { retired }),
     review: (submissionId, accept, comment) =>
       call(`/review/submissions/${encodeURIComponent(submissionId)}`, {
         accept,

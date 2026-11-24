@@ -798,6 +798,69 @@ def test_a_learner_reports_a_question_and_reviewers_see_it_with_the_answer_key(
     assert reviewer.get("/review/question-reports").json()[0]["resolved"] is True
 
 
+def test_a_reviewer_takes_a_reported_question_out_of_its_checkpoint(
+    curriculum, questions
+):
+    site = site_for(
+        Roadmap(curriculum, questions, llm=None), reviewers={"reviewer@example.com"}
+    )
+    learner = site.signed_in()
+    confirmed_path(learner)
+    reviewer = site.signed_in("reviewer@example.com")
+
+    def asked_ids() -> set[str]:
+        return {
+            q["id"]
+            for attempt in range(10)
+            for q in learner.get(
+                f"/checkpoints/{TERMINAL}", params={"attempt": attempt}
+            ).json()["questions"]
+        }
+
+    def report_and_retire(question_id: str):  # type: ignore[no-untyped-def]
+        learner.post(
+            f"/me/checkpoints/{TERMINAL}/reports",
+            json={"question_id": question_id, "reason": "wrong_answer"},
+        )
+        report = next(
+            r
+            for r in reviewer.get("/review/question-reports").json()
+            if r["question_id"] == question_id
+        )
+        return report, reviewer.post(
+            f"/review/question-reports/{report['id']}/retire", json={"retired": True}
+        )
+
+    report, retired = report_and_retire("q3")
+
+    assert retired.status_code == 200, retired.text
+    assert "q3" not in asked_ids() and len(asked_ids()) == 9
+    listed = next(
+        r
+        for r in reviewer.get("/review/question-reports").json()
+        if r["id"] == report["id"]
+    )
+    assert listed["retired"] is True and listed["resolved"] is True
+    assert (
+        learner.post(
+            f"/review/question-reports/{report['id']}/retire", json={"retired": True}
+        ).status_code
+        == 403
+    )
+
+    back = reviewer.post(
+        f"/review/question-reports/{report['id']}/retire", json={"retired": False}
+    )
+    assert back.status_code == 200 and "q3" in asked_ids()
+
+    # Five questions must stay: taking out a sixth is refused.
+    for question_id in ("q1", "q2", "q3", "q4", "q5"):
+        assert report_and_retire(question_id)[1].status_code == 200
+    refused = report_and_retire("q6")[1]
+    assert refused.status_code == 409 and "at least 5" in refused.json()["detail"]
+    assert asked_ids() == {"q6", "q7", "q8", "q9", "q10"}
+
+
 def test_reports_need_a_real_question_of_a_module_in_the_path(curriculum, questions):
     learner = site_for(Roadmap(curriculum, questions, llm=None)).signed_in()
     confirmed_path(learner)

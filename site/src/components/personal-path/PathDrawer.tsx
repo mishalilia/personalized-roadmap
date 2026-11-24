@@ -64,7 +64,7 @@ export default function PathDrawer(): ReactNode {
   const { drawer, ready, account, path, auth, panelTab: tab } = usePathState();
   const { pathname } = useLocation();
   // The path page shows the path itself; a panel beside it would show it twice.
-  const onPathPage = pathname.startsWith("/personal-path") || pathname.startsWith("/review");
+  const onPathPage = pathname.startsWith("/personal-path");
   const open = drawer && !onPathPage;
   // The path mounts the first time the panel opens, then stays, so closing slides it out instead of emptying it.
   const [opened, setOpened] = useState(false);

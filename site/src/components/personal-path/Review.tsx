@@ -1,10 +1,13 @@
 // For reviewers: the projects learners submitted, to accept or send back with a comment.
 import React, { useEffect, useState, type ReactNode } from "react";
-import { Download, ExternalLink } from "lucide-react";
+import useBaseUrl from "@docusaurus/useBaseUrl";
+import { BarChart3, Download, ExternalLink } from "lucide-react";
 import { message, usePathApi, type PathApi, type ReportedQuestion, type ReportReason } from "./api";
 import { InlineMarkdown } from "./InlineMarkdown";
 import type { Submission } from "./model";
+import { Rubric } from "./ProjectSubmission";
 import { openAuth, usePathState } from "./store";
+import { useAnyModulePage } from "./useModulePages";
 import { Spinner } from "./ui";
 import styles from "./path.module.css";
 
@@ -13,6 +16,7 @@ export default function Review(): ReactNode {
   const { ready, account } = usePathState();
   const [queue, setQueue] = useState<{ waiting: Submission[]; reviewed: Submission[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const reportPage = useBaseUrl("/report");
 
   const load = () => {
     if (!api) return;
@@ -48,8 +52,13 @@ export default function Review(): ReactNode {
           <h1>Submitted projects</h1>
           <p className={styles.muted}>
             An AI reviewer grades every project against its rubric as soon as it is submitted. Here you see its
-            decisions and can change them, and you review the projects it could not. Open archives on a machine you
-            trust: they are learners' code.
+            decisions, criterion by criterion, and can change them. Open archives on a machine you trust: they are
+            learners' code.
+          </p>
+          <p>
+            <a href={reportPage}>
+              <BarChart3 size={15} aria-hidden /> Where learners stop
+            </a>
           </p>
         </header>
         {error && <p className={styles.error}>{error}</p>}
@@ -59,21 +68,22 @@ export default function Review(): ReactNode {
           </p>
         ) : (
           <>
-            <section className={styles.section}>
-              <h2>
-                Waiting for a person <span className={styles.muted}>{queue.waiting.length}</span>
-              </h2>
-              {queue.waiting.length === 0 ? (
-                <p className={styles.muted}>Nothing: the AI reviewer has handled every project.</p>
-              ) : (
+            {/* Only submissions from before every project went to the AI reviewer can still wait for a person. */}
+            {queue.waiting.length > 0 && (
+              <section className={styles.section}>
+                <h2>
+                  Waiting for a person <span className={styles.muted}>{queue.waiting.length}</span>
+                </h2>
                 <ul className={styles.reviewList}>
                   {queue.waiting.map((submission) => (
                     <ReviewItem key={submission.id} api={api} submission={submission} onDone={load} />
                   ))}
                 </ul>
-              )}
-            </section>
-            {queue.reviewed.length > 0 && (
+              </section>
+            )}
+            {queue.reviewed.length === 0 ? (
+              <p className={styles.muted}>No project has been submitted yet.</p>
+            ) : (
               <section className={styles.section}>
                 <h2>Decided recently</h2>
                 <ul className={styles.reviewList}>
@@ -120,8 +130,9 @@ function QuestionReports({ api }: { api: PathApi }): ReactNode {
         Reported questions <span className={styles.muted}>{reports ? open.length : ""}</span>
       </h2>
       <p className={styles.muted}>
-        Learners flag checkpoint questions that look wrong. Fix the question in the checkpoint's file, then mark
-        the report resolved.
+        Learners flag checkpoint questions that look wrong. Take a wrong question out of its checkpoint at once:
+        learners stop getting it, and the topic's other questions take its place. Fix it in the checkpoint's file
+        and put it back later, or mark a report resolved when the question is right.
       </p>
       {error && <p className={styles.error}>{error}</p>}
       {!reports ? (
@@ -137,7 +148,7 @@ function QuestionReports({ api }: { api: PathApi }): ReactNode {
               <p className={styles.muted}>
                 {report.module_title} · question {report.question_id} ·{" "}
                 {new Date(report.reported_at).toLocaleDateString()}
-                {report.resolved && " · resolved"}
+                {report.retired ? " · taken out of the checkpoint" : report.resolved && " · resolved"}
               </p>
               <p>
                 <strong>{REASON_LABEL[report.reason]}</strong>
@@ -183,18 +194,34 @@ function QuestionReports({ api }: { api: PathApi }): ReactNode {
                 <p className={styles.muted}>The checkpoint no longer has this question.</p>
               )}
               <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.ghostSm}
-                  onClick={() =>
-                    void api
-                      .resolveQuestionReport(report.id, !report.resolved)
-                      .then(load)
-                      .catch((reason: unknown) => setError(message(reason)))
-                  }
-                >
-                  {report.resolved ? "Open again" : "Mark resolved"}
-                </button>
+                {(report.question || report.open_question) && (
+                  <button
+                    type="button"
+                    className={report.retired ? styles.ghostSm : styles.primarySm}
+                    onClick={() =>
+                      void api
+                        .retireQuestion(report.id, !report.retired)
+                        .then(load)
+                        .catch((reason: unknown) => setError(message(reason)))
+                    }
+                  >
+                    {report.retired ? "Put it back in the checkpoint" : "Take it out of the checkpoint"}
+                  </button>
+                )}
+                {!report.retired && (
+                  <button
+                    type="button"
+                    className={styles.ghostSm}
+                    onClick={() =>
+                      void api
+                        .resolveQuestionReport(report.id, !report.resolved)
+                        .then(load)
+                        .catch((reason: unknown) => setError(message(reason)))
+                    }
+                  >
+                    {report.resolved ? "Open again" : "Mark resolved: the question is right"}
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -216,6 +243,8 @@ function ReviewItem({
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const page = useAnyModulePage()(submission.module_id);
+  const review = submission.ai_review;
 
   async function decide(accept: boolean) {
     setBusy(true);
@@ -233,7 +262,13 @@ function ReviewItem({
   return (
     <li className={`${styles.card} ${styles.reviewItem}`}>
       <div className={styles.reviewHead}>
-        <strong>{submission.module_title}</strong>
+        {page ? (
+          <a href={page}>
+            <strong>{submission.module_title}</strong>
+          </a>
+        ) : (
+          <strong>{submission.module_title}</strong>
+        )}
         <span className={styles.muted}>
           {submission.email} · {new Date(submission.submitted_at).toLocaleString()}
         </span>
@@ -242,9 +277,15 @@ function ReviewItem({
         <p className={submission.status === "accepted" ? styles.success : styles.muted}>
           {submission.status === "accepted" ? "Accepted" : "Sent back"} by{" "}
           {submission.reviewed_by === "model" ? "the AI reviewer" : submission.reviewed_by}
-          {submission.ai_review?.level && ` · level reached: ${submission.ai_review.level}`}
-          {submission.review_comment && ` — ${submission.review_comment}`}
+          {review?.level && ` · level reached: ${review.level}`}
         </p>
+      )}
+      {submission.review_comment && <p>{submission.review_comment}</p>}
+      {review && review.levels.some((level) => level.criteria.length > 0) && (
+        <details className={styles.reviewDetails}>
+          <summary>The AI's review, criterion by criterion</summary>
+          <Rubric review={review} forReviewer />
+        </details>
       )}
       <div className={styles.submission}>
         {submission.link && (

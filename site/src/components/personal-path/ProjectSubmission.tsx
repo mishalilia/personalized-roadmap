@@ -80,6 +80,15 @@ export default function ProjectSubmission({ api, item }: { api: PathApi; item: P
           </div>
         </div>
       )}
+      {status === "failed" && submission && (
+        <div className={styles.result} data-passed={false} role="alert">
+          <StatusIcon status="returned" />
+          <div className={styles.resultBody}>
+            <strong>Not reviewed</strong>
+            <p>{submission.review_comment}</p>
+          </div>
+        </div>
+      )}
       {(status === "accepted" || status === "returned") && submission && (
         <ReviewResult submission={submission} accepted={status === "accepted"} />
       )}
@@ -89,7 +98,7 @@ export default function ProjectSubmission({ api, item }: { api: PathApi; item: P
           Replace the submission
         </button>
       )}
-      {(!submission || status === "returned" || editing) && progress !== "done" && (
+      {(!submission || status === "returned" || status === "failed" || editing) && progress !== "done" && (
         <SubmitForm
           api={api}
           item={item}
@@ -130,7 +139,7 @@ const VERDICT: Record<ReviewedCriterion["verdict"], string> = {
   unverified: "Not shown",
 };
 
-function Rubric({ review }: { review: ProjectReview }): ReactNode {
+export function Rubric({ review, forReviewer = false }: { review: ProjectReview; forReviewer?: boolean }): ReactNode {
   const [all, setAll] = useState(false);
   const levels = all ? review.levels : review.levels.filter((level) => level.passing);
   return (
@@ -154,9 +163,9 @@ function Rubric({ review }: { review: ProjectReview }): ReactNode {
                     <strong>{criterion.name}</strong>{" "}
                     <span className={styles.muted}>
                       {criterion.evidence_missing
-                        ? "Not counted: the evidence is not in your files"
+                        ? `Not counted: the evidence is not in ${forReviewer ? "the" : "your"} files`
                         : criterion.output_missing
-                          ? "Not counted: only your own words show it, not your program's output"
+                          ? `Not counted: only ${forReviewer ? "the learner's" : "your"} own words show it, not the program's output`
                           : VERDICT[criterion.verdict]}
                     </span>
                     <p>{criterion.comment}</p>
@@ -182,9 +191,9 @@ function Rubric({ review }: { review: ProjectReview }): ReactNode {
         {all ? "Show only what is needed to pass" : "Show the higher levels too"}
       </button>
       <p className={styles.fine}>
-        Reviewed by AI from {review.files_read} of the {review.files_listed} files in your project. It does not run
-        your code: how your project works counts only with what your code produced, such as notebook outputs or the
-        logs and results it wrote.
+        {forReviewer
+          ? `Reviewed by AI from ${review.files_read} of the ${review.files_listed} files; each criterion is decided by a majority of independent reviews. It reads the code but does not run it.`
+          : `Reviewed by AI from ${review.files_read} of the ${review.files_listed} files in your project. It does not run your code: how your project works counts only with what your code produced, such as notebook outputs or the logs and results it wrote.`}
       </p>
     </div>
   );

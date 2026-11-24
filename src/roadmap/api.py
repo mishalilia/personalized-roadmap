@@ -251,10 +251,21 @@ class ReportedQuestion(QuestionReport):
     open_question: OpenQuestion | None = (
         None  # instead, for an open question: with its rubric
     )
+    retired: bool = False  # taken out of the checkpoint: learners no longer get it
 
 
 class ResolveRequest(BaseModel):
     resolved: bool
+
+
+class RetireRequest(BaseModel):
+    retired: bool
+
+
+UNREVIEWED = (
+    "The AI reviewer could not review your project right now, and nothing was sent to anyone. "
+    "Submit it again in a few minutes."
+)
 
 
 class AttemptRequest(BaseModel):
@@ -532,6 +543,7 @@ def create_app(
     """
     newest = editions[0]
     by_version = {edition.version: edition for edition in editions}
+    reports = question_reports or QuestionReportStore(Path(":memory:"))
     store = accounts or AccountStore(Path(":memory:"))
 
     def with_current_modules(path: LearningPath) -> LearningPath:
@@ -704,9 +716,23 @@ def create_app(
         raise HTTPException(404, f"Unknown curriculum version '{version}'")
 
     def checkpoint_of(edition: Edition, module_id: str) -> Checkpoint:
+        """The module's checkpoint as learners get it: without the questions reviewers took out of it."""
         if module_id not in edition.checkpoints:
             raise HTTPException(404, f"No checkpoint for '{module_id}'")
-        return edition.checkpoints[module_id]
+        return without_retired(edition, edition.checkpoints[module_id])
+
+    def without_retired(edition: Edition, checkpoint: Checkpoint) -> Checkpoint:
+        retired = reports.retired(edition.version, checkpoint.module_id)
+        if not retired:
+            return checkpoint
+        return checkpoint.model_copy(
+            update={
+                "questions": [q for q in checkpoint.questions if q.id not in retired],
+                "open_questions": [
+                    q for q in checkpoint.open_questions if q.id not in retired
+                ],
+            }
+        )
 
     def change(
         account: Account, action: Callable[[LearningPath], LearningPath]
@@ -1323,7 +1349,9 @@ def create_app(
         # Code for the page's coding problem: the problem goes with it, never its reference solution.
         problem = None
         if body.code is not None and body.module_id is not None:
-            checkpoint = edition_of(path).checkpoints.get(body.module_id)
+            edition = edition_of(path)
+            checkpoint = edition.checkpoints.get(body.module_id)
+            checkpoint = without_retired(edition, checkpoint) if checkpoint else None
             item = next((i for i in path.items if i.module.id == body.module_id), None)
             problem = (
                 checkpoint.problem_for(item.skipped_topics, item.skimmed_topics)
@@ -1367,9 +1395,7 @@ def create_app(
             raise HTTPException(403, "Only reviewers can do this.")
         return account
 
-    # Reports of checkpoint questions
-
-    reports = question_reports or QuestionReportStore(Path(":memory:"))
+    # Reports of checkpoint questions (created before the checkpoints are served: they hide retired questions)
     report_limit = RateLimiter(30, 24 * 3600)
 
     @app.post("/me/checkpoints/{module_id:path}/reports")
@@ -1437,9 +1463,41 @@ def create_app(
                     module_title=module.full_title if module else report.module_id,
                     question=question,
                     open_question=open_question,
+                    retired=report.question_id
+                    in reports.retired(report.curriculum_version, report.module_id),
                 )
             )
         return found
+
+    @app.post("/review/question-reports/{report_id}/retire")
+    def retire_question(report_id: str, body: RetireRequest, request: Request) -> None:
+        """Takes the reported question out of its checkpoint for every learner, or puts it back."""
+        account = reviewer(request)
+        report = reports.get(report_id)
+        edition = by_version.get(report.curriculum_version) if report else None
+        checkpoint = (
+            edition.checkpoints.get(report.module_id) if edition and report else None
+        )
+        if report is None or edition is None or checkpoint is None:
+            raise HTTPException(404, "No such report.")
+        if body.retired:
+            left = without_retired(edition, checkpoint)
+            if (
+                any(q.id == report.question_id for q in left.questions)
+                and len(left.questions) - 1 < QUESTIONS_PER_ATTEMPT
+            ):
+                raise HTTPException(
+                    409,
+                    f"The checkpoint needs at least {QUESTIONS_PER_ATTEMPT} questions; fix this one in its file "
+                    "instead.",
+                )
+        reports.set_retired(
+            report.curriculum_version,
+            report.module_id,
+            report.question_id,
+            body.retired,
+            account.email,
+        )
 
     @app.post("/review/question-reports/{report_id}")
     def resolve_report(report_id: str, body: ResolveRequest, request: Request) -> None:
@@ -1472,9 +1530,20 @@ def create_app(
                 raise SubmissionError(
                     "Give a link to your project, attach an archive, or both."
                 )
+            if archive is None and github_repository(checked_link) is None:
+                raise SubmissionError(
+                    "The reviewer reads public GitHub repositories and archives. Give a GitHub link, or attach "
+                    "an archive of your code."
+                )
             path = store.path_of(account)
             if path is None:
                 raise HTTPException(404, "You have no path yet.")
+            if edition_of(path).roadmap.llm is None:
+                raise HTTPException(
+                    503,
+                    "Projects cannot be reviewed on this site right now, so nothing was submitted. "
+                    "Try again later.",
+                )
             # Checks the path's rules before anything is kept.
             path.with_submission(module_id)
             stored = None
@@ -1487,6 +1556,7 @@ def create_app(
             raise HTTPException(409, str(error)) from error
         except KeyError as error:
             raise HTTPException(404, str(error.args[0])) from error
+        before = path.item(module_id).progress
         change(account, lambda current: current.with_submission(module_id))
         item = path.item(module_id)
         submission = found.submit(
@@ -1500,15 +1570,21 @@ def create_app(
             archive=stored,
         )
         edition = edition_of(path)
-        if edition.roadmap.llm is None:
-            return submission  # waits for a person
+        assert (
+            edition.roadmap.llm is not None
+        )  # nosec B101: refused above without a model
         found.set_status(submission.id, SubmissionStatus.REVIEWING)
         module = next(
             (m for m in edition.roadmap.curriculum.modules if m.id == module_id),
             item.module,
         )
         background.add_task(
-            review_by_model, submission.id, account, module, edition.roadmap.llm
+            review_by_model,
+            submission.id,
+            account,
+            module,
+            edition.roadmap.llm,
+            before,
         )
         return found.get(submission.id) or submission
 
@@ -1524,31 +1600,51 @@ def create_app(
         )
 
     def review_by_model(
-        submission_id: str, account: Account, module: Module, llm: LLMClient
+        submission_id: str,
+        account: Account,
+        module: Module,
+        llm: LLMClient,
+        before: Progress = Progress.NOT_STARTED,
     ) -> None:
         """Runs after the submission is answered. The project is read, the model grades it, code checks the
-        model's evidence and decides; the learner's path follows. Without a usable answer from any model, the
-        submission waits for a person."""
+        model's evidence and decides; the learner's path follows. When the project cannot be read or no model
+        answers, nothing is decided: the learner is told why and submits again, and nobody else is asked.
+        """
         found = submission_store()
         submission = found.get(submission_id)
         if submission is None:
             return
+
+        def failed(reason: str) -> None:
+            found.fail(submission_id, reason)
+            try:
+                store.change_path(
+                    account,
+                    lambda path: path.without_submission(submission.module_id, before),
+                )
+            except (LookupError, PathStateError, KeyError) as error:
+                logger.info(
+                    "Failed review of %s not applied to the path: %s",
+                    submission_id,
+                    error,
+                )
+
         try:
             files = project_files(submission)
         except ProjectError as error:
-            decide(submission, account, False, str(error), "model")
+            failed(f"Your project could not be read: {error}")
             return
         try:
             result = ProjectReviewer(llm, runs=review_runs).review(module, files)
         except LLMUnavailable as error:
             logger.warning("No review of %s by a model: %s", submission_id, error)
-            found.set_status(submission_id, SubmissionStatus.SUBMITTED)
+            failed(UNREVIEWED)
             return
         except (
             Exception
         ):  # noqa: BLE001 - a background task: nobody else would see the error
             logger.exception("The review of %s failed", submission_id)
-            found.set_status(submission_id, SubmissionStatus.SUBMITTED)
+            failed(UNREVIEWED)
             return
         decide(submission, account, result.passed, result.feedback, "model", result)
 

@@ -47,7 +47,10 @@ class SubmissionError(ValueError):
 
 class Status(StrEnum):
     REVIEWING = "reviewing"  # the model is reading it
-    SUBMITTED = "submitted"  # waiting for a person: no model could review it
+    SUBMITTED = "submitted"  # waiting for a person: kept for submissions made before every one went to a model
+    # Not reviewed: the project could not be read or no model answered. The learner is told why and submits
+    # again; nobody else sees it.
+    FAILED = "failed"
     ACCEPTED = "accepted"
     RETURNED = "returned"
 
@@ -228,6 +231,15 @@ class SubmissionStore:
             tx.execute(
                 "UPDATE submissions SET status = ? WHERE id = ?",
                 (status, submission_id),
+            )
+
+    def fail(self, submission_id: str, reason: str) -> None:
+        """The review could not be done; the reason is for the learner."""
+        with self._db.transaction() as tx:
+            tx.execute(
+                "UPDATE submissions SET status = ?, review_comment = ?, reviewed_at = ?, reviewed_by = NULL"
+                " WHERE id = ?",
+                (Status.FAILED, reason, datetime.now(UTC).isoformat(), submission_id),
             )
 
     def review(

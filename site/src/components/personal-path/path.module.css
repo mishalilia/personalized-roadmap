@@ -2817,6 +2817,31 @@ button.sideNext {
   font-family: var(--ifm-heading-font-family);
 }
 
+.reviewHead a {
+  color: inherit;
+}
+
+.reviewHead a:hover strong {
+  text-decoration: underline;
+}
+
+/* The AI's review on the reviewers' page: folded until asked for. */
+.reviewDetails {
+  border-top: 1px solid hsl(0, 0%, 20%);
+  padding-top: 0.6rem;
+}
+
+.reviewDetails > summary {
+  cursor: pointer;
+  color: var(--accent-gold);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.reviewDetails[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
 .menu > a {
   display: flex;
   align-items: center;

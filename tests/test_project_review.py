@@ -273,18 +273,46 @@ def test_a_project_without_the_evidence_is_sent_back_with_the_feedback(site):
     assert progress(client) == "returned"
 
 
-def test_a_link_the_review_cannot_read_is_sent_back_at_once(site):
+def test_a_link_the_review_cannot_read_is_refused_at_once(site):
     client, llm = site(LLMUnavailable("no planning in this test"))
     planned(client)
 
-    client.post(f"/me/submissions/{PROJECT}", data={"link": "https://my-demo.example"})
+    refused = client.post(
+        f"/me/submissions/{PROJECT}", data={"link": "https://my-demo.example"}
+    )
 
-    after = client.get(f"/me/submissions/{PROJECT}").json()
-    assert after["status"] == "returned" and "GitHub" in after["review_comment"]
+    assert refused.status_code == 422 and "GitHub" in refused.json()["detail"]
+    assert client.get(f"/me/submissions/{PROJECT}").json() is None
+    assert progress(client) == "not_started"
     assert len(llm.prompts) == 1  # planning only: no model call for the review
 
 
-def test_without_a_usable_answer_the_project_waits_for_a_person(site):
+def test_a_repository_that_cannot_be_read_is_the_learners_error_not_a_review(site):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404)
+
+    client, llm = site(
+        LLMUnavailable("no planning in this test"),
+        github=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    planned(client)
+
+    client.post(
+        f"/me/submissions/{PROJECT}", data={"link": "https://github.com/l/private"}
+    )
+
+    after = client.get(f"/me/submissions/{PROJECT}").json()
+    assert after["status"] == "failed" and after["review_comment"].startswith(
+        "Your project could not be read"
+    )
+    assert after["reviewed_by"] is None
+    assert (
+        progress(client) == "not_started"
+    )  # as before the submission: the learner submits again
+    assert len(llm.prompts) == 1
+
+
+def test_without_a_usable_answer_the_learner_is_told_and_nobody_else_is_asked(site):
     client, _ = site(LLMUnavailable("no planning"), LLMUnavailable("rate limited"))
     planned(client)
 
@@ -293,8 +321,12 @@ def test_without_a_usable_answer_the_project_waits_for_a_person(site):
         files={"archive": ("detector.tar.gz", project(), "application/gzip")},
     )
 
-    assert client.get(f"/me/submissions/{PROJECT}").json()["status"] == "submitted"
-    assert progress(client) == "submitted"
+    after = client.get(f"/me/submissions/{PROJECT}").json()
+    assert (
+        after["status"] == "failed"
+        and "nothing was sent to anyone" in after["review_comment"]
+    )
+    assert progress(client) == "not_started"
 
 
 def test_a_public_github_repository_is_reviewed_from_its_link(site):

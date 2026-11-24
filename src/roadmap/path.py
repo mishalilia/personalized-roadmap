@@ -558,6 +558,13 @@ class LearningPath(BaseModel):
             item.model_copy(update={"progress": Progress.SUBMITTED, "adjustment": None})
         )
 
+    def without_submission(self, module_id: str, back_to: Progress) -> "LearningPath":
+        """The submission could not be reviewed: the module is as it was before it, if nothing else changed."""
+        item = self.item(module_id)
+        if item.progress is not Progress.SUBMITTED:
+            return self
+        return self._replace(item.model_copy(update={"progress": back_to}))
+
     def with_review(
         self, module_id: str, accepted: bool, comment: str
     ) -> "LearningPath":

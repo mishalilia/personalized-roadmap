@@ -3,6 +3,9 @@
 Checkpoint questions are generated and still drafts, so a learner who meets one with a wrong answer key or an
 unclear wording can say so. A report keeps the question it is about, why, and an optional comment; one per
 learner and question, the latest replacing the earlier. Reviewers see the open ones with the question in full.
+
+A reviewer can also take a reported question out of its checkpoint at once: learners stop getting it, and the
+topic's other questions take its place, until someone fixes it in the checkpoint's file and puts it back.
 """
 
 from __future__ import annotations
@@ -59,6 +62,12 @@ class QuestionReportStore:
                 " curriculum_version TEXT NOT NULL, question_id TEXT NOT NULL, reason TEXT NOT NULL,"
                 " comment TEXT NOT NULL, reported_at TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0,"
                 " UNIQUE (account_id, curriculum_version, module_id, question_id))"
+            )
+            tx.execute(
+                "CREATE TABLE IF NOT EXISTS retired_questions ("
+                " curriculum_version TEXT NOT NULL, module_id TEXT NOT NULL, question_id TEXT NOT NULL,"
+                " retired_by TEXT NOT NULL, retired_at TEXT NOT NULL,"
+                " PRIMARY KEY (curriculum_version, module_id, question_id))"
             )
 
     def add(
@@ -119,6 +128,55 @@ class QuestionReportStore:
             )
             for row in rows
         ]
+
+    def get(self, report_id: str) -> QuestionReport | None:
+        return next(
+            (report for report in self.listed(10_000) if report.id == report_id), None
+        )
+
+    def retired(self, curriculum_version: str, module_id: str) -> frozenset[str]:
+        """The ids of the questions taken out of this checkpoint."""
+        with self._db.transaction() as tx:
+            rows = tx.execute(
+                "SELECT question_id FROM retired_questions WHERE curriculum_version = ? AND module_id = ?",
+                (curriculum_version, module_id),
+            ).fetchall()
+        return frozenset(row[0] for row in rows)
+
+    def set_retired(
+        self,
+        curriculum_version: str,
+        module_id: str,
+        question_id: str,
+        retired: bool,
+        by: str,
+    ) -> None:
+        """Takes a question out of its checkpoint, or puts it back. Taking it out resolves its reports."""
+        with self._db.transaction() as tx:
+            if retired:
+                tx.execute(
+                    "INSERT INTO retired_questions (curriculum_version, module_id, question_id, retired_by,"
+                    " retired_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (curriculum_version, module_id, question_id)"
+                    " DO NOTHING",
+                    (
+                        curriculum_version,
+                        module_id,
+                        question_id,
+                        by,
+                        datetime.now(UTC).isoformat(),
+                    ),
+                )
+                tx.execute(
+                    "UPDATE question_reports SET resolved = 1 WHERE curriculum_version = ? AND module_id = ?"
+                    " AND question_id = ?",
+                    (curriculum_version, module_id, question_id),
+                )
+            else:
+                tx.execute(
+                    "DELETE FROM retired_questions WHERE curriculum_version = ? AND module_id = ?"
+                    " AND question_id = ?",
+                    (curriculum_version, module_id, question_id),
+                )
 
     def set_resolved(self, report_id: str, resolved: bool) -> bool:
         """False when there is no such report."""

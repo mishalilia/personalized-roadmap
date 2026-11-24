@@ -6,7 +6,10 @@ from fastapi.testclient import TestClient
 from roadmap import Roadmap
 from roadmap.accounts import AccountStore
 from roadmap.api import Edition, RateLimiter, create_app
+from roadmap.llm import LLMUnavailable
 from roadmap.submissions import MAX_ARCHIVE_BYTES, SubmissionStore
+from helpers import FakeLLM
+from test_project_review import model_review, project
 
 SITE = "https://curriculum.example"
 PROJECT = "tracks/vision/capstone"
@@ -19,17 +22,19 @@ def zipped() -> bytes:
     return b"PK\x03\x04" + b"a zipped project"
 
 
-@pytest.fixture
-def site(tmp_path: Path, curriculum, questions):
+def site_with(tmp_path: Path, curriculum, questions, *answers):  # type: ignore[no-untyped-def]
+    """A site whose model gives these answers in turn; planning takes the first."""
     accounts = AccountStore(tmp_path / "accounts.sqlite")
     submissions = SubmissionStore(tmp_path / "accounts.sqlite", tmp_path / "uploads")
+    llm = FakeLLM(LLMUnavailable("no planning in these tests"), *answers)
     app = create_app(
-        [Edition(Roadmap(curriculum, questions, llm=None), {})],
+        [Edition(Roadmap(curriculum, questions, llm=llm), {})],
         [SITE],
         RateLimiter(100, window=3600),
         accounts=accounts,
         submissions=submissions,
         reviewers={REVIEWER},
+        review_runs=1,
     )
 
     def browser(email: str) -> TestClient:
@@ -38,6 +43,12 @@ def site(tmp_path: Path, curriculum, questions):
         return client
 
     return browser, tmp_path / "uploads"
+
+
+@pytest.fixture
+def site(tmp_path: Path, curriculum, questions):
+    # The model never answers: every submission is kept, then comes back unreviewed.
+    return site_with(tmp_path, curriculum, questions, *[LLMUnavailable("busy")] * 20)
 
 
 def learner_with_path(browser) -> TestClient:
@@ -64,47 +75,87 @@ def test_a_capstone_is_a_project_and_cannot_just_be_marked_done(site):
     assert done.status_code == 409
 
 
-def test_a_project_is_submitted_reviewed_and_returned_or_accepted(site):
-    browser, uploads = site
+def test_a_reviewer_sees_the_models_decision_and_can_change_it(
+    tmp_path, curriculum, questions
+):
+    not_shown = {
+        "name": "Testing",
+        "about": "behaviour",
+        "verdict": "not_met",
+        "evidence": [],
+        "comment": "No results.",
+    }
+    browser, uploads = site_with(
+        tmp_path,
+        curriculum,
+        questions,
+        model_review(not_shown, feedback="Add results."),
+    )
     learner = learner_with_path(browser)
     reviewer = browser(REVIEWER)
 
     sent = learner.post(
         f"/me/submissions/{PROJECT}",
-        data={"link": "https://github.com/learner/detector", "note": "See the README."},
-        files={"archive": ("../../detector.zip", zipped(), "application/zip")},
-    )
+        data={"note": "See the README."},
+        files={"archive": ("../../detector.tar.gz", project(), "application/gzip")},
+    ).json()
 
-    assert sent.status_code == 200, sent.text
-    submission = sent.json()
+    submission = learner.get(f"/me/submissions/{PROJECT}").json()
+    assert submission["status"] == "returned" and submission["reviewed_by"] == "model"
     assert (
-        submission["status"] == "submitted"
-        and submission["file_name"] == "detector.zip"
+        submission["file_name"] == "detector.tar.gz"
+        and len(list(uploads.iterdir())) == 1
     )
-    assert progress(learner) == "submitted"
-    assert len(list(uploads.iterdir())) == 1
+    assert progress(learner) == "returned"
     queue = reviewer.get("/review/submissions").json()
-    assert [s["email"] for s in queue["waiting"]] == ["learner@example.com"]
+    assert queue["waiting"] == []
+    assert [s["id"] for s in queue["reviewed"]] == [sent["id"]]
+    assert (
+        queue["reviewed"][0]["ai_review"]["levels"][0]["criteria"][0]["name"]
+        == "Testing"
+    )
 
-    download = reviewer.get(f"/submissions/{submission['id']}/archive")
-    assert download.content == zipped()
+    download = reviewer.get(f"/submissions/{sent['id']}/archive")
+    assert download.content == project()
     assert download.headers["content-type"] == "application/octet-stream"
     assert "attachment" in download.headers["content-disposition"]
 
-    returned = reviewer.post(
-        f"/review/submissions/{submission['id']}",
-        json={"accept": False, "comment": "Add the evaluation numbers."},
+    accepted = reviewer.post(
+        f"/review/submissions/{sent['id']}",
+        json={"accept": True, "comment": "The results are in the video."},
     )
-    assert returned.json()["status"] == "returned"
-    assert progress(learner) == "returned"
-
-    again = learner.post(
-        f"/me/submissions/{PROJECT}",
-        data={"link": "https://github.com/learner/detector"},
-    ).json()
-    assert len(list(uploads.iterdir())) == 0  # the replaced archive is gone
-    reviewer.post(f"/review/submissions/{again['id']}", json={"accept": True})
+    assert (
+        accepted.json()["status"] == "accepted"
+        and accepted.json()["reviewed_by"] == REVIEWER
+    )
     assert progress(learner) == "done"
+
+
+def test_without_a_model_nothing_is_submitted(tmp_path, curriculum, questions):
+    app = create_app(
+        [Edition(Roadmap(curriculum, questions, llm=None), {})],
+        [SITE],
+        RateLimiter(100, window=3600),
+        accounts=AccountStore(tmp_path / "a.sqlite"),
+        submissions=SubmissionStore(tmp_path / "a.sqlite", tmp_path / "uploads"),
+    )
+    client = TestClient(app, base_url="https://testserver")
+    client.post(
+        "/auth/sign-up", json={"email": "learner@example.com", "password": PASSWORD}
+    )
+    client.post("/path", json={"answers": {"goal": "Computer vision"}, "level": None})
+    client.post("/me/path/confirm")
+
+    refused = client.post(
+        f"/me/submissions/{PROJECT}", data={"link": "https://github.com/l/detector"}
+    )
+
+    assert (
+        refused.status_code == 503
+        and "nothing was submitted" in refused.json()["detail"]
+    )
+    assert progress(client) == "not_started"
+    assert list((tmp_path / "uploads").iterdir()) == []
 
 
 @pytest.mark.parametrize(

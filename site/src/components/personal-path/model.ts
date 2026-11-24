@@ -284,8 +284,9 @@ export interface Submission {
   note: string;
   file_name: string | null;
   file_size: number | null;
-  // "reviewing": the model is reading it; "submitted": waiting for a person, as no model could review it.
-  status: "reviewing" | "submitted" | "accepted" | "returned";
+  // "reviewing": the model is reading it; "submitted": waiting for a person (the API runs without a model);
+  // "failed": not reviewed, as the project could not be read or no model answered: the comment says why.
+  status: "reviewing" | "submitted" | "accepted" | "returned" | "failed";
   review_comment: string | null;
   submitted_at: string;
   reviewed_at: string | null;
