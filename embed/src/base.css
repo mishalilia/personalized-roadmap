@@ -1,0 +1,138 @@
+/* What the course site's theme (Infima and css/custom.css) gives the personal-path components, for the
+   shadow roots the embed puts them in: the school's styles stay out, and ours stay in. */
+
+:host {
+  all: initial;
+  --ifm-font-family-base: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ifm-heading-font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --ifm-font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --ifm-font-color-base: #f1f1f1;
+  --ifm-font-color-secondary: hsl(0, 0%, 65%);
+  --ifm-menu-color-active: #f1f1f1;
+  --ifm-background-color: #111111;
+  --ifm-navbar-height: 0px;
+  --accent-gold: #fff500;
+  --accent-gold-light: #fff84d;
+  --accent-amber: #ffb902;
+  --duration-fast: 0.15s;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* The lesson's status above it and its checkpoint below it sit in the school's page: a block of their own. */
+:host(.dotpath-lesson) {
+  display: block;
+  margin: 1.5rem 0;
+}
+
+.dp-root {
+  color: var(--ifm-font-color-base);
+  font-family: var(--ifm-font-family-base);
+  font-size: 16px;
+  line-height: 1.65;
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Lesson blocks are the components' own dark cards; the host's margin spaces them in the school's page. */
+:host(.dotpath-lesson) .dp-root > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+:host(.dotpath-lesson) .dp-root:empty {
+  display: none;
+}
+
+.dp-root *,
+.dp-root *::before,
+.dp-root *::after {
+  box-sizing: border-box;
+}
+
+.dp-root h1,
+.dp-root h2,
+.dp-root h3,
+.dp-root h4 {
+  margin: 0 0 0.5rem;
+  font-family: var(--ifm-heading-font-family);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ifm-font-color-base);
+}
+
+.dp-root h1 {
+  font-size: 2rem;
+}
+
+.dp-root h2 {
+  font-size: 1.5rem;
+}
+
+.dp-root h3 {
+  font-size: 1.2rem;
+}
+
+.dp-root p {
+  margin: 0 0 1rem;
+}
+
+.dp-root a {
+  color: var(--accent-gold);
+  text-decoration: none;
+}
+
+.dp-root a:hover {
+  text-decoration: underline;
+}
+
+.dp-root ul,
+.dp-root ol {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.dp-root code {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.dp-root pre {
+  font-family: var(--ifm-font-family-monospace);
+  background: #1b1b1b;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+}
+
+.dp-root pre code {
+  background: none;
+  padding: 0;
+}
+
+.dp-root button,
+.dp-root input,
+.dp-root textarea,
+.dp-root select {
+  font: inherit;
+  color: inherit;
+}
+
+.dp-root button {
+  cursor: pointer;
+}
+
+.dp-root img,
+.dp-root svg {
+  vertical-align: middle;
+}
+
+.dp-root [hidden] {
+  display: none !important;
+}
+
+.dp-root table {
+  border-collapse: collapse;
+}

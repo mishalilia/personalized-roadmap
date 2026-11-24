@@ -53,3 +53,13 @@ def test_an_account_needs_its_own_email(tmp_path: Path):
 
     with pytest.raises(AccountError):
         store.sign_up("A@EXAMPLE.COM", PASSWORD)
+
+
+def test_a_password_needs_six_characters(tmp_path: Path):
+    store = AccountStore(tmp_path / "accounts.db")
+
+    with pytest.raises(AccountError, match="at least 6"):
+        store.sign_up("short@example.com", "12345")
+    account, _ = store.sign_up("six@example.com", "123456")
+
+    assert account.email == "six@example.com"

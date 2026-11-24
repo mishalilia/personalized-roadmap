@@ -1,0 +1,245 @@
+/* A demo school's own look: light, serif headings, teal. Nothing in it knows about DotPath. */
+:root {
+  --ink: #1d2433;
+  --muted: #5b6577;
+  --line: #e3e6ec;
+  --paper: #fbfaf7;
+  --teal: #0f766e;
+  --teal-soft: #e6f4f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.7 Georgia, "Times New Roman", serif;
+}
+
+a {
+  color: var(--teal);
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
+  font-family: Georgia, serif;
+}
+
+.top nav {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.top nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.top nav .cta {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--teal);
+  border-radius: 999px;
+  color: var(--teal);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 2.5rem;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.outline {
+  position: sticky;
+  top: 4.5rem;
+  align-self: start;
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.outline h4 {
+  margin: 1.2rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.outline ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.outline a {
+  display: block;
+  padding: 0.2rem 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.outline a[aria-current="page"] {
+  color: var(--teal);
+  font-weight: 700;
+}
+
+main {
+  min-width: 0;
+}
+
+.crumbs {
+  margin: 0;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+h1 {
+  margin: 0.3rem 0 1.5rem;
+  font-size: 2.4rem;
+  line-height: 1.2;
+}
+
+.lesson h2 {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.summary {
+  font-size: 1.15rem;
+  color: var(--muted);
+}
+
+.resource {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.8rem 0;
+  padding: 0.9rem 1.1rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.resource .kind {
+  color: var(--teal);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+th,
+td {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--teal-soft);
+}
+
+code {
+  padding: 0.1rem 0.3rem;
+  background: #eef0f3;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+pre {
+  overflow: auto;
+  padding: 1rem;
+  background: #1d2433;
+  color: #e8ebf1;
+  border-radius: 10px;
+}
+
+pre code {
+  background: none;
+  color: inherit;
+}
+
+.start {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background: var(--teal);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: system-ui, sans-serif;
+}
+
+footer {
+  padding: 2rem 1.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .outline {
+    position: static;
+    max-height: none;
+  }
+
+  .top nav a:not(.cta) {
+    display: none;
+  }
+}

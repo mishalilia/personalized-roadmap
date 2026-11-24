@@ -108,9 +108,11 @@ export default function PathDrawer(): ReactNode {
 
   useEffect(() => {
     if (!open) return;
-    // Escape closes the map or a dialog first; the panel only when nothing is open over it.
+    // Escape closes the map or a dialog first; the panel only when nothing is open over it. The panel's own
+    // root is the page, or the shadow root it sits in when embedded in another site.
+    const root = (panel.current?.getRootNode() ?? document) as Document | ShadowRoot;
     const onKey = (event: KeyboardEvent) =>
-      event.key === "Escape" && !auth && !document.querySelector("[aria-modal=true]") && setDrawer(false);
+      event.key === "Escape" && !auth && !root.querySelector("[aria-modal=true]") && setDrawer(false);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);

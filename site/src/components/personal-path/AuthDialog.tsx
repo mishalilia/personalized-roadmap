@@ -2,12 +2,12 @@
 // signing in becomes the account's path.
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { message, usePathApi } from "./api";
+import { embedding, message, signInWithGoogleWindow, usePathApi } from "./api";
 import { applySession, closeAuth, openAuth, startSession, usePathState, type AuthMode } from "./store";
 import { Spinner } from "./ui";
 import styles from "./path.module.css";
 
-const MIN_PASSWORD = 8;
+const MIN_PASSWORD = 6;
 
 export default function AuthDialog(): ReactNode {
   const api = usePathApi();
@@ -92,6 +92,16 @@ export default function AuthDialog(): ReactNode {
             <a
               className={styles.googleButton}
               href={api.googleSignIn(window.location.href.split("#")[0], draftId)}
+              onClick={(event) => {
+                // Embedded in another site: Google in a window of its own (api.ts).
+                if (!embedding.on) return;
+                event.preventDefault();
+                setBusy(true);
+                setError(null);
+                signInWithGoogleWindow(api, draftId)
+                  .then(applySession, (reason: unknown) => setError(message(reason)))
+                  .finally(() => setBusy(false));
+              }}
             >
               <GoogleLogo />
               Continue with Google

@@ -1,7 +1,8 @@
 // The learner's account, in the path panel: their email, signing out, deleting it all.
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, BarChart3, ClipboardCheck, LogOut, Trash2 } from "lucide-react";
-import { message, usePathApi } from "./api";
+import useBaseUrl from "@docusaurus/useBaseUrl";
+import { ChevronDown, BarChart3, ClipboardCheck, LogOut, Palette, Trash2 } from "lucide-react";
+import { embedding, message, usePathApi } from "./api";
 import { applySession } from "./store";
 import styles from "./path.module.css";
 
@@ -14,6 +15,9 @@ export default function AccountMenu({
   hasPassword: boolean;
   reviewer?: boolean;
 }): ReactNode {
+  // The course team's pages live on the course site, also when the panel is embedded in another one.
+  const reviewPage = useBaseUrl("/review");
+  const reportPage = useBaseUrl("/report");
   const api = usePathApi();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -24,7 +28,8 @@ export default function AccountMenu({
   useEffect(() => {
     if (!open) return;
     const close = (event: MouseEvent) => {
-      if (!menu.current?.contains(event.target as Node)) {
+      // composedPath, not target: inside a shadow root (the embedded panel) the target is the shadow's host.
+      if (!menu.current || !event.composedPath().includes(menu.current)) {
         setOpen(false);
         setDeleting(false);
       }
@@ -69,14 +74,26 @@ export default function AccountMenu({
         <div className={styles.menu} role="menu">
           <p className={styles.menuEmail}>{email}</p>
           {reviewer && (
-            <a role="menuitem" href="/review">
+            <a role="menuitem" href={reviewPage}>
               <ClipboardCheck size={15} /> Review projects
             </a>
           )}
           {reviewer && (
-            <a role="menuitem" href="/report">
+            <a role="menuitem" href={reportPage}>
               <BarChart3 size={15} /> Where learners stop
             </a>
+          )}
+          {embedding.design && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                embedding.design?.();
+              }}
+            >
+              <Palette size={15} /> Panel design
+            </button>
           )}
           <button type="button" role="menuitem" onClick={() => void signOut()}>
             <LogOut size={15} /> Sign out

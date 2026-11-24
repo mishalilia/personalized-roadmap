@@ -7,13 +7,14 @@ Curriculum ([roadmap.humblebee.ai](https://roadmap.humblebee.ai)). It suggests t
 marks every module to study, prove or skip with a reason, and checks understanding after each module before the
 learner moves on.
 
-**Live:** https://polarislearning.me/personal-path (since 21 November 2026).
+**Live:** https://dotpath.polarislearning.me/personal-path/ (since 21 November 2026); on a school's own site
+through one script tag: https://school.polarislearning.me (since 24 November 2026, see [embed/](embed/README.md)).
 
 Capstone project **S2** — Convergence of Business Administration & Engineering Capstone Design,
 Inha University (IBT / ISE), Fall 2026, in partnership with HumbleBeeAI. Team 3, Polaris.
 
 **Status (20 November 2026).** The Baseline, the Target and three of the four Stretch items are built and
-tested: 230 automated tests pass, the whole flow runs with GPT-6 Luna, and five learners outside the team used
+tested: 248 automated tests pass, the whole flow runs with GPT-6 Luna, and five learners outside the team used
 it. Not built: peer recommendation (Stretch). Known limits are listed under
 [Test results and limitations](#test-results-and-limitations).
 
@@ -87,6 +88,7 @@ questions, applies locks and adds the attribution, so a path never contains a li
 | `config/` | Curriculum versions, onboarding questions, example learners, model providers |
 | `checkpoints/` | Questions and coding problems, one file per module and curriculum version |
 | `site/` | The learner's page: React code for the curriculum site, and a patch for the site's own files |
+| `embed/` | The same panel on any school's website from one script tag, and a demo school |
 | `deploy/` | Docker Compose for the site, the API, PostgreSQL and HTTPS on one server |
 | `tests/` | Tests; the model is replaced by a stub, the curriculum by a small invented course |
 
@@ -229,7 +231,7 @@ The page on the curriculum site, run locally on 5 November without a model key, 
 
 ## Test results and limitations
 
-- **Automated tests:** 230 pass (21 November 2026), with a stub model: parsing both curriculum versions, course
+- **Automated tests:** 248 pass (24 November 2026), with a stub model: parsing both curriculum versions, course
   order, attribution, the fallback, accounts, checkpoint grading, locks, topics, suggestions, goal change,
   project review and the report. Eight run on the real curriculum after `python -m roadmap fetch`.
 - **With the real model:** the whole flow — level, path, checkpoints with open questions, suggestions

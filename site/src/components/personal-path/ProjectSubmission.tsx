@@ -3,7 +3,7 @@
 // sent back with feedback. A person who reviews can see every review and decide otherwise.
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Download, ExternalLink, HelpCircle, Paperclip, X } from "lucide-react";
-import { message, type PathApi } from "./api";
+import { embedding, message, type PathApi } from "./api";
 import {
   MAX_ARCHIVE_MB,
   progressOf,
@@ -200,7 +200,16 @@ function SubmissionCard({ api, submission }: { api: PathApi; submission: Submiss
         </a>
       )}
       {submission.file_name && (
-        <a href={api.archiveUrl(submission.id)} download>
+        <a
+          href={api.archiveUrl(submission.id)}
+          download
+          onClick={(event) => {
+            // Embedded in another site the link would go without the session: fetch it with it.
+            if (!embedding.on) return;
+            event.preventDefault();
+            void api.downloadArchive(submission.id, submission.file_name ?? "project").catch(() => undefined);
+          }}
+        >
           <Download size={15} aria-hidden /> {submission.file_name}
           {submission.file_size !== null && <span className={styles.muted}> · {size(submission.file_size)}</span>}
         </a>

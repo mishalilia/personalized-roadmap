@@ -970,7 +970,8 @@ function PublicLinkCard({ api }: { api: PathApi }): ReactNode {
   useEffect(() => {
     api.publicLink().then(setToken, (reason) => setError(message(reason)));
   }, [api]);
-  const link = token ? `${window.location.origin}${page}?link=${encodeURIComponent(token)}` : null;
+  // `page` is the course site's page, also when the panel is embedded in another site.
+  const link = token ? new URL(`${page}?link=${encodeURIComponent(token)}`, window.location.origin).href : null;
   const act = async (action: () => Promise<string | void>) => {
     setBusy(true);
     setError(null);

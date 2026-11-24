@@ -1,0 +1,191 @@
+// How the panel looks on this school's site: the theme the API gives with the site (GET /embed/site), or the
+// one a designer is trying out right now. It becomes one small stylesheet that every shadow root of the
+// widget adopts after the components' own; build.mjs (themable.mjs) made the components' colours follow it.
+import { useSyncExternalStore } from "react";
+
+export type Mode = "dark" | "light";
+export type Font = "dotpath" | "site" | "system" | "serif";
+export type Corners = "sharp" | "default" | "round";
+
+export interface Theme {
+  mode: Mode;
+  accent: string; // #rrggbb
+  font: Font;
+  corners: Corners;
+  logo: string | null;
+}
+
+export const DEFAULT_THEME: Theme = { mode: "dark", accent: "#fff500", font: "dotpath", corners: "default", logo: null };
+// DotPath's yellow cannot be read on white; on a light theme it starts from this instead.
+export const LIGHT_ACCENT = "#c2410c";
+
+const ROUND: Record<Corners, number> = { sharp: 0.3, default: 1, round: 1.6 };
+
+// ---------- colour arithmetic ----------
+
+export function rgbOf(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+function luminance(hex: string): number {
+  const [r, g, b] = rgbOf(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function contrast(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+// The panel's own background in each mode, for checking the accent against it.
+export const SURFACE: Record<Mode, string> = { dark: "#181818", light: "#ffffff" };
+
+// Text on a button of the accent colour: whichever of near-black and white reads better.
+function onAccent(accent: string): string {
+  return contrast(accent, "#111111") >= contrast(accent, "#ffffff") ? "#111111" : "#ffffff";
+}
+
+// Modules to "study" are drawn in the accent and modules to "prove" in blue (hue 206): an accent close to that
+// blue makes the two look alike on the path and the map.
+export function nearProveBlue(hex: string): boolean {
+  const [r, g, b] = rgbOf(hex).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  if (delta < 0.2) return false; // a grey has no hue to confuse
+  const hue =
+    max === r ? (60 * ((g - b) / delta) + 360) % 360 : max === g ? 60 * ((b - r) / delta) + 120 : 60 * ((r - g) / delta) + 240;
+  return Math.abs(hue - 206) < 30;
+}
+
+export const isHex =(value: string) => /^#[0-9a-fA-F]{6}$/.test(value);
+
+// ---------- fonts ----------
+
+const DOTPATH_BODY = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const DOTPATH_HEAD = '"Space Grotesk", "Inter", system-ui, sans-serif';
+const SYSTEM = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const SERIF = 'Georgia, "Iowan Old Style", "Times New Roman", serif';
+
+// The school's own fonts, as its page has them (its body text and its first heading).
+export function siteFonts(): [string, string] {
+  const clean = (value: string) => value.replace(/[;{}<>\\]/g, "").trim();
+  const body = clean(getComputedStyle(document.body).fontFamily) || SYSTEM;
+  const heading = document.querySelector("h1, h2");
+  return [body, heading ? clean(getComputedStyle(heading).fontFamily) || body : body];
+}
+
+function fontsOf(font: Font): [string, string] {
+  switch (font) {
+    case "site":
+      return siteFonts();
+    case "system":
+      return [SYSTEM, SYSTEM];
+    case "serif":
+      return [SERIF, SERIF];
+    default:
+      return [DOTPATH_BODY, DOTPATH_HEAD];
+  }
+}
+
+// ---------- the stylesheet ----------
+
+export function themeCss(theme: Theme): string {
+  const accent = isHex(theme.accent) ? theme.accent.toLowerCase() : DEFAULT_THEME.accent;
+  const [r, g, b] = rgbOf(accent);
+  const [body, heading] = fontsOf(theme.font);
+  const rules = [
+    `--accent-gold: ${accent};`,
+    `--accent-gold-light: color-mix(in srgb, ${accent} 78%, white);`,
+    `--dp-accent-rgb: ${r}, ${g}, ${b};`,
+    `--dp-on-accent: ${onAccent(accent)};`,
+    `--dp-round: ${ROUND[theme.corners] ?? 1};`,
+    `--ifm-font-family-base: ${body};`,
+    `--ifm-heading-font-family: ${heading};`,
+  ];
+  if (theme.mode === "light") {
+    rules.push(
+      "--ifm-font-color-base: #1c1c1a;",
+      "--ifm-font-color-secondary: #5c5b57;",
+      "--ifm-menu-color-active: #1c1c1a;",
+      "--ifm-background-color: #ffffff;",
+      "--pp-surface: #ffffff;",
+      "--pp-raised: #f5f4f0;",
+      "--pp-hover: #ecebe6;",
+      "--pp-muted: #62615c;",
+      "--pp-blue: hsl(206, 80%, 36%);",
+      "--pp-blue-soft: hsla(206, 80%, 45%, 0.1);",
+      "--pp-green: hsl(142, 65%, 27%);",
+      "--pp-green-soft: hsla(142, 60%, 35%, 0.12);",
+      "--pp-red: hsl(0, 70%, 42%);",
+      "--pp-red-soft: hsla(0, 70%, 50%, 0.1);",
+      "--accent-amber: #b45309;",
+      "--dp-amber-rgb: 180, 83, 9;",
+      "--dp-ink: 0, 0, 0;",
+      "--dp-shadow: 0.3;",
+      // Greys turn over: text from light to dark, surfaces and lines from dark to light (more gently).
+      "--dp-fa: 100%;",
+      "--dp-fs: -1;",
+      "--dp-ba: 100%;",
+      "--dp-bs: -0.45;",
+      `--dp-tint-gold: color-mix(in srgb, ${accent} 12%, white);`,
+      "--dp-tint-blue: #eaf2f9;",
+      "--dp-tint-blue-2: #e2ecf6;",
+      "--dp-tint-green: #e8f5ec;",
+    );
+  } else if (accent !== DEFAULT_THEME.accent) {
+    rules.push(`--dp-tint-gold: color-mix(in srgb, ${accent} 9%, #141414);`);
+  }
+  return `:host {\n  ${rules.join("\n  ")}\n}\n:host { color-scheme: ${theme.mode}; }`;
+}
+
+// ---------- the current theme ----------
+
+let current: Theme = DEFAULT_THEME;
+const listeners = new Set<() => void>();
+const sheets: CSSStyleSheet[] = [];
+const styles: HTMLStyleElement[] = [];
+
+export function getTheme(): Theme {
+  return current;
+}
+
+export function setTheme(theme: Theme): void {
+  current = { ...DEFAULT_THEME, ...theme };
+  const css = themeCss(current);
+  for (const sheet of sheets) sheet.replaceSync(css);
+  for (const style of styles) style.textContent = css;
+  listeners.forEach((listener) => listener());
+}
+
+// The stylesheet a new shadow root adopts; or, where adopting is not supported, a <style> to append.
+let shared: CSSStyleSheet | null = null;
+export function themeSheet(): CSSStyleSheet {
+  if (!shared) {
+    shared = new CSSStyleSheet();
+    shared.replaceSync(themeCss(current));
+    sheets.push(shared);
+  }
+  return shared;
+}
+
+export function themeStyle(): HTMLStyleElement {
+  const style = document.createElement("style");
+  style.textContent = themeCss(current);
+  styles.push(style);
+  return style;
+}
+
+export function useTheme(): Theme {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => current,
+  );
+}

@@ -19,6 +19,25 @@ import type {
   TopicChoice,
 } from "./model";
 
+// Embedded in another site with a script tag (embed/), the panel cannot count on the API's cookie: browsers
+// may block it on a site other than the API's. There the API hands the session to the panel, which keeps it
+// and sends it with every request. On the course site this stays off and the cookie does the work.
+export const embedding: {
+  on: boolean;
+  token: () => string | null;
+  keep: (token: string | null) => void;
+  // Opens the window where the school's designers change the panel's look; null for everyone else.
+  design: (() => void) | null;
+} = { on: false, token: () => null, keep: () => undefined, design: null };
+
+// What the API said about the session, for the embedded panel: a new token, or none any more.
+function keepToken(path: string, data: unknown): void {
+  const found = data as { token?: unknown; account?: unknown } | null;
+  if (typeof found?.token === "string") embedding.keep(found.token);
+  else if (path === "/auth/sign-out" || path === "/auth/delete") embedding.keep(null);
+  else if (path === "/auth/session" && found?.account === null) embedding.keep(null);
+}
+
 // A text question's answer, or a choice question's: the chosen options' ids and optional details.
 export interface ChoiceAnswer {
   choices: string[];
@@ -168,6 +187,8 @@ export interface PathApi {
   providers(): Promise<{ google: boolean }>;
   // Where to send the browser to sign in with Google; it comes back to `returnTo` signed in.
   googleSignIn(returnTo: string, draftId: string | null): string;
+  // The API's page that ends a Google sign-in started from the embedded panel, in a window of its own.
+  embedSignedInPage(): string;
 
   // The signed-in learner's path. Every change returns the path as the API stored it.
   choose(moduleId: string, choice: Choice): Promise<LearningPath>;
@@ -206,6 +227,8 @@ export interface PathApi {
   submit(moduleId: string, form: FormData): Promise<Submission>;
   mySubmission(moduleId: string): Promise<Submission | null>;
   archiveUrl(submissionId: string): string;
+  // The archive as a download, for the embedded panel, whose links do not carry the session.
+  downloadArchive(submissionId: string, fileName: string): Promise<void>;
   reviewQueue(): Promise<{ waiting: Submission[]; reviewed: Submission[] }>;
   review(submissionId: string, accept: boolean, comment: string): Promise<Submission>;
   courseReport(): Promise<CourseReport>;
@@ -235,6 +258,18 @@ export function pathApi(base: string): PathApi {
   const url = (path: string) => `${base.replace(/\/$/, "")}${path}`;
   const version = (value: string) => `version=${encodeURIComponent(value)}`;
 
+  // A form sets its own type, with the boundary between its parts.
+  function headersFor(json: boolean): Record<string, string> | undefined {
+    const headers: Record<string, string> = {};
+    if (json) headers["Content-Type"] = "application/json";
+    if (embedding.on) {
+      headers["X-DotPath-Embed"] = "1";
+      const token = embedding.token();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
+    return Object.keys(headers).length ? headers : undefined;
+  }
+
   async function call<T>(path: string, body?: unknown): Promise<T> {
     let response: Response;
     const form = body instanceof FormData;
@@ -242,8 +277,7 @@ export function pathApi(base: string): PathApi {
       response = await fetch(url(path), {
         method: body === undefined ? "GET" : "POST",
         credentials: "include",
-        // A form sets its own type, with the boundary between its parts.
-        headers: body === undefined || form ? undefined : { "Content-Type": "application/json" },
+        headers: headersFor(body !== undefined && !form),
         body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       });
     } catch {
@@ -259,9 +293,13 @@ export function pathApi(base: string): PathApi {
       const text = detail ?? `The personal path service answered with an error (${response.status}).`;
       // What the learner saw, for the assistant; not the assistant's own errors, nor a lapsed sign-in.
       if (path !== "/me/chat" && response.status !== 401) noteError(text);
+      // A lapsed session: the embedded panel forgets its token (a wrong password is not one).
+      if (embedding.on && response.status === 401 && !path.startsWith("/auth/")) embedding.keep(null);
       throw new ApiError(text, response.status);
     }
-    return (await response.json()) as T;
+    const data = (await response.json()) as T;
+    if (embedding.on) keepToken(path, data);
+    return data;
   }
 
   const client: PathApi = {
@@ -289,6 +327,9 @@ export function pathApi(base: string): PathApi {
           ...(draftId ? { draft_id: draftId } : {}),
         })}`,
       ),
+
+    embedSignedInPage: () =>
+      url(`/embed/signed-in?origin=${encodeURIComponent(window.location.origin)}`),
 
     choose: (moduleId, choice) => call("/me/path/choice", { module_id: moduleId, choice }),
     chooseTopic: (moduleId, topic, choice) => call("/me/path/topic", { module_id: moduleId, topic, choice }),
@@ -324,6 +365,18 @@ export function pathApi(base: string): PathApi {
     submit: (moduleId, form) => call(`/me/submissions/${moduleId}`, form),
     mySubmission: (moduleId) => call(`/me/submissions/${moduleId}`),
     archiveUrl: (submissionId) => url(`/submissions/${encodeURIComponent(submissionId)}/archive`),
+    downloadArchive: async (submissionId, fileName) => {
+      const response = await fetch(url(`/submissions/${encodeURIComponent(submissionId)}/archive`), {
+        credentials: "include",
+        headers: headersFor(false),
+      });
+      if (!response.ok) throw new ApiError("The archive could not be downloaded.", response.status);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(await response.blob());
+      link.download = fileName;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+    },
     reviewQueue: () => call("/review/submissions"),
     courseReport: () => call("/review/report"),
     reportQuestion: (moduleId, questionId, reason, comment) =>
@@ -344,6 +397,46 @@ export function pathApi(base: string): PathApi {
   };
   clients.set(base, client);
   return client;
+}
+
+const GOOGLE_ERRORS: Record<string, string> = {
+  cancelled: "Signing in with Google was cancelled.",
+  google: "Google could not confirm your account. Try again, or use your email and a password.",
+};
+
+// Google sign-in from the embedded panel: in a window of its own, so the learner stays on the school's page.
+// The API's page at the end of it hands over a session, to this site only; the panel then reads the session.
+export function signInWithGoogleWindow(api: PathApi, draftId: string | null): Promise<Session> {
+  const start = api.googleSignIn(api.embedSignedInPage(), draftId);
+  const popup = window.open(start, "dotpath-google", "popup,width=480,height=640");
+  if (!popup) return Promise.reject(new ApiError("Allow pop-ups for this site to sign in with Google.", 0));
+  const apiOrigin = new URL(start).origin;
+  return new Promise<Session>((resolve, reject) => {
+    let settled = false;
+    const finish = (then: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onMessage);
+      window.clearInterval(watch);
+      then();
+    };
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== apiOrigin || event.data?.type !== "dotpath-session") return;
+      const { token, error } = event.data as { token?: string; error?: string };
+      finish(() => {
+        if (!token) return reject(new ApiError(GOOGLE_ERRORS[error ?? ""] ?? GOOGLE_ERRORS.google, 0));
+        embedding.keep(token);
+        api.session().then(resolve, reject);
+      });
+    }
+    window.addEventListener("message", onMessage);
+    // Closed without an answer: give a message on its way a moment, then call it cancelled.
+    const watch = window.setInterval(() => {
+      if (!popup.closed) return;
+      window.clearInterval(watch);
+      window.setTimeout(() => finish(() => reject(new ApiError(GOOGLE_ERRORS.cancelled, 0))), 1000);
+    }, 400);
+  });
 }
 
 export function message(reason: unknown): string {

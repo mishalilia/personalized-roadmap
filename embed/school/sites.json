@@ -1,0 +1,96 @@
+{
+  "http://127.0.0.1:5050": {
+    "versions": [
+      {
+        "name": "current",
+        "label": "Current",
+        "docs": [
+          {
+            "id": "engineering-fundamentals/terminal-algorithmic-basics",
+            "path": "/course/engineering-fundamentals/terminal-algorithmic-basics/"
+          },
+          {
+            "id": "engineering-fundamentals/math-for-ai",
+            "path": "/course/engineering-fundamentals/math-for-ai/"
+          },
+          {
+            "id": "engineering-fundamentals/data-manipulation",
+            "path": "/course/engineering-fundamentals/data-manipulation/"
+          },
+          {
+            "id": "engineering-fundamentals/electives",
+            "path": "/course/engineering-fundamentals/electives/"
+          },
+          {
+            "id": "softlanding/core-systems/software-engineering",
+            "path": "/course/softlanding/core-systems/software-engineering/"
+          },
+          {
+            "id": "softlanding/core-systems/applied-ml-deep-learning",
+            "path": "/course/softlanding/core-systems/applied-ml-deep-learning/"
+          },
+          {
+            "id": "softlanding/core-systems/llm-applications",
+            "path": "/course/softlanding/core-systems/llm-applications/"
+          },
+          {
+            "id": "softlanding/core-systems/systems-networking-data",
+            "path": "/course/softlanding/core-systems/systems-networking-data/"
+          },
+          {
+            "id": "softlanding/core-systems/apis-containers-deployment",
+            "path": "/course/softlanding/core-systems/apis-containers-deployment/"
+          },
+          {
+            "id": "softlanding/core-systems/electives",
+            "path": "/course/softlanding/core-systems/electives/"
+          },
+          {
+            "id": "softlanding/specializations/computer-vision/resources",
+            "path": "/course/softlanding/specializations/computer-vision/resources/"
+          },
+          {
+            "id": "softlanding/specializations/computer-vision/capstone",
+            "path": "/course/softlanding/specializations/computer-vision/capstone/"
+          },
+          {
+            "id": "softlanding/specializations/data-science/resources",
+            "path": "/course/softlanding/specializations/data-science/resources/"
+          },
+          {
+            "id": "softlanding/specializations/data-science/capstone",
+            "path": "/course/softlanding/specializations/data-science/capstone/"
+          },
+          {
+            "id": "softlanding/specializations/generative-ai/resources",
+            "path": "/course/softlanding/specializations/generative-ai/resources/"
+          },
+          {
+            "id": "softlanding/specializations/generative-ai/capstone",
+            "path": "/course/softlanding/specializations/generative-ai/capstone/"
+          },
+          {
+            "id": "softlanding/specializations/nlp/resources",
+            "path": "/course/softlanding/specializations/nlp/resources/"
+          },
+          {
+            "id": "softlanding/specializations/nlp/capstone",
+            "path": "/course/softlanding/specializations/nlp/capstone/"
+          },
+          {
+            "id": "softlanding/specializations/software-engineering/resources",
+            "path": "/course/softlanding/specializations/software-engineering/resources/"
+          },
+          {
+            "id": "softlanding/specializations/software-engineering/capstone",
+            "path": "/course/softlanding/specializations/software-engineering/capstone/"
+          }
+        ]
+      }
+    ],
+    "content": "main article.lesson",
+    "designers": [
+      "embed-test-1795452033085@example.test"
+    ]
+  }
+}

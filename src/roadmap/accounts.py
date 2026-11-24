@@ -30,7 +30,7 @@ from .path import LearningPath
 
 SESSION_DAYS = 30
 DRAFT_HOURS = 24
-MIN_PASSWORD_LENGTH = 8
+MIN_PASSWORD_LENGTH = 6
 MAX_PASSWORD_LENGTH = 200  # scrypt hashes any length; a cap keeps a request cheap
 
 # scrypt cost: about 50 ms and 16 MB per hash, the interactive-login setting from the scrypt paper.
@@ -254,6 +254,10 @@ class AccountStore:
                     f"DELETE FROM {table} WHERE {column} = ?",  # nosec B608: fixed names
                     (account.id,),
                 )
+
+    def new_session(self, account: Account) -> str:
+        """A further session for an account already signed in: the embedded panel's own, after Google."""
+        return self._new_session(account.id)
 
     def _new_session(self, account_id: str) -> str:
         token = secrets.token_urlsafe(32)

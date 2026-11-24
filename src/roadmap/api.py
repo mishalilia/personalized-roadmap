@@ -16,6 +16,7 @@ on sign-in with Google (roadmap.google).
 """
 
 import hmac
+import json
 import re
 import logging
 import threading
@@ -26,6 +27,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import unquote
 
 import httpx
 from fastapi import (
@@ -41,8 +43,16 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field, SecretStr, StringConstraints, ValidationError
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import (
+    BaseModel,
+    Field,
+    SecretStr,
+    SerializerFunctionWrapHandler,
+    StringConstraints,
+    ValidationError,
+    model_serializer,
+)
 
 from .accounts import (
     MAX_PASSWORD_LENGTH,
@@ -324,9 +334,111 @@ class Providers(BaseModel):
     google: bool
 
 
+EMBED_HEADER = "X-DotPath-Embed"
+
+
+class EmbedVersion(BaseModel):
+    name: str  # the curriculum's site version, as a path names it ("current")
+    label: str
+    docs: list[
+        dict[str, str]
+    ]  # {"id": module id, "path": the module's page on the site}
+
+
+class EmbedTheme(BaseModel):
+    """How the panel looks on a school's site, so it can match the school's brand. Each field is one
+    of a few choices or a checked value, so a theme cannot carry arbitrary CSS into the page.
+    """
+
+    mode: Literal["dark", "light"] = "dark"
+    accent: str = Field(default="#fff500", pattern=r"^#[0-9a-fA-F]{6}$")
+    # "dotpath": Inter and Space Grotesk; "site": the school's own font, as its page has it.
+    font: Literal["dotpath", "site", "system", "serif"] = "dotpath"
+    corners: Literal["sharp", "default", "round"] = "default"
+    # The picture on the assistant's button; DotPath's star when none.
+    logo: str | None = Field(
+        default=None, max_length=2048, pattern=r"^https?://[^\s\"'()<>]+$"
+    )
+
+
+class EmbedSite(BaseModel):
+    versions: list[EmbedVersion]
+    # The element of a lesson page that holds the lesson; the panel puts the module's status above
+    # it and its checkpoint below it. Overridden by the script tag's data-content.
+    content: str = "main article"
+    # The look the engineer set when converting the course; the school's own, once saved, wins.
+    theme: EmbedTheme = EmbedTheme()
+    # The school's people who may change the panel's look (emails); never sent to browsers.
+    designers: list[str] = Field(default_factory=list, exclude=True)
+
+
+class Designer(BaseModel):
+    designer: bool
+
+
+class EmbedThemes:
+    """The looks schools saved, by site address, in one JSON file."""
+
+    def __init__(self, file: Path | None) -> None:
+        self.file = file
+        self.lock = threading.Lock()
+        self.themes: dict[str, EmbedTheme] = {}
+        if file is not None and file.is_file():
+            found = json.loads(file.read_text(encoding="utf-8"))
+            self.themes = {
+                origin: EmbedTheme.model_validate(theme)
+                for origin, theme in found.items()
+            }
+
+    def get(self, origin: str) -> EmbedTheme | None:
+        return self.themes.get(origin)
+
+    def save(self, origin: str, theme: EmbedTheme) -> None:
+        with self.lock:
+            self.themes[origin] = theme
+            if self.file is None:
+                return
+            self.file.parent.mkdir(parents=True, exist_ok=True)
+            draft = self.file.with_suffix(".tmp")
+            draft.write_text(
+                json.dumps(
+                    {o: t.model_dump() for o, t in self.themes.items()}, indent=2
+                ),
+                encoding="utf-8",
+            )
+            draft.replace(self.file)
+
+
+# Hands the session to the site that opened the sign-in window. The message goes only to that site
+# (postMessage's target origin), so another page cannot receive it.
+EMBED_SIGNED_IN = """<!doctype html><meta charset="utf-8"><title>Signing in</title>
+<p style="font:16px system-ui;margin:2rem">Signing in&hellip;</p>
+<script>
+const message = __MESSAGE__;
+const reason = /^#sign-in-error=(\\w+)$/.exec(location.hash);
+if (!message.token) message.error = reason ? reason[1] : "google";
+if (window.opener) window.opener.postMessage(message, __ORIGIN__);
+window.close();
+</script>
+"""
+
+
 class SessionResponse(BaseModel):
     account: AccountOut | None
     path: LearningPath | None = None
+    # Only for the panel embedded in another site (EMBED_HEADER): its session, which it sends back as
+    # `Authorization: Bearer`, since browsers may block the API's cookie on another site.
+    token: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _without_token(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, object]:
+        # The course site's answers keep their shape: the token appears only when there is one.
+        data = handler(self)
+        if data.get("token") is None:
+            data.pop("token", None)
+        return data
 
 
 class PublicLink(BaseModel):
@@ -410,6 +522,10 @@ def create_app(
     github_token: str | None = None,
     review_runs: int = 3,
     question_reports: QuestionReportStore | None = None,
+    embed_sites: dict[str, EmbedSite] | None = None,
+    embed_dir: Path | None = None,
+    public_url: str | None = None,
+    embed_themes: EmbedThemes | None = None,
 ) -> FastAPI:
     """`editions` newest first: new paths use the first. `profiles` are invented learners a demo can
     start from. `accounts` keeps learners' accounts and paths; in memory unless given.
@@ -448,7 +564,7 @@ def create_app(
         allow_origins=allowed_origins,
         allow_credentials=True,  # the session cookie
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "Authorization", EMBED_HEADER],
     )
 
     @app.middleware("http")
@@ -527,8 +643,18 @@ def create_app(
         if not limiter.allow(client_of(request)):
             raise HTTPException(429, "Too many requests. Try again later.")
 
+    def session_token(request: Request) -> str | None:
+        """The cookie on the course site; on a site that embeds the panel, the token it was given."""
+        bearer = request.headers.get("authorization", "")
+        if bearer.lower().startswith("bearer "):
+            return bearer[7:].strip() or None
+        return request.cookies.get(SESSION_COOKIE)
+
+    def embedded(request: Request) -> bool:
+        return request.headers.get(EMBED_HEADER) == "1"
+
     def account_of(request: Request) -> Account | None:
-        return store.account_for(request.cookies.get(SESSION_COOKIE))
+        return store.account_for(session_token(request))
 
     def signed_in(request: Request) -> Account:
         account = account_of(request)
@@ -542,7 +668,7 @@ def create_app(
         return AccountOut(
             email=account.email,
             has_password=account.has_password,
-            reviewer=account.email in reviewer_emails,
+            reviewer="*" in reviewer_emails or account.email in reviewer_emails,
         )
 
     def start_session(response: Response, token: str) -> None:
@@ -643,13 +769,18 @@ def create_app(
         )
 
     def signed_in_response(
-        response: Response, account: Account, token: str, draft_id: str | None
+        request: Request,
+        response: Response,
+        account: Account,
+        token: str,
+        draft_id: str | None,
     ) -> SessionResponse:
         start_session(response, token)
         path = store.claim_draft(account, draft_id) if draft_id else None
         return SessionResponse(
             account=account_out(account),
             path=path or store.path_of(account),
+            token=token if embedded(request) else None,
         )
 
     def limit_sign_ins(request: Request) -> None:
@@ -657,24 +788,28 @@ def create_app(
             raise HTTPException(429, "Too many attempts. Try again in a few minutes.")
 
     @app.post("/auth/sign-up", dependencies=[Depends(limit_sign_ins)])
-    def sign_up(body: Credentials, response: Response) -> SessionResponse:
+    def sign_up(
+        body: Credentials, request: Request, response: Response
+    ) -> SessionResponse:
         try:
             account, token = store.sign_up(body.email, body.password)
         except AccountError as error:
             raise HTTPException(422, str(error)) from error
-        return signed_in_response(response, account, token, body.draft_id)
+        return signed_in_response(request, response, account, token, body.draft_id)
 
     @app.post("/auth/sign-in", dependencies=[Depends(limit_sign_ins)])
-    def sign_in(body: Credentials, response: Response) -> SessionResponse:
+    def sign_in(
+        body: Credentials, request: Request, response: Response
+    ) -> SessionResponse:
         try:
             account, token = store.sign_in(body.email, body.password)
         except AccountError as error:
             raise HTTPException(401, str(error)) from error
-        return signed_in_response(response, account, token, body.draft_id)
+        return signed_in_response(request, response, account, token, body.draft_id)
 
     @app.post("/auth/sign-out")
     def sign_out(request: Request, response: Response) -> SessionResponse:
-        if token := request.cookies.get(SESSION_COOKIE):
+        if token := session_token(request):
             store.sign_out(token)
         end_session(response)
         return SessionResponse(account=None)
@@ -699,10 +834,24 @@ def create_app(
         return Providers(google=google is not None)
 
     def page_on_site(address: str) -> bool:
-        return any(
-            address == origin or address.startswith(f"{origin}/")
-            for origin in allowed_origins
+        return (
+            any(
+                address == origin or address.startswith(f"{origin}/")
+                for origin in allowed_origins
+            )
+            or embed_return(address) is not None
         )
+
+    def embed_return(address: str) -> str | None:
+        """For Google sign-in from an embedding site: the API's own page that hands the session to the
+        site that opened the sign-in window. The site it names must be allowed."""
+        if not public_url:
+            return None
+        page = f"{public_url.rstrip('/')}/embed/signed-in?origin="
+        if not address.startswith(page):
+            return None
+        origin = unquote(address[len(page) :].split("#")[0])
+        return origin if origin in allowed_origins else None
 
     @app.get("/auth/google", dependencies=[Depends(limit_sign_ins)])
     def google_start(return_to: str, draft_id: str | None = None) -> RedirectResponse:
@@ -770,6 +919,85 @@ def create_app(
         if flow.draft_id:
             store.claim_draft(account, flow.draft_id)
         return redirect
+
+    # Embedding the panel in another site (embed/): its script, the site's pages, and the end of a
+    # sign-in with Google, which runs in a window of its own
+
+    @app.get("/embed/dotpath.js", include_in_schema=False)
+    def embed_script() -> FileResponse:
+        script = embed_dir / "dotpath.js" if embed_dir else None
+        if script is None or not script.is_file():
+            raise HTTPException(
+                404, "The embeddable panel is not built on this server."
+            )
+        return FileResponse(
+            script,
+            media_type="text/javascript",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
+
+    themes = embed_themes or EmbedThemes(None)
+
+    def embedding_site(request: Request) -> tuple[str, EmbedSite]:
+        origin = request.headers.get("origin", "")
+        site = (embed_sites or {}).get(origin)
+        if site is None or origin not in allowed_origins:
+            raise HTTPException(404, "This site does not embed the personal path.")
+        return origin, site
+
+    def may_design(account: Account | None, site: EmbedSite) -> bool:
+        return account is not None and account.email.lower() in {
+            email.strip().lower() for email in site.designers
+        }
+
+    @app.get("/embed/site")
+    def embed_site(request: Request) -> EmbedSite:
+        """Where each module of the course lives on the site that embeds the panel, by that site's
+        address, and how the panel looks there. An engineer writes it when the school's course is
+        converted; the school may change the look itself."""
+        origin, site = embedding_site(request)
+        return site.model_copy(update={"theme": themes.get(origin) or site.theme})
+
+    @app.get("/embed/designer")
+    def embed_designer(request: Request) -> Designer:
+        """Whether the signed-in account may change the panel's look on this site."""
+        _, site = embedding_site(request)
+        return Designer(designer=may_design(account_of(request), site))
+
+    @app.post("/embed/theme")
+    def embed_theme(request: Request, theme: EmbedTheme) -> EmbedTheme:
+        """The school's people save the panel's look for their site; every visitor gets it next."""
+        origin, site = embedding_site(request)
+        account = signed_in(request)
+        if not may_design(account, site):
+            raise HTTPException(
+                403, "Only the school's designers may change the panel's look."
+            )
+        themes.save(origin, theme)
+        return theme
+
+    @app.get("/embed/signed-in", include_in_schema=False)
+    def embed_signed_in(request: Request, origin: str) -> HTMLResponse:
+        """Google sends the learner back here, in the sign-in window the embedded panel opened. The
+        page hands a session to that panel, and only to the site it was opened from, then closes.
+        Without an account (cancelled, or Google said no) it hands over the reason instead.
+        """
+        if origin not in allowed_origins:
+            raise HTTPException(400, "This site does not embed the personal path.")
+        account = account_of(request)
+        message = {"type": "dotpath-session"}
+        if account is not None:
+            message["token"] = store.new_session(account)
+        page = EMBED_SIGNED_IN.replace(
+            "__MESSAGE__", json.dumps(message).replace("<", "\\u003c")
+        ).replace("__ORIGIN__", json.dumps(origin).replace("<", "\\u003c"))
+        return HTMLResponse(
+            page,
+            headers={
+                "Cache-Control": "no-store",
+                "Referrer-Policy": "no-referrer",
+            },
+        )
 
     # Planning
 
@@ -1135,7 +1363,7 @@ def create_app(
 
     def reviewer(request: Request) -> Account:
         account = signed_in(request)
-        if account.email not in reviewer_emails:
+        if not ("*" in reviewer_emails or account.email in reviewer_emails):
             raise HTTPException(403, "Only reviewers can do this.")
         return account
 
@@ -1360,7 +1588,9 @@ def create_app(
         account = signed_in(request)
         submission = found.get(submission_id)
         allowed = submission is not None and (
-            submission.account_id == account.id or account.email in reviewer_emails
+            submission.account_id == account.id
+            or "*" in reviewer_emails
+            or account.email in reviewer_emails
         )
         archive = found.archive_of(submission_id) if allowed else None
         if submission is None or archive is None or not archive.is_file():
@@ -1614,6 +1844,22 @@ class ApiSettings(Settings):
     api_uploads_dir: Path | None = None
     # Optional: raises GitHub's limit on reading public repositories for reviews (60 an hour without it).
     github_token: SecretStr | None = None
+    # Sites that embed the panel with a script tag (embed/): a JSON file of
+    # {"https://school.example": {"versions": [...], "content": "main article"}}; none unless set.
+    api_embed_sites_file: Path | None = None
+    # The folder holding the built dotpath.js, served at /embed/dotpath.js.
+    api_embed_dir: Path | None = None
+    # The looks schools saved for the panel; embed-themes.json among the uploads unless set.
+    api_embed_themes_file: Path | None = None
+
+    @property
+    def embed_sites(self) -> dict[str, EmbedSite]:
+        if self.api_embed_sites_file is None:
+            return {}
+        found = json.loads(self.api_embed_sites_file.read_text(encoding="utf-8"))
+        return {
+            origin: EmbedSite.model_validate(site) for origin, site in found.items()
+        }
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -1693,6 +1939,12 @@ def _app() -> FastAPI:
         ),
         reviewers=settings.reviewers,
         question_reports=QuestionReportStore(database or settings.accounts_file),
+        embed_sites=settings.embed_sites,
+        embed_dir=settings.api_embed_dir,
+        public_url=settings.api_public_url,
+        embed_themes=EmbedThemes(
+            settings.api_embed_themes_file or settings.uploads_dir / "embed-themes.json"
+        ),
         github_token=(
             settings.github_token.get_secret_value() if settings.github_token else None
         ),
