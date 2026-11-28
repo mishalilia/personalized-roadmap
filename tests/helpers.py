@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +42,26 @@ class FakeLLM:
                     "The only model gave an unusable answer"
                 ) from error
         return answer
+
+
+class StreamingFakeLLM(FakeLLM):
+    """A FakeLLM that also streams, as the real client does: each element of the list, then the answer."""
+
+    def ask_streaming(
+        self,
+        instructions: str,
+        prompt: str,
+        response_model: type[Response],
+        items: str,
+        item_model: type[Any],
+        key: str,
+        check: Callable[[Response], None] | None = None,
+    ) -> Iterator[Any]:
+        response = self._responses[0]
+        if isinstance(response, dict):
+            for element in response.get(items, []):
+                yield item_model.model_validate(element)
+        yield self.ask(instructions, prompt, response_model, check)
 
 
 def planner_response(

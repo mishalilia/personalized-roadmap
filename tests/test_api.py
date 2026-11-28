@@ -1,9 +1,10 @@
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from helpers import FakeLLM, study_all
+from helpers import FakeLLM, StreamingFakeLLM, study_all
 
 from roadmap import Choice, Curriculum, LearningPath, Roadmap
 from roadmap.accounts import AccountStore
@@ -200,12 +201,89 @@ def test_a_level_and_a_path_for_the_level_the_learner_chose(
     assert path.assessment is not None and path.assessment.level == "beginner"
     assert [item.module.id for item in path.items] == module_ids
     assert all(item.choice is Choice.STUDY for item in path.items)
-    assert not path.confirmed and path.id
+    assert path.confirmed and path.id  # in use at once: no approval step
     # The path keeps the answers as the model read them: the option chosen and the learner's own words.
     assert path.answers == {
         "programming": "Chose: Under a year, including programs of my own. In their own words: One month of Python"
     }
     assert client.get("/me/path").json()["id"] == path.id
+
+
+def events_of(response) -> list[dict]:
+    return [
+        json.loads(event.removeprefix("data: "))
+        for event in response.text.split("\n\n")
+        if event.startswith("data: ")
+    ]
+
+
+def test_a_path_arrives_module_by_module_and_is_kept_as_a_draft(
+    curriculum, questions, module_ids
+):
+    choices = {module_ids[0]: (Choice.SKIP, "You use it every day.")}
+    llm = StreamingFakeLLM(study_all(curriculum, choices))
+    client = site_for(Roadmap(curriculum, questions, llm)).learner()
+
+    response = client.post(
+        "/path/stream",
+        json={"answers": {"goal": "Computer vision"}, "level": "beginner"},
+    )
+
+    assert response.headers["content-type"].startswith("text/event-stream")
+    *items, last = events_of(response)
+    assert [event["item"]["module"]["id"] for event in items] == module_ids
+    assert items[0]["item"]["choice"] == "skip"
+    planned = last["planned"]
+    assert planned["draft_id"]
+    assert [item["module"]["id"] for item in planned["path"]["items"]] == module_ids
+    assert (
+        client.get(f"/drafts/{planned['draft_id']}").json()["id"]
+        == planned["path"]["id"]
+    )
+
+
+def test_a_streamed_path_replaces_the_signed_in_learners_path(curriculum, questions):
+    llm = StreamingFakeLLM(study_all(curriculum))
+    client = site_for(Roadmap(curriculum, questions, llm)).signed_in()
+
+    response = client.post(
+        "/path/stream", json={"answers": {"goal": "Vision"}, "level": None}
+    )
+
+    planned = events_of(response)[-1]["planned"]
+    assert planned["draft_id"] is None
+    assert client.get("/me/path").json()["id"] == planned["path"]["id"]
+
+
+def test_when_no_model_answers_the_streamed_path_follows_the_course(
+    curriculum, questions
+):
+    llm = StreamingFakeLLM(LLMUnavailable("rate limited"))
+    client = site_for(Roadmap(curriculum, questions, llm)).learner()
+
+    events = events_of(
+        client.post("/path/stream", json={"answers": {"goal": "Vision"}, "level": None})
+    )
+
+    assert len(events) == 1  # no module by module: the whole course at once
+    assert events[0]["planned"]["path"]["personalization_unavailable"]
+
+
+def test_a_streamed_path_counts_against_the_model_quota_and_checks_the_answers(
+    curriculum, questions
+):
+    llm = StreamingFakeLLM()
+    checked = site_for(Roadmap(curriculum, questions, llm)).learner()
+    assert (
+        checked.post("/path/stream", json={"answers": {}, "level": None}).status_code
+        == 422
+    )
+    assert llm.prompts == []
+
+    client = site_for(Roadmap(curriculum, questions, llm=None), limit=1).learner()
+    request = {"answers": {"goal": "Computer vision"}, "level": None}
+    assert client.post("/path/stream", json=request).status_code == 200
+    assert client.post("/path/stream", json=request).status_code == 429
 
 
 def test_without_a_model_the_level_is_left_to_the_learner_and_the_path_is_the_course(
@@ -408,7 +486,7 @@ def test_each_learner_sees_only_their_own_path(curriculum, questions):
 # Decisions
 
 
-def test_the_learners_own_decision_replaces_the_suggestion_and_asks_for_confirmation(
+def test_the_learners_own_decision_replaces_the_suggestion_and_keeps_the_path_in_use(
     curriculum, questions
 ):
     client = site_for(Roadmap(curriculum, questions, llm=None)).signed_in()
@@ -427,7 +505,7 @@ def test_the_learners_own_decision_replaces_the_suggestion_and_asks_for_confirma
 
     assert item(changed, ALGEBRA)["choice"] == "skip"
     assert item(changed, ALGEBRA)["suggested"] == "study"
-    assert changed["confirmed_at"] is None
+    assert changed["confirmed_at"] is not None
     assert unprovable.status_code == 422
     assert unknown.status_code == 404
 
@@ -531,18 +609,12 @@ def test_attempts_follow_the_stored_path_so_an_old_one_cannot_be_replayed(
     client = site_for(Roadmap(curriculum, questions, llm=None)).signed_in()
     plan(client)
 
-    unconfirmed = client.post(
-        f"/me/attempts/{TERMINAL}",
-        json={"attempt": 0, "answers": {f"q{n}": 1 for n in range(1, 6)}},
-    )
-    client.post("/me/path/confirm")
     answer(client, attempt=0, right=1)
     replayed = client.post(
         f"/me/attempts/{TERMINAL}",
         json={"attempt": 0, "answers": {f"q{n}": 1 for n in range(1, 6)}},
     )
 
-    assert unconfirmed.status_code == 409
     assert replayed.status_code == 409
     assert item(client.get("/me/path").json(), TERMINAL)["progress"] == "failed"
 
@@ -627,9 +699,7 @@ def test_a_module_without_a_checkpoint_is_marked_done_and_suggestions_are_answer
 # Goal change
 
 
-def test_a_new_goal_replans_what_is_not_started_and_asks_for_confirmation(
-    curriculum, questions
-):
+def test_a_new_goal_replans_what_is_not_started(curriculum, questions):
     llm = FakeLLM(
         study_all(curriculum),
         study_all(
@@ -651,7 +721,7 @@ def test_a_new_goal_replans_what_is_not_started_and_asks_for_confirmation(
     assert choices[TERMINAL] == "study"  # started, so kept
     assert choices["tracks/vision/resources"] == "skip"
     assert changed["answers"]["goal"] == "Speech recognition"
-    assert changed["confirmed_at"] is None
+    assert changed["confirmed_at"] is not None
     assert "changed their goal to: Speech recognition" in llm.prompts[-1]
 
 
@@ -699,10 +769,11 @@ def test_only_shared_paths_are_counted_and_the_report_needs_its_token(
         token="secret",  # nosec B106: a test token
     )
     private, shared = site.signed_in("a@example.com"), site.signed_in("b@example.com")
-    plan(private)
-    private.post("/me/path/share", json={"share": False})
-    private.post("/me/path/confirm")
-    confirmed_path(shared)  # counted by default
+    plan(private)  # counted from planning ...
+    private.post(
+        "/me/path/share", json={"share": False}
+    )  # ... until sharing is turned off
+    plan(shared)  # counted by default
 
     answer(private, attempt=0, right=1)
     answer(shared, attempt=0, right=1)
@@ -1150,6 +1221,85 @@ def test_the_site_guide_quotes_the_limits_the_site_uses():
     )
 
 
+def test_a_learner_without_an_account_changes_their_draft_and_keeps_the_changes_on_signing_up(
+    curriculum, questions
+):
+    from roadmap.curriculum import Topic
+
+    with_topics = curriculum.model_copy(
+        update={
+            "modules": [
+                (
+                    m.model_copy(
+                        update={
+                            "topics": [Topic(title="Topic 0"), Topic(title="Topic 1")]
+                        }
+                    )
+                    if m.id == TERMINAL
+                    else m
+                )
+                for m in curriculum.modules
+            ]
+        }
+    )
+    browser = site_for(Roadmap(with_topics, questions, llm=None)).learner()
+    draft_id = plan(browser)["draft_id"]
+
+    skipped = browser.post(
+        f"/drafts/{draft_id}/choice", json={"module_id": TERMINAL, "choice": "skip"}
+    )
+    studied = browser.post(
+        f"/drafts/{draft_id}/choice", json={"module_id": TERMINAL, "choice": "study"}
+    )
+    skimmed = browser.post(
+        f"/drafts/{draft_id}/topic",
+        json={"module_id": TERMINAL, "topic": "Topic 1", "choice": "skim"},
+    )
+
+    assert skipped.status_code == 200 and studied.status_code == 200, skipped.text
+    assert skimmed.status_code == 200, skimmed.text
+    kept = browser.get(f"/drafts/{draft_id}").json()
+    terminal = next(item for item in kept["items"] if item["module"]["id"] == TERMINAL)
+    assert terminal["choice"] == "study" and [t["topic"] for t in terminal["skim"]] == [
+        "Topic 1"
+    ]
+    # Progress still needs an account.
+    finished = browser.post(
+        "/me/path/topic-finished",
+        json={"module_id": TERMINAL, "topic": "Topic 0", "finished": True},
+    )
+    assert finished.status_code == 401
+
+    signed_up = browser.post(
+        "/auth/sign-up",
+        json={"email": "guest@example.com", "password": PASSWORD, "draft_id": draft_id},
+    )
+    saved = next(
+        item
+        for item in signed_up.json()["path"]["items"]
+        if item["module"]["id"] == TERMINAL
+    )
+    assert [t["topic"] for t in saved["skim"]] == ["Topic 1"]
+
+
+def test_a_draft_that_is_gone_or_a_change_the_path_refuses_is_an_error(
+    curriculum, questions
+):
+    browser = site_for(Roadmap(curriculum, questions, llm=None)).learner()
+    draft_id = plan(browser)["draft_id"]
+
+    gone = browser.post(
+        "/drafts/not-a-draft/choice", json={"module_id": TERMINAL, "choice": "skip"}
+    )
+    unknown = browser.post(
+        f"/drafts/{draft_id}/choice",
+        json={"module_id": "no/such-module", "choice": "skip"},
+    )
+
+    assert gone.status_code == 404
+    assert unknown.status_code == 404
+
+
 def test_a_skipped_topic_leaves_the_checkpoint_and_its_problem(curriculum, questions):
     from roadmap.curriculum import Topic
 
@@ -1261,7 +1411,7 @@ def test_deleting_the_account_ends_its_public_link(curriculum, questions):
     assert site.learner().get(f"/public/{token}").status_code == 404
 
 
-def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions):
+def test_changes_after_a_failure_come_after_the_result(curriculum, questions):
     # Notes is to prove at first; after the terminal checkpoint fails, the model would study it.
     first = study_all(
         curriculum, except_for={"tracks/notes": (Choice.PROVE, "You have used it.")}
@@ -1276,9 +1426,16 @@ def test_suggestions_after_a_failure_come_after_the_result(curriculum, questions
     assert graded["path"]["suggestions_pending"] == f"{TERMINAL}:1"
     stored = client.get("/me/path").json()
     assert stored["suggestions_pending"] is None
+    # Made at once, not offered: nothing waits for the learner's answer.
+    assert stored["proposals"] == []
     assert [
-        (p["module_id"], p["choice"], p["after_failure"]) for p in stored["proposals"]
-    ] == [("tracks/notes", "study", True)]
+        (p["module_id"], p["choice"]) for p in stored["changed_after_checkpoint"]
+    ] == [("tracks/notes", "study")]
+    notes = next(i for i in stored["items"] if i["module"]["id"] == "tracks/notes")
+    assert notes["choice"] == "study"
+
+    seen = client.post("/me/path/changes/seen")
+    assert seen.status_code == 200 and seen.json()["changed_after_checkpoint"] == []
 
 
 def test_the_browser_gets_the_options_but_not_the_right_answer_to_the_code_question(

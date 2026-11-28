@@ -67,11 +67,23 @@ def test_only_a_module_with_a_checklist_can_be_proved(curriculum):
         path.with_choice("basics/algebra", Choice.PROVE)  # algebra has no checklist
 
 
-def test_a_change_after_confirmation_needs_a_new_confirmation(curriculum):
-    confirmed = path_with(curriculum, {"basics/terminal": Choice.STUDY}).confirm()
-    assert confirmed.confirmed
+def test_a_path_is_in_use_at_once_and_stays_so_after_a_change(curriculum):
+    path = path_with(curriculum, {"basics/terminal": Choice.STUDY})
+    assert path.confirmed
 
-    assert not confirmed.with_choice("basics/algebra", Choice.STUDY).confirmed
+    changed = path.with_choice("basics/algebra", Choice.STUDY)
+    assert changed.confirmed
+    assert (
+        changed.marked_done("basics/algebra").item("basics/algebra").progress.value
+        == "done"
+    )
+
+
+def test_a_stored_path_from_before_counts_as_in_use(curriculum):
+    stored = path_with(curriculum, {}).model_dump(mode="json")
+    stored["confirmed_at"] = None  # a path kept while paths still waited for approval
+
+    assert LearningPath.model_validate(stored).confirmed
 
 
 def test_a_choice_for_a_module_the_path_does_not_have_is_an_error(curriculum):
@@ -93,6 +105,21 @@ TERMINAL, ALGEBRA, NOTES, VISION = (
 
 def confirmed(curriculum: Curriculum, choices: dict[str, Choice]) -> LearningPath:
     return path_with(curriculum, choices).confirm()
+
+
+def test_a_module_to_prove_stays_open_after_a_failed_checkpoint(curriculum):
+    path = confirmed(
+        curriculum,
+        {TERMINAL: Choice.STUDY, ALGEBRA: Choice.STUDY, NOTES: Choice.PROVE},
+    )
+
+    failed = path.with_checkpoint_result(TERMINAL, 2, 5, passed=False)
+
+    assert ALGEBRA in failed.locked_module_ids
+    assert NOTES not in failed.locked_module_ids
+    proved = failed.with_checkpoint_result(NOTES, 5, 5, passed=True)
+    assert proved.item(NOTES).progress is Progress.PASSED
+    assert failed.blocking_module_id == TERMINAL
 
 
 def test_a_failed_checkpoint_locks_what_follows_until_it_is_passed(curriculum):
@@ -136,9 +163,7 @@ def test_a_failed_prove_becomes_study_and_the_path_stays_confirmed(curriculum):
     )
 
 
-def test_progress_needs_a_confirmed_path_and_an_included_module(curriculum):
-    with pytest.raises(PathStateError):
-        path_with(curriculum, {TERMINAL: Choice.STUDY}).marked_done(TERMINAL)
+def test_progress_needs_an_included_module(curriculum):
     with pytest.raises(PathStateError):
         confirmed(curriculum, {TERMINAL: Choice.STUDY}).marked_done(ALGEBRA)
 
@@ -248,7 +273,7 @@ def test_a_new_goal_keeps_started_modules_and_takes_new_decisions_for_the_rest(
     assert changed.item(TERMINAL).choice is Choice.STUDY
     assert changed.item(TERMINAL).progress is Progress.DONE
     assert changed.item(VISION).choice is Choice.SKIP
-    assert changed.answers["goal"] == "Speech" and not changed.confirmed
+    assert changed.answers["goal"] == "Speech" and changed.confirmed
 
 
 def test_the_time_estimate_counts_studied_modules_fully_and_proved_ones_in_part(
@@ -506,11 +531,45 @@ def test_suggestions_for_a_checkpoint_taken_again_meanwhile_are_dropped(curricul
         )
     ]
 
-    assert path.with_suggestions(f"{TERMINAL}:1", late).proposals == []
+    dropped = path.with_suggestions(f"{TERMINAL}:1", late)
+    assert dropped.changed_after_checkpoint == [] and dropped.item(NOTES).choice is (
+        Choice.PROVE
+    )
     landed = path.with_suggestions(f"{TERMINAL}:2", late)
-    assert [p.module_id for p in landed.proposals] == [
+    assert [p.module_id for p in landed.changed_after_checkpoint] == [
         NOTES
     ] and landed.suggestions_pending is None
+    assert landed.item(NOTES).choice is Choice.STUDY
+
+
+def test_lighter_suggestions_after_an_easy_pass_still_wait_for_the_learner(
+    curriculum,
+):
+    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, NOTES: Choice.STUDY})
+    lighter = [Proposal(module_id=NOTES, choice=Choice.PROVE, reason="You know it.")]
+
+    suggested = path.with_checkpoint_changes(lighter)
+
+    assert [p.module_id for p in suggested.proposals] == [NOTES]
+    assert suggested.changed_after_checkpoint == []
+    assert suggested.item(NOTES).choice is Choice.STUDY
+
+
+def test_the_learner_is_told_once_what_a_failure_changed(curriculum):
+    path = confirmed(curriculum, {TERMINAL: Choice.STUDY, NOTES: Choice.PROVE})
+    heavier = [
+        Proposal(
+            module_id=NOTES, choice=Choice.STUDY, reason="Needed.", after_failure=True
+        )
+    ]
+
+    changed = path.with_checkpoint_changes(heavier)
+    assert [p.module_id for p in changed.changed_after_checkpoint] == [NOTES]
+
+    seen = changed.changes_seen()
+    assert seen.changed_after_checkpoint == [] and seen.item(NOTES).choice is (
+        Choice.STUDY
+    )
 
 
 def test_the_learner_marks_topics_of_a_module_they_study_as_finished(curriculum):
@@ -525,12 +584,7 @@ def test_the_learner_marks_topics_of_a_module_they_study_as_finished(curriculum)
         PathItem.suggestion(module if i == 0 else m, Choice.STUDY, "Study it.")
         for i, m in enumerate(curriculum.modules)
     ]
-    unconfirmed = path_with(curriculum, {}).model_copy(update={"items": items})
-    with pytest.raises(
-        PathStateError
-    ):  # as with all progress: only on a confirmed path
-        unconfirmed.with_topic_finished(module.id, first, True)
-    path = unconfirmed.confirm()
+    path = path_with(curriculum, {}).model_copy(update={"items": items})
 
     marked = path.with_topic_finished(module.id, third, True).with_topic_finished(
         module.id, first, True

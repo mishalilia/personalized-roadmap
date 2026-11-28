@@ -77,9 +77,10 @@ export interface PathItem {
   last_score?: string | null;
   missed_topics?: string[]; // the topics of the wrong answers in the last checkpoint attempt
   // For a module to study: topics the learner can skim, suggested by the planner or chosen by the learner.
-  skim?: { topic: string; reason: string; chosen?: boolean }[];
+  // A reason only on paths planned before 27 November.
+  skim?: { topic: string; reason?: string | null; chosen?: boolean }[];
   // For a module to study: topics the learner leaves out; its checkpoint does not ask about them.
-  skip_topics?: { topic: string; reason: string; chosen?: boolean }[];
+  skip_topics?: { topic: string; reason?: string | null; chosen?: boolean }[];
   finished_topics?: string[]; // topics the learner marked as finished: their own tally, not a pass
   adjustment?: string | null;
 }
@@ -135,6 +136,8 @@ export interface LearningPath {
   answers?: Record<string, string>;
   title?: string | null; // a short name after the learner's goal, from the planner
   proposals?: Proposal[];
+  // What the path changed by itself after the last failed checkpoint, until the learner has seen it.
+  changed_after_checkpoint?: Proposal[];
   // Set while the model works out suggestions after a checkpoint; the page asks for the path again meanwhile.
   suggestions_pending?: string | null;
   // Worked out by the API from the progress; read-only here.
@@ -347,6 +350,14 @@ export type TopicChoice = "study" | "skim" | "skip";
 
 // The section at the end of a module's page with its checkpoint, its project, or "mark it done".
 export const CHECKPOINT_ANCHOR = "your-checkpoint";
+
+// Where opening a module leads: a module to prove opens at its checkpoint, since proving it is taking the
+// checkpoint, until it is finished; any other module opens at the top of its page.
+export function openHref(item: PathItem, page: string | undefined): string | undefined {
+  const progress = progressOf(item);
+  const proving = item.choice === "prove" && progress !== "passed" && progress !== "done";
+  return page && proving ? `${page}#${CHECKPOINT_ANCHOR}` : page;
+}
 
 // Every topic the learner takes (not skipped) is marked as finished: time to finish the module itself.
 export function allTopicsFinished(item: PathItem): boolean {

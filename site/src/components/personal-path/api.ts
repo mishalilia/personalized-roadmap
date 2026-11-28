@@ -13,6 +13,7 @@ import type {
   Grade,
   LearningPath,
   Level,
+  PathItem,
   LevelAssessment,
   QuestionsResponse,
   Submission,
@@ -176,6 +177,13 @@ export interface PathApi {
     level: Level | null,
     assessment: LevelAssessment | null,
   ): Promise<{ path: LearningPath; draft_id: string | null }>;
+  // As plan, with each module's decision handed to onItem as soon as the model has made it.
+  planStreaming(
+    answers: Answers,
+    level: Level | null,
+    assessment: LevelAssessment | null,
+    onItem: (item: PathItem) => void,
+  ): Promise<{ path: LearningPath; draft_id: string | null }>;
   draft(draftId: string): Promise<LearningPath>;
 
   session(): Promise<Session>;
@@ -195,8 +203,10 @@ export interface PathApi {
   choose(moduleId: string, choice: Choice): Promise<LearningPath>;
   // A topic of a module the learner studies: to study in full, to skim, or to skip out of the checkpoint.
   chooseTopic(moduleId: string, topic: string, choice: TopicChoice): Promise<LearningPath>;
+  // The same changes to a draft, before the learner has an account.
+  chooseInDraft(draftId: string, moduleId: string, choice: Choice): Promise<LearningPath>;
+  chooseTopicInDraft(draftId: string, moduleId: string, topic: string, choice: TopicChoice): Promise<LearningPath>;
   finishTopic(moduleId: string, topic: string, finished: boolean): Promise<LearningPath>;
-  confirm(): Promise<LearningPath>;
   share(on: boolean): Promise<LearningPath>;
   // A read-only link to what the learner finished; a new one replaces the old.
   publicLink(): Promise<string | null>;
@@ -207,6 +217,8 @@ export interface PathApi {
   reset(): Promise<void>;
   // `topic` names a suggestion about one of the module's topics, to accept or decline.
   act(action: ModuleAction, moduleId: string, topic?: string | null): Promise<LearningPath>;
+  // The learner has read what the path changed after a failed checkpoint.
+  changesSeen(): Promise<LearningPath>;
   attempt(
     moduleId: string,
     attempt: number,
@@ -272,7 +284,7 @@ export function pathApi(base: string): PathApi {
     return Object.keys(headers).length ? headers : undefined;
   }
 
-  async function call<T>(path: string, body?: unknown): Promise<T> {
+  async function send(path: string, body?: unknown): Promise<Response> {
     let response: Response;
     const form = body instanceof FormData;
     try {
@@ -283,9 +295,7 @@ export function pathApi(base: string): PathApi {
         body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       });
     } catch {
-      const unreachable = "The personal path service cannot be reached right now. Try again later.";
-      noteError(unreachable);
-      throw new ApiError(unreachable, 0);
+      throw unreachable();
     }
     if (!response.ok) {
       const detail = await response
@@ -299,9 +309,60 @@ export function pathApi(base: string): PathApi {
       if (embedding.on && response.status === 401 && !path.startsWith("/auth/")) embedding.keep(null);
       throw new ApiError(text, response.status);
     }
+    return response;
+  }
+
+  function unreachable(): ApiError {
+    const text = "The personal path service cannot be reached right now. Try again later.";
+    noteError(text);
+    return new ApiError(text, 0);
+  }
+
+  async function call<T>(path: string, body?: unknown): Promise<T> {
+    const response = await send(path, body);
     const data = (await response.json()) as T;
     if (embedding.on) keepToken(path, data);
     return data;
+  }
+
+  // Server-sent events, read as they arrive: {"item"} for each module as soon as the model has decided it,
+  // then {"planned"} with the whole path, or {"error"}.
+  async function planStreaming(
+    body: unknown,
+    onItem: (item: PathItem) => void,
+  ): Promise<{ path: LearningPath; draft_id: string | null }> {
+    const response = await send("/path/stream", body);
+    if (!response.body) return call("/path", body); // a browser that cannot read a response as it arrives
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      let chunk: ReadableStreamReadResult<string>;
+      try {
+        chunk = await reader.read();
+      } catch {
+        throw unreachable();
+      }
+      if (chunk.done) break;
+      buffer += chunk.value;
+      let end: number;
+      while ((end = buffer.indexOf("\n\n")) >= 0) {
+        const event = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        if (!event.startsWith("data: ")) continue;
+        const data = JSON.parse(event.slice(6)) as {
+          item?: PathItem;
+          planned?: { path: LearningPath; draft_id: string | null };
+          error?: string;
+        };
+        if (data.item) onItem(data.item);
+        if (data.planned) return data.planned;
+        if (data.error) {
+          noteError(data.error);
+          throw new ApiError(data.error, 500);
+        }
+      }
+    }
+    throw unreachable(); // the connection ended before the path arrived
   }
 
   const client: PathApi = {
@@ -314,6 +375,8 @@ export function pathApi(base: string): PathApi {
         })
       ).assessment,
     plan: (answers, level, assessment) => call("/path", { answers, level, assessment }),
+    planStreaming: (answers, level, assessment, onItem) =>
+      planStreaming({ answers, level, assessment }, onItem),
     draft: (draftId) => call(`/drafts/${encodeURIComponent(draftId)}`),
 
     session: () => call("/auth/session"),
@@ -335,9 +398,12 @@ export function pathApi(base: string): PathApi {
 
     choose: (moduleId, choice) => call("/me/path/choice", { module_id: moduleId, choice }),
     chooseTopic: (moduleId, topic, choice) => call("/me/path/topic", { module_id: moduleId, topic, choice }),
+    chooseInDraft: (draftId, moduleId, choice) =>
+      call(`/drafts/${encodeURIComponent(draftId)}/choice`, { module_id: moduleId, choice }),
+    chooseTopicInDraft: (draftId, moduleId, topic, choice) =>
+      call(`/drafts/${encodeURIComponent(draftId)}/topic`, { module_id: moduleId, topic, choice }),
     finishTopic: (moduleId, topic, finished) =>
       call("/me/path/topic-finished", { module_id: moduleId, topic, finished }),
-    confirm: () => call("/me/path/confirm", {}),
     share: (on) => call("/me/path/share", { share: on }),
     publicLink: async () => (await call<{ token: string | null }>("/me/public-link")).token,
     newPublicLink: async () => (await call<{ token: string }>("/me/public-link", {})).token,
@@ -350,6 +416,7 @@ export function pathApi(base: string): PathApi {
       await call("/me/path/reset", {});
     },
     act: (action, moduleId, topic) => call(`/me/path/${action}`, { module_id: moduleId, topic: topic ?? null }),
+    changesSeen: () => call("/me/path/changes/seen", {}),
     attempt: (moduleId, attempt, answers, openAnswers = {}) =>
       call(`/me/attempts/${moduleId}`, { attempt, answers, open_answers: openAnswers }),
     solved: (moduleId) => call(`/me/problems/${moduleId}/solved`, {}),

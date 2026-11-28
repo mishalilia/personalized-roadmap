@@ -2,6 +2,8 @@
 
 import logging
 import re
+from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import yaml
@@ -22,30 +24,23 @@ class Planner(Protocol):
     ) -> list[PathItem]: ...
 
 
-class SkimSuggestion(BaseModel):
-    topic: str = Field(
-        description="One of the module's topic titles, exactly as given."
-    )
-    reason: Reason = Field(
-        description="One short sentence tied to the learner's answers."
-    )
-
-
 class ModuleDecision(BaseModel):
     module_id: str = Field(description="The module's id exactly as given, such as m3.")
     choice: Choice
     reason: Reason = Field(
         description="One or two sentences to the learner, tied to their answers or goal."
     )
-    skim: list[SkimSuggestion] = Field(
+    # Topic titles only: a reason for every topic would make the answer, and the wait, about a third longer.
+    skim: list[str] = Field(
         default=[],
-        description="For a module to study or prove: topics the learner knows but should refresh. Empty for a "
-        "module to skip.",
+        description="For a module to study or prove: titles of topics the learner knows but should refresh, "
+        "exactly as given. Empty for a module to skip.",
     )
-    skip_topics: list[SkimSuggestion] = Field(
+    skip_topics: list[str] = Field(
         default=[],
-        description="For a module to study or prove: topics the learner's answers show they already know, "
-        "which the checkpoint then leaves out if the module is studied. Empty for a module to skip.",
+        description="For a module to study or prove: titles of topics the learner's answers show they already "
+        "know, exactly as given; the checkpoint then leaves them out if the module is studied. Empty for a "
+        "module to skip.",
     )
 
 
@@ -64,13 +59,13 @@ def _topics_for(
     titles = {key(topic.title): topic.title for topic in module.topics}
     marked: set[str] = set()
 
-    def found(suggestions: list[SkimSuggestion]) -> list[SkimTopic]:
+    def found(suggestions: list[str]) -> list[SkimTopic]:
         kept = []
         for suggestion in suggestions:
-            title = titles.get(key(suggestion.topic))
+            title = titles.get(key(suggestion))
             if title and title not in marked:
                 marked.add(title)
-                kept.append(SkimTopic(topic=title, reason=suggestion.reason))
+                kept.append(SkimTopic(topic=title))
         return kept
 
     skip = found(decision.skip_topics)
@@ -116,6 +111,14 @@ def prompt_ids(modules: list[Module]) -> dict[str, Module]:
     return {f"m{number}": module for number, module in enumerate(modules, start=1)}
 
 
+@dataclass(frozen=True)
+class Plan:
+    """A finished plan: every module in course order, and the path's title when the planner gives one."""
+
+    items: list[PathItem]
+    title: str | None
+
+
 class LLMPlanner:
     """The model judges each module; code keeps the course order and checks every decision."""
 
@@ -147,6 +150,35 @@ class LLMPlanner:
             PlanDecisions,
             check=self._check_every_module_decided,
         )
+        plan = self._plan(response)
+        return plan.items, plan.title
+
+    def plan_streaming(
+        self, answers: Answers, level: Level | None
+    ) -> Iterator[PathItem | Plan]:
+        """Each module's decision as soon as the model has made it, in the order the model writes them, then
+        the whole plan, last. A model that cannot stream gives every decision with the plan.
+        """
+        stream = getattr(self._llm, "ask_streaming", None)
+        if stream is None:
+            items, title = self.plan_with_title(answers, level)
+            yield Plan(items, title)
+            return
+        for event in stream(
+            prompts.load("path"),
+            self._prompt(answers, level),
+            PlanDecisions,
+            items="decisions",
+            item_model=ModuleDecision,
+            key="module_id",
+            check=self._check_every_module_decided,
+        ):
+            if isinstance(event, PlanDecisions):
+                yield self._plan(event)
+            elif module := self._modules.get(event.module_id):
+                yield self._item(module, event)
+
+    def _plan(self, response: PlanDecisions) -> Plan:
         decisions = {decision.module_id: decision for decision in response.decisions}
         if unknown := sorted(decisions.keys() - self._modules.keys()):
             logger.warning(
@@ -156,7 +188,7 @@ class LLMPlanner:
             self._item(module, decisions[prompt_id])
             for prompt_id, module in self._modules.items()
         ]
-        return items, clean_title(response.title)
+        return Plan(items, clean_title(response.title))
 
     def _check_every_module_decided(self, response: PlanDecisions) -> None:
         """A plan that leaves modules out is rejected, so the next model is asked instead."""

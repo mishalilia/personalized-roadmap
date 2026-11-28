@@ -1,10 +1,14 @@
 # Model providers with an OpenAI-compatible API. Keys stay in .env: LLM_API_KEY_OPENAI, LLM_API_KEY_GOOGLE,
-# LLM_API_KEY_GROQ. LLM_PROVIDER (or --provider on the command line) picks one; without it, the first one here
-# with a key is used. A provider's models are tried in order. Why this order: Q-003 in docs/questions.md.
+# LLM_API_KEY_GROQ. Every provider with a key is asked in this order, each model in turn, until one answers; when
+# none does, paths follow the course order. LLM_PROVIDER (or --provider on the command line) moves one to the
+# front. Why this order: Q-003 in docs/questions.md.
 
 openai:
   base_url: https://api.openai.com/v1
   models: [gpt-6-luna]
+  # Less thinking: a path in 10-14 s instead of 20-36 s, with decisions as stable
+  # (five runs per profile, 27 November 2026). Gemini and Groq keep their own default.
+  reasoning_effort: low
 
 google:
   base_url: https://generativelanguage.googleapis.com/v1beta/openai/

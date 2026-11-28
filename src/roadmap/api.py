@@ -22,7 +22,7 @@ import logging
 import threading
 import time
 from collections import defaultdict, deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -43,7 +43,13 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from pydantic import (
     BaseModel,
     Field,
@@ -756,6 +762,11 @@ def create_app(
         if events is not None:
             events.record(path, kind, module_id)
 
+    def record_included(path: LearningPath | None) -> None:
+        """The modules a stored path asks the learner to work through, counted again after each change."""
+        if events is not None and path is not None:
+            events.record_included(path)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -806,6 +817,7 @@ def create_app(
     ) -> SessionResponse:
         start_session(response, token)
         path = store.claim_draft(account, draft_id) if draft_id else None
+        record_included(path)
         return SessionResponse(
             account=account_out(account),
             path=path or store.path_of(account),
@@ -946,7 +958,7 @@ def create_app(
         redirect = back()
         start_session(redirect, token)
         if flow.draft_id:
-            store.claim_draft(account, flow.draft_id)
+            record_included(store.claim_draft(account, flow.draft_id))
         return redirect
 
     # Embedding the panel in another site (embed/): its script, the site's pages, and the end of a
@@ -1043,12 +1055,48 @@ def create_app(
         planned = newest.roadmap.build_path(
             check_answers(body.answers), body.level, body.assessment
         )
-        account = account_of(request)
+        return keep_planned(planned, account_of(request))
+
+    def keep_planned(planned: LearningPath, account: Account | None) -> PlannedPath:
+        """A signed-in learner's new path replaces the one they had; otherwise it is kept as a draft."""
         if account is None:
             return PlannedPath(path=planned, draft_id=store.keep_draft(planned))
         with store.changing_path(account):
             store.save_path(account, planned)
+        record_included(planned)
         return PlannedPath(path=planned)
+
+    @app.post("/path/stream", dependencies=[Depends(within_quota)])
+    def path_stream(body: PathRequest, request: Request) -> StreamingResponse:
+        """As /path, as server-sent events while the model plans: {"item": ...} for each module as soon as
+        it is decided, in the order the model decides them, then {"planned": ...} with the whole path, kept as
+        /path keeps it. A failure after the events have begun comes as {"error": ...}.
+        """
+        answers = check_answers(body.answers)
+        account = account_of(request)
+
+        def events() -> Iterator[str]:
+            try:
+                for event in newest.roadmap.build_path_streaming(
+                    answers, body.level, body.assessment
+                ):
+                    if isinstance(event, LearningPath):
+                        planned = keep_planned(event, account)
+                        yield _event({"planned": planned.model_dump(mode="json")})
+                    else:
+                        yield _event({"item": event.model_dump(mode="json")})
+            except (
+                Exception
+            ):  # the response has begun: the learner gets a message, the log the details
+                logger.exception("Planning a path failed")
+                yield _event({"error": "Your path could not be planned. Try again."})
+
+        return StreamingResponse(
+            events(),
+            media_type="text/event-stream",
+            # Proxies pass each event on at once instead of collecting the response.
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/drafts/{draft_id}")
     def draft(draft_id: str) -> LearningPath:
@@ -1056,6 +1104,37 @@ def create_app(
         if found is None:
             raise HTTPException(404, "This draft has expired. Plan your path again.")
         return found
+
+    # A draft changed before signing in: a module's decision or a topic's, as on a saved path. Progress
+    # (checkpoints, topics finished) needs an account.
+
+    def change_draft(
+        draft_id: str, action: Callable[[LearningPath], LearningPath]
+    ) -> LearningPath:
+        try:
+            changed = store.change_draft(draft_id, action)
+        except LookupError as error:
+            raise HTTPException(404, str(error.args[0])) from error
+        except PathStateError as error:
+            raise HTTPException(409, str(error)) from error
+        except ValidationError as error:
+            raise HTTPException(422, error.errors()[0]["msg"]) from error
+        if changed is None:
+            raise HTTPException(404, "This draft has expired. Plan your path again.")
+        return changed
+
+    @app.post("/drafts/{draft_id}/choice")
+    def choose_in_draft(draft_id: str, body: ChoiceRequest) -> LearningPath:
+        return change_draft(
+            draft_id, lambda path: path.with_choice(body.module_id, body.choice)
+        )
+
+    @app.post("/drafts/{draft_id}/topic")
+    def choose_topic_in_draft(draft_id: str, body: TopicRequest) -> LearningPath:
+        return change_draft(
+            draft_id,
+            lambda path: path.with_topic(body.module_id, body.topic, body.choice),
+        )
 
     # The signed-in learner's path
 
@@ -1071,11 +1150,13 @@ def create_app(
 
     @app.post("/me/path/choice")
     def choose(body: ChoiceRequest, request: Request) -> LearningPath:
-        """The learner's own decision for a module; the path asks for a new confirmation."""
-        return change(
+        """The learner's own decision for a module, at any time."""
+        result = change(
             signed_in(request),
             lambda path: path.with_choice(body.module_id, body.choice),
         )
+        record_included(result)
+        return result
 
     @app.post("/me/path/topic")
     def choose_topic(body: TopicRequest, request: Request) -> LearningPath:
@@ -1112,7 +1193,7 @@ def create_app(
 
     @app.post("/me/path/confirm")
     def confirm(request: Request) -> LearningPath:
-        """The learner approves the path; if they share their progress, its modules are counted."""
+        """Kept for pages built before paths stopped waiting for approval: a path is in use once planned."""
 
         def confirmed(path: LearningPath) -> LearningPath:
             edition_of(path)
@@ -1125,13 +1206,16 @@ def create_app(
 
     @app.post("/me/path/share")
     def share(body: ShareRequest, request: Request) -> LearningPath:
-        """Counting starts from the modules of the confirmed path, so turning sharing on counts them."""
+        """Turning sharing on counts the modules of the path; turning it off removes what was recorded for it,
+        since a path is counted from the moment it is planned."""
         result = change(
             signed_in(request),
             lambda path: path.model_copy(update={"share_progress": body.share}),
         )
-        if body.share and result.confirmed and events is not None:
-            events.record_included(result)
+        if body.share:
+            record_included(result)
+        elif events is not None:
+            events.forget(result)
         return result
 
     # A public link to the learner's progress
@@ -1192,8 +1276,7 @@ def create_app(
 
     @app.post("/me/path/goal", dependencies=[Depends(within_quota)])
     def goal(body: GoalRequest, request: Request) -> LearningPath:
-        """The path replanned for a new goal; started modules keep their progress. The learner confirms
-        it again."""
+        """The path replanned for a new goal; started modules keep their progress."""
 
         def replanned(path: LearningPath) -> LearningPath:
             try:
@@ -1206,6 +1289,7 @@ def create_app(
 
         result = change(signed_in(request), replanned)
         record(result, EventKind.GOAL_CHANGED)
+        record_included(result)
         return result
 
     @app.post("/me/attempts/{module_id:path}")
@@ -1753,6 +1837,11 @@ def create_app(
             signed_in(request), lambda path: path.decline(body.module_id, body.topic)
         )
 
+    @app.post("/me/path/changes/seen")
+    def changes_seen(request: Request) -> LearningPath:
+        """The learner has read what the path changed after a failed checkpoint."""
+        return change(signed_in(request), lambda path: path.changes_seen())
+
     # Checkpoints
 
     @app.get("/checkpoints")
@@ -1897,6 +1986,11 @@ def create_app(
         )
 
     return app
+
+
+def _event(data: dict) -> str:
+    """One server-sent event."""
+    return f"data: {json.dumps(data)}\n\n"
 
 
 def _bare(title: str) -> str:

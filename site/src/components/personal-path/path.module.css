@@ -1108,6 +1108,58 @@
   outline: none;
 }
 
+/* The coloured code box: the drawn code and the see-through textarea share one grid cell, so they line up and
+   the drawn layer sets the height. Both must keep the same font, padding and wrapping. */
+.codeEditor {
+  display: grid;
+  background: #0d0d0d;
+}
+
+.codeLayer,
+.codeInput {
+  grid-area: 1 / 1;
+  margin: 0;
+  min-height: calc(8 * 1.55em + 1.7rem);
+  padding: 0.85rem 0.9rem;
+  border: none;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.55;
+  tab-size: 4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.codeLayer {
+  background: transparent;
+  color: #d4d4d4;
+  pointer-events: none;
+}
+
+.codeInput {
+  width: 100%;
+  background: transparent;
+  color: transparent;
+  caret-color: #e8e8e8;
+  resize: none;
+  overflow: hidden;
+}
+
+.codeInput::selection {
+  background: rgba(38, 79, 120, 0.85);
+  color: transparent;
+}
+
+.codeInput:focus {
+  outline: none;
+}
+
+.codeInput:disabled {
+  cursor: default;
+}
+
 .testsTitle {
   display: block;
   margin-bottom: 0.4rem;
@@ -1433,19 +1485,51 @@
   outline-offset: 2px;
 }
 
-.planning {
-  display: grid;
-  justify-items: center;
-  gap: 0.6rem;
-  padding: 3rem 1.5rem;
-  text-align: center;
+/* While the path is planned: a status line under the title, and each stage and module of the path fading in
+   as the model decides it. */
+.planningStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.25rem;
+  color: var(--pp-muted);
+  font-size: 0.9rem;
 }
 
-.planning > .spinner {
-  width: 2rem;
-  height: 2rem;
+.planningStatus > .spinner {
+  flex: none;
   color: var(--pp-gold);
-  border-width: 3px;
+}
+
+.roadmap[data-planning="true"] .stage,
+.roadmap[data-planning="true"] .node {
+  animation: planningArrive 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes planningArrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* One question, the level, then the path: each step fades in where the last one was. */
+.stageSwap {
+  animation: stageIn 0.25s ease-out both;
+}
+
+@keyframes stageIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roadmap[data-planning="true"] .stage,
+  .roadmap[data-planning="true"] .node,
+  .stageSwap {
+    animation: none;
+  }
 }
 
 .pathPage {

@@ -28,9 +28,10 @@ import {
   type TopicChoice,
   CHECKPOINT_ANCHOR,
   allTopicsFinished,
+  openHref,
 } from "./model";
-import { openAuth, useCheckpoints, usePathState } from "./store";
-import { changePath, withChoice, withTopic, withTopicFinished } from "./changes";
+import { openAuth, setDrawer, useCheckpoints, usePathState } from "./store";
+import { canChange, changePath, sendChoice, sendTopicChoice, withChoice, withTopic, withTopicFinished } from "./changes";
 import { useModulePages } from "./useModulePages";
 import {
   CHOICE_HINT,
@@ -89,6 +90,11 @@ export default function PathMap({ path, onClose }: { path: LearningPath; onClose
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) onClose();
     else setClosing(true);
   }, [onClose]);
+  // Following a link to a module closes the map and the path panel too, so the module has the whole page.
+  const follow = useCallback(() => {
+    close();
+    setDrawer(false);
+  }, [close]);
 
   const [peek, setPeek] = useState<Peek | null>(null);
   const hideTimer = useRef<number | undefined>(undefined);
@@ -257,8 +263,8 @@ export default function PathMap({ path, onClose }: { path: LearningPath; onClose
                     item={item}
                     status={statusOf(path, item)}
                     confirmed={path.confirmed_at !== null}
-                    href={pageOf(item.module.id)}
-                    onFollow={close}
+                    href={openHref(item, pageOf(item.module.id))}
+                    onFollow={follow}
                     onShow={show}
                     onHide={hide}
                   />
@@ -273,10 +279,10 @@ export default function PathMap({ path, onClose }: { path: LearningPath; onClose
           key={`${peek.moduleId}|${peek.topic ?? ""}`}
           path={path}
           peek={peek}
-          href={pageOf(peek.moduleId)}
+          href={openHref(path.items.find((item) => item.module.id === peek.moduleId)!, pageOf(peek.moduleId))}
           onEnter={keep}
           onLeave={hide}
-          onFollow={close}
+          onFollow={follow}
         />
       )}
     </div>
@@ -356,9 +362,10 @@ function PeekCard({
   const missed =
     topic && status !== "finished" && (item.missed_topics ?? []).some((name) => bare(name) === peek.topic);
   const done = Boolean(topic) && (item.finished_topics ?? []).some((name) => bare(name) === peek.topic);
-  // As in the path panel: a topic of a module the learner studies, on a confirmed path, until the module is done.
+  // As in the path panel: a topic of a module the learner studies, on a saved path, until the module is done.
   const canFinish =
     Boolean(topic) &&
+    account !== null &&
     Boolean(path.confirmed_at) &&
     item.choice === "study" &&
     !item.module.is_project &&
@@ -372,33 +379,28 @@ function PeekCard({
       ? item.reason
       : `Your own choice. The planner suggested to ${item.suggested} it: ${item.reason}`);
 
-  // Changing a module here is the learner's own approval, as on its page: a confirmed path stays confirmed.
   function choose(choice: Choice) {
     if (!api || choice === item!.choice) return;
-    if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
+    if (!canChange()) return openAuth("sign-up", "Create an account to change and keep your path.");
     const moduleId = item!.module.id;
-    const confirmed = Boolean(path.confirmed_at);
     changePath(
       api,
-      (current) => withChoice(current, moduleId, choice, confirmed),
-      async () => {
-        const changed = await api.choose(moduleId, choice);
-        return confirmed ? api.confirm() : changed;
-      },
+      (current) => withChoice(current, moduleId, choice),
+      () => sendChoice(api, moduleId, choice),
       setError,
     );
   }
 
   // A topic of a module the learner studies: read it in full, skim it, or skip it out of the checkpoint. The
-  // learner decides it here, so the path stays confirmed.
+  // learner decides it here.
   function chooseTopic(title: string, choice: TopicChoice) {
     if (!api || choice === topicChoice) return;
-    if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
+    if (!canChange()) return openAuth("sign-up", "Create an account to change and keep your path.");
     const moduleId = item!.module.id;
     changePath(
       api,
       (current) => withTopic(current, moduleId, title, choice),
-      () => api.chooseTopic(moduleId, title, choice),
+      () => sendTopicChoice(api, moduleId, title, choice),
       setError,
     );
   }
@@ -464,13 +466,13 @@ function PeekCard({
           )}
           {skip && (
             <p className={styles.peekSkim}>
-              {skip.chosen ? "You chose to skip it." : `You can skip it: ${skip.reason}`} The checkpoint leaves it
+              {skip.chosen ? "You chose to skip it." : skip.reason ? `You can skip it: ${skip.reason}` : "You can skip it: your answers show you know it."} The checkpoint leaves it
               out.
             </p>
           )}
           {skim && !skip && (
             <p className={styles.peekSkim}>
-              {skim.chosen ? "You chose to skim it." : `You can skim it: ${skim.reason}`} The checkpoint still asks
+              {skim.chosen ? "You chose to skim it." : skim.reason ? `You can skim it: ${skim.reason}` : "You can skim it."} The checkpoint still asks
               about it.
             </p>
           )}
