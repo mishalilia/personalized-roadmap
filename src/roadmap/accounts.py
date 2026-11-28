@@ -358,8 +358,9 @@ class AccountStore:
 
     # Drafts: paths planned before signing in
 
-    def keep_draft(self, path: LearningPath) -> str:
-        draft_id = path.id or uuid4().hex
+    def keep_draft(self, path: LearningPath, draft_id: str | None = None) -> str:
+        """Keeps a path for a day from now under `draft_id`, or under a new id."""
+        draft_id = draft_id or path.id or uuid4().hex
         now = _now()
         with self._db.transaction() as tx:
             tx.execute(
@@ -381,6 +382,17 @@ class AccountStore:
                 (draft_id, cutoff),
             ).fetchone()
         return self._refresh(LearningPath.model_validate_json(row[0])) if row else None
+
+    def change_draft(
+        self, draft_id: str, action: Callable[[LearningPath], LearningPath]
+    ) -> LearningPath | None:
+        """A learner who has not signed in changes their draft; it is kept another day. None if it is gone."""
+        path = self.draft(draft_id)
+        if path is None:
+            return None
+        changed = action(path)
+        self.keep_draft(changed, draft_id)
+        return changed
 
     def claim_draft(self, account: Account, draft_id: str) -> LearningPath | None:
         """Makes the draft the account's path, replacing any path it had. None if the draft is gone."""

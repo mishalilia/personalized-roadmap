@@ -226,14 +226,13 @@ def test_only_the_learner_and_reviewers_see_a_submission(site):
     assert learner.get(f"/submissions/{submission['id']}/archive").status_code == 200
 
 
-def test_a_project_needs_a_confirmed_path_and_an_account(site):
+def test_a_project_needs_an_account(site):
     browser, _ = site
     client = browser("learner@example.com")
     client.post("/path", json={"answers": {"goal": "Computer vision"}, "level": None})
     anonymous = TestClient(client.app, base_url="https://testserver")
     link = {"link": "https://github.com/learner/detector"}
 
-    assert client.post(f"/me/submissions/{PROJECT}", data=link).status_code == 409
     assert anonymous.post(f"/me/submissions/{PROJECT}", data=link).status_code == 401
 
 

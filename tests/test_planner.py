@@ -1,14 +1,15 @@
 import pytest
-from helpers import FakeLLM, planner_response, study_all
+from helpers import FakeLLM, StreamingFakeLLM, planner_response, study_all
 from pydantic import ValidationError
 
 from roadmap import Choice, Level
 from roadmap.llm import LLMUnavailable
+from roadmap.path import PathItem
 from roadmap.planner import (
     CourseOrderPlanner,
+    Plan,
     LLMPlanner,
     ModuleDecision,
-    SkimSuggestion,
     prompt_ids,
 )
 
@@ -26,6 +27,35 @@ def test_path_follows_course_order_whatever_order_the_model_answers_in(
     items = plan(curriculum, questions, response)
 
     assert [item.module.id for item in items] == module_ids
+
+
+def test_a_streamed_plan_gives_modules_as_the_model_decides_them_then_the_plan_in_course_order(
+    curriculum, questions, module_ids
+):
+    response = study_all(curriculum)
+    response["decisions"].reverse()
+    response["title"] = "Computer vision"
+    planner = LLMPlanner(StreamingFakeLLM(response), curriculum, questions)
+
+    *items, plan = planner.plan_streaming({}, None)
+
+    assert all(isinstance(item, PathItem) for item in items)
+    assert [item.module.id for item in items if isinstance(item, PathItem)] == (
+        module_ids[::-1]
+    )
+    assert isinstance(plan, Plan) and plan.title == "Computer vision"
+    assert [item.module.id for item in plan.items] == module_ids
+
+
+def test_a_planner_whose_model_cannot_stream_gives_the_whole_plan_at_once(
+    curriculum, questions, module_ids
+):
+    planner = LLMPlanner(FakeLLM(study_all(curriculum)), curriculum, questions)
+
+    [plan] = planner.plan_streaming({}, None)
+
+    assert isinstance(plan, Plan)
+    assert [item.module.id for item in plan.items] == module_ids
 
 
 def test_skipped_nodes_have_justification(curriculum, questions, module_ids):
@@ -138,17 +168,15 @@ def test_a_module_to_study_may_name_topics_to_skim_and_only_its_own(
     )
     response = study_all(course)
     response["decisions"][0]["skim"] = [
-        {"topic": "Part 2", "reason": "You use it daily."},  # named without its number
-        {"topic": "Something else", "reason": "Not in the module."},
+        "Part 2",  # named without its number
+        "Something else",  # not in the module
     ]
     response["decisions"][1]["choice"] = "skip"
-    response["decisions"][1]["skim"] = [{"topic": "Anything", "reason": "Ignored."}]
+    response["decisions"][1]["skim"] = ["Anything"]
 
     items = plan(course, questions, response)
 
-    assert [(s.topic, s.reason) for s in items[0].skim] == [
-        ("2. Part 2", "You use it daily.")
-    ]
+    assert [(s.topic, s.reason) for s in items[0].skim] == [("2. Part 2", None)]
     assert items[1].skim == []
 
 
@@ -166,8 +194,8 @@ def test_a_module_to_study_may_skip_topics_but_keeps_one_to_study(
             module_id="m1",
             choice=Choice.STUDY,
             reason="Study it.",
-            skip_topics=[SkimSuggestion(topic=t, reason="Known.") for t in skip],
-            skim=[SkimSuggestion(topic=t, reason="Refresh.") for t in skim],
+            skip_topics=list(skip),
+            skim=list(skim),
         )
 
     skim, skip = _topics_for(module, decide(["Part 1"], ["Part 1", "2. Part 2"]))
@@ -194,8 +222,8 @@ def test_a_module_to_prove_keeps_its_topics_for_studying_it_instead(
         module_id="m1",
         choice=Choice.PROVE,
         reason="You use it at work.",
-        skip_topics=[SkimSuggestion(topic="Part 1", reason="Known.")],
-        skim=[SkimSuggestion(topic="Part 2", reason="Refresh.")],
+        skip_topics=["Part 1"],
+        skim=["Part 2"],
     )
     skim, skip = _topics_for(module, decision)
     assert [s.topic for s in skip] == ["1. Part 1"]

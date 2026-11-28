@@ -16,7 +16,7 @@ from . import prompts
 from .checkpoints import PASS_MARK, QUESTIONS_PER_ATTEMPT, CodingProblem
 from .curriculum import Module
 from .llm import LLMClient, UnusableAnswer
-from .path import Choice, LearningPath, PathItem
+from .path import Choice, LearningPath, PathItem, SkimTopic
 from .submissions import MAX_ARCHIVE_BYTES, REVIEWS_PER_DAY, Submission
 
 MAX_QUESTION = 1000
@@ -186,11 +186,6 @@ def _learner(path: LearningPath) -> list[str]:
         f"Level the path was planned for: {path.level.value if path.level else 'not given'}"
     ]
     lines += [f"{key}: {value}" for key, value in path.answers.items() if value.strip()]
-    lines.append(
-        "Path confirmed: yes, they are working through it"
-        if path.confirmed_at
-        else "Path confirmed: not yet, they are still reviewing it"
-    )
     return lines
 
 
@@ -211,10 +206,10 @@ def _item(item: PathItem) -> str:
         line += f"\n  Prerequisites, as the course states them: {stated}"
     line += f"\n  Why: {item.adjustment or item.reason}"
     if item.skim and item.choice is Choice.STUDY:
-        skims = "; ".join(f"{skim.topic} ({skim.reason})" for skim in item.skim)
+        skims = "; ".join(_marked(skim) for skim in item.skim)
         line += f"\n  Topics they can skim, though the checkpoint still asks about them: {skims}"
     if item.skip_topics and item.choice is Choice.STUDY:
-        skips = "; ".join(f"{skip.topic} ({skip.reason})" for skip in item.skip_topics)
+        skips = "; ".join(_marked(skip) for skip in item.skip_topics)
         line += f"\n  Topics they skip; the checkpoint leaves them out: {skips}"
     return line
 
@@ -298,7 +293,7 @@ reset yet. "Too many attempts. Try again in a few minutes." means too many sign-
 The account menu has Sign out and Delete account (deletes the path, progress and handed-in projects).
 
 The path panel: the "My path" button opens it, on any page. Its tabs are Path and Ask (this assistant). Under
-the path are its settings: Change your goal (plans the modules not started again; confirm the path again),
+the path are its settings: Change your goal (plans the modules not started again),
 "Count my progress in course statistics" (on by default; anonymous), and Start over (deletes the path and its
 progress). "This draft has expired. Plan your path again." means a path planned before signing in was not
 kept: plan it again.
@@ -335,3 +330,7 @@ The assistant answers {CHATS_PER_DAY} questions a day.
 "The personal path service cannot be reached right now." means the site's server or the connection is down:
 try again later. For a problem this guide does not cover, say plainly that you do not know the cause, suggest
 reloading the page or signing in again, and do not invent settings, buttons or contacts."""
+
+
+def _marked(marked: SkimTopic) -> str:
+    return f"{marked.topic} ({marked.reason})" if marked.reason else marked.topic

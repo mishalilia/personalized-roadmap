@@ -1,6 +1,6 @@
 // Every topic of a module the learner studies, each with a link to its section and its own switch: read it in
-// full, skim it, or skip it out of the checkpoint. The learner decides it here, so the path stays confirmed.
-// Once the path is confirmed, a box before each topic marks it as finished: the learner's own tally.
+// full, skim it, or skip it out of the checkpoint. The learner decides it here.
+// Once the path is saved, a box before each topic marks it as finished: the learner's own tally.
 import React, { useState, type ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import { ArrowRight } from "lucide-react";
@@ -14,7 +14,7 @@ import {
   type TopicChoice,
 } from "./model";
 import { openAuth, usePathState } from "./store";
-import { changePath, withTopic, withTopicFinished } from "./changes";
+import { canChange, changePath, sendTopicChoice, withTopic, withTopicFinished } from "./changes";
 import { Reveal } from "./ui";
 import styles from "./path.module.css";
 
@@ -43,7 +43,8 @@ export default function ModuleTopics({
   const [error, setError] = useState<string | null>(null);
   const topics = item.module.topics ?? [];
   if (item.choice !== "study" || item.module.is_project || topics.length < 2) return null;
-  const confirmed = Boolean(path?.confirmed_at);
+  // Topics marked finished are progress, kept with an account; a draft's topics can still be skimmed or skipped.
+  const confirmed = account !== null && Boolean(path?.confirmed_at);
   const finished = new Set(
     passed
       ? topics.filter((topic) => topicChoiceOf(item, topic.title) !== "skip").map((topic) => topic.title)
@@ -56,11 +57,11 @@ export default function ModuleTopics({
 
   function choose(title: string, choice: TopicChoice) {
     if (!api) return;
-    if (!account) return openAuth("sign-up", "Create an account to change and keep your path.");
+    if (!canChange()) return openAuth("sign-up", "Create an account to change and keep your path.");
     changePath(
       api,
       (current) => withTopic(current, item.module.id, title, choice),
-      () => api.chooseTopic(item.module.id, title, choice),
+      () => sendTopicChoice(api, item.module.id, title, choice),
       setError,
     );
   }
@@ -138,7 +139,7 @@ export default function ModuleTopics({
                   </a>
                 )}
               </div>
-              {marked && !marked.chosen && <small>{marked.reason}</small>}
+              {marked && !marked.chosen && marked.reason && <small>{marked.reason}</small>}
             </li>
           );
         })}
@@ -161,11 +162,6 @@ export default function ModuleTopics({
           )}
         </p>
       </Reveal>
-      {!passed && (
-        <small className={styles.moduleTopicsNote}>
-          Skim: the checkpoint still asks about the topic. Skip: the checkpoint leaves it out.
-        </small>
-      )}
       {error && <p className={styles.error}>{error}</p>}
     </div>
   );

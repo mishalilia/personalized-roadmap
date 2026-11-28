@@ -1,5 +1,5 @@
-// The personal path page: onboarding until the learner has a path, then the path itself, which they review,
-// confirm and follow from the module pages.
+// The personal path page: onboarding until the learner has a path, then the path itself, which they follow from
+// the module pages and change at any time.
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import useBaseUrl from "@docusaurus/useBaseUrl";
@@ -49,6 +49,7 @@ import {
   type Proposal,
   type Question,
   type QuestionsResponse,
+  openHref,
 } from "./model";
 import {
   handleSignedOut,
@@ -59,7 +60,7 @@ import {
   useCheckpoints,
   usePathState,
 } from "./store";
-import { changePath, withChoice } from "./changes";
+import { canChange, changePath, sendChoice, withChoice } from "./changes";
 import { useModulePages, useVersionLabel } from "./useModulePages";
 import {
   CHOICE_HINT,
@@ -165,14 +166,8 @@ function toggled(question: Question, choices: string[], option: string): string[
   return [...choices.filter((choice) => choice !== "none"), option];
 }
 
-const QUESTION_HINT: Record<Question["kind"], string> = {
-  text: "Short answers are fine; leave it empty to skip the question.",
-  single:
-    "Choose what fits best. The details are optional, but they make the suggested level more precise. Leave it empty to skip the question.",
-  multiple:
-    "Tick everything you have used. The details are optional, but they make the suggested level more precise.",
-  check: "Answer without running the code. A wrong answer is fine: it only helps suggest your level.",
-};
+// Only the code question needs a word on how to answer it.
+const CODE_HINT = "Answer without running the code. A wrong answer is fine: it only helps suggest your level.";
 
 function sameAnswers(answers: Answers, example: Answers): boolean {
   const ids = new Set([...Object.keys(answers), ...Object.keys(example)]);
@@ -188,6 +183,7 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
   const [level, setLevel] = useState<Level>("beginner");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planned, setPlanned] = useState<PathItem[]>([]); // modules decided so far, while planning
   const field = useRef<HTMLTextAreaElement>(null);
   const cardTop = useRef<HTMLDivElement>(null);
 
@@ -232,12 +228,15 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
 
   async function plan() {
     setError(null);
+    setPlanned([]);
     setStage({ kind: "planning" });
     try {
-      const planned = await api.plan(answersFor(questions, answers), level, assessment);
+      const result = await api.planStreaming(answersFor(questions, answers), level, assessment, (item) =>
+        setPlanned((decided) => [...decided, item]),
+      );
       keepAnswers(null);
-      if (planned.draft_id) setDraft(planned.path, planned.draft_id);
-      else setPath(planned.path);
+      if (result.draft_id) setDraft(result.path, result.draft_id);
+      else setPath(result.path);
       window.scrollTo({ top: 0 });
     } catch (reason) {
       setError(message(reason));
@@ -330,7 +329,7 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
             )}
           </fieldset>
         )}
-        <p className={styles.fine}>{QUESTION_HINT[question.kind]}</p>
+        {question.kind === "check" && <p className={styles.fine}>{CODE_HINT}</p>}
         <div className={styles.navRow}>
           <button
             type="button"
@@ -349,6 +348,30 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
       </form>
     );
   }
+
+  // While the path is planned it is shown as it will look, filling in module by module.
+  if (stage.kind === "planning" && setup)
+    return (
+      <PathView
+        api={api}
+        planning
+        path={{
+          level,
+          assessment,
+          items: planned,
+          personalization_unavailable: false,
+          curriculum_version: setup.curriculum.version,
+          curriculum_site_version: setup.curriculum.site_version,
+          attribution: { title: setup.curriculum.title, author: "", url: "", licence: setup.curriculum.licence, licence_url: "" },
+          changes: "",
+          generated_at: "",
+          confirmed_at: null,
+        }}
+      />
+    );
+  // Each question, the level and the steps between them change in place: the card grows or shrinks smoothly
+  // instead of the page jumping.
+  const stageKey = stage.kind === "question" ? `question-${stage.index}` : stage.kind;
 
   return (
     <div className={styles.onboarding}>
@@ -380,6 +403,8 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
         </p>
       )}
 
+      <SmoothHeight>
+      <div key={stageKey} className={styles.stageSwap}>
       {!setup ? (
         !error && (
           <div className={styles.card}>
@@ -413,10 +438,6 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
             </div>
           )}
           {questionStep(stage.index)}
-          <p className={styles.fine}>
-            Your answers go to the Personalized Roadmap service and its language model provider to plan the
-            path. If you create an account, your path and these answers are kept with it until you delete it.
-          </p>
         </div>
       ) : stage.kind === "level" ? (
         <div className={styles.card}>
@@ -469,23 +490,55 @@ function Onboarding({ api }: { api: PathApi }): ReactNode {
             </button>
           </div>
         </div>
-      ) : (
-        <div className={clsx(styles.card, styles.planning)} aria-live="polite">
-          <Spinner />
-          <strong>Planning your path…</strong>
-          <span className={styles.muted}>
-            Going through every module of the course with your answers. This can take up to a minute.
-          </span>
-        </div>
-      )}
+      ) : null}
+      </div>
+      </SmoothHeight>
     </div>
   );
 }
 
-// The path: review, confirm, follow.
+// While the path is planned: each module takes its place in the path as soon as the model has decided it.
+// With reasoning_effort low a path takes the main model 10-14 s, the first module after a few seconds
+// (measured 27 November 2026); past SLOW_AFTER it is likely failing and a backup answering.
+const SLOW_AFTER = 30; // seconds
 
-function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNode {
-  const { account, confirmCall } = usePathState();
+function PlanningStatus({ decided }: { decided: number }): ReactNode {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(() => setElapsed((Date.now() - started) / 1000), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <p className={styles.planningStatus} aria-live="polite">
+      <Spinner />
+      <span>
+        {decided > 0
+          ? `${decided} ${decided === 1 ? "module" : "modules"} decided`
+          : "Reading your answers and weighing every module against them"}
+        {" · "}
+        {Math.floor(elapsed)} s
+        {elapsed >= SLOW_AFTER
+          ? " · taking longer than usual: the main model may be busy, so a backup model is answering."
+          : " · usually 10–15 seconds."}
+      </span>
+    </p>
+  );
+}
+
+// The path: follow it, change it along the way.
+
+// `planning`: the path while the model is still deciding it, read-only, without what needs a saved path.
+function PathView({
+  api,
+  path,
+  planning = false,
+}: {
+  api: PathApi;
+  path: LearningPath;
+  planning?: boolean;
+}): ReactNode {
+  const { account } = usePathState();
   const siteVersion = path.curriculum_site_version ?? null;
   const pageOf = useModulePages(siteVersion);
   const versionLabel = useVersionLabel(siteVersion);
@@ -493,29 +546,18 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const signedIn = account !== null;
-  const confirmed = path.confirmed_at !== null;
   const { finished, total } = completion(path);
-  const next = confirmed ? nextUp(path) : undefined;
+  const next = nextUp(path);
   const blocking = path.items.find((item) => item.module.id === path.blocking_module_id);
   const sections = useMemo(() => bySection(path.items), [path.items]);
   const estimate = path.time_estimate;
   const working = count(path, "study") + count(path, "prove");
   const estimated = estimate ? working - estimate.modules_without_estimate : 0;
-
-  // "Review and confirm your path" pressed elsewhere on the page while this is open: bring the confirmation
-  // into view and make it blink, so the learner sees where to go. Not on mounting, which a new page also does.
-  const callout = useRef<HTMLDivElement>(null);
-  const seenCall = useRef(confirmCall);
+  // Planning starts where the learner pressed "Build my path", lower down: the path is read from its top.
+  const top = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (confirmCall === seenCall.current) return;
-    seenCall.current = confirmCall;
-    const banner = callout.current;
-    if (!banner) return;
-    banner.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    banner.removeAttribute("data-flash");
-    void banner.offsetWidth; // restart the animation when pressed again
-    banner.setAttribute("data-flash", "true");
-  }, [confirmCall]);
+    if (planning) top.current?.scrollIntoView({ block: "start" });
+  }, [planning]);
 
   async function run(label: string, action: () => Promise<LearningPath | void>): Promise<boolean> {
     setBusy(label);
@@ -533,23 +575,26 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
   }
 
   function choose(item: PathItem, choice: Choice) {
-    if (!signedIn) return openAuth("sign-up", "Create an account to change and keep your path.");
+    if (!canChange()) return openAuth("sign-up", "Create an account to change and keep your path.");
     if (choice === item.choice) return;
     changePath(
       api,
       (current) => withChoice(current, item.module.id, choice),
-      () => api.choose(item.module.id, choice),
+      () => sendChoice(api, item.module.id, choice),
       setError,
     );
   }
 
 
   return (
-    <div className={styles.pathPage}>
+    <div className={styles.pathPage} ref={top}>
       <header className={styles.pathHeader}>
         <div>
           <span className={styles.eyebrow}>My path</span>
-          <h1>{path.title ?? path.answers?.goal ?? "Your path through the course"}</h1>
+          <h1>
+            {planning ? "Planning your path…" : (path.title ?? path.answers?.goal ?? "Your path through the course")}
+          </h1>
+          {planning && <PlanningStatus decided={path.items.length} />}
           <p className={styles.muted}>
             Planned for {path.level ? <strong>{capitalize(path.level)}</strong> : "no particular level"}
             {versionLabel && <> · curriculum: {versionLabel}</>}
@@ -557,7 +602,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
               " · personalization was unavailable, so this is the whole course"}
           </p>
         </div>
-        {confirmed && (
+        {!planning && (
           <div className={styles.headerProgress}>
             <ProgressRing finished={finished} total={total} size={76} />
             <span className={styles.muted}>
@@ -567,14 +612,14 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
         )}
       </header>
 
-      {!signedIn ? (
-        <div ref={callout} className={styles.banner} data-tone="gold">
+      {!signedIn && !planning && (
+        <div className={styles.banner} data-tone="gold">
           <Sparkles size={20} aria-hidden />
           <div>
-            <strong>Your path is ready. Save it to start.</strong>
+            <strong>Your path is ready. Change anything below, then save it to start.</strong>
             <p>
-              Create a free account to keep this path, adjust it, take checkpoints and track your progress.
-              Without one, it is kept for 24 hours.
+              Create a free account to keep this path with your changes, take checkpoints and track your
+              progress. Without one, it is kept for 24 hours.
             </p>
           </div>
           <div className={styles.actions}>
@@ -586,27 +631,6 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
             </button>
           </div>
         </div>
-      ) : (
-        !confirmed && (
-          <div ref={callout} className={clsx(styles.banner, styles.sticky)} data-tone="gold">
-            <ListChecks size={20} aria-hidden />
-            <div>
-              <strong>Review your path, then confirm it</strong>
-              <p>
-                The planner only suggests: change what you do with any module below. Confirming starts your
-                progress and shows your path on every module page.
-              </p>
-            </div>
-            <button
-              type="button"
-              className={styles.primary}
-              disabled={busy !== null}
-              onClick={() => void run("confirm", () => api.confirm())}
-            >
-              {busy === "confirm" && <Spinner />} Confirm my path
-            </button>
-          </div>
-        )
       )}
 
       {error && (
@@ -615,8 +639,8 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
         </p>
       )}
 
-      {next && (
-        <Link to={pageOf(next.module.id) ?? "/docs/"} className={styles.continue}>
+      {next && !planning && (
+        <Link to={openHref(next, pageOf(next.module.id)) ?? "/docs/"} className={styles.continue}>
           <span className={styles.eyebrow}>
             {finished === 0 ? "Start here" : "Continue where you left off"}
           </span>
@@ -631,7 +655,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
           </span>
         </Link>
       )}
-      {confirmed && finished === total && total > 0 && (
+      {finished === total && total > 0 && !planning && (
         <div className={styles.banner} data-tone="success">
           <strong>🎉 You have completed every module in your path.</strong>
         </div>
@@ -643,7 +667,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
         </p>
       )}
 
-      <Proposals api={api} path={path} onError={setError} />
+      {!planning && <Proposals api={api} path={path} onError={setError} />}
 
       <div className={styles.stats}>
         <Stat label="To study" value={count(path, "study")} choice="study" />
@@ -672,7 +696,7 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
 
       {/* The path as a road: each section of the course is a stage, each module a stop on it. A stop opens to
           show why it is in the path and what the learner can do with it. */}
-      <ol className={styles.roadmap} aria-label="Your path, section by section">
+      <ol className={styles.roadmap} aria-label="Your path, section by section" data-planning={planning}>
         {sections.map(({ section, items }) => {
           const kept = items.filter(isIncluded).length;
           const nodes = items.map((item) => (
@@ -680,9 +704,9 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
               key={item.module.id}
               path={path}
               item={item}
-              href={pageOf(item.module.id)}
+              href={openHref(item, pageOf(item.module.id))}
               hasCheckpoint={item.module.id in checkpoints}
-              busy={false}
+              busy={planning}
               onChoose={(choice) => choose(item, choice)}
             />
           ));
@@ -710,13 +734,15 @@ function PathView({ api, path }: { api: PathApi; path: LearningPath }): ReactNod
         })}
       </ol>
 
-      {signedIn && <Settings api={api} path={path} busy={busy} run={run} />}
+      {signedIn && !planning && <Settings api={api} path={path} busy={busy} run={run} />}
 
+      {!planning && (
       <p className={styles.fine}>
-        Learning content: <a href={path.attribution.url}>{path.attribution.title}</a> by{" "}
-        {path.attribution.author}, licensed under{" "}
-        <a href={path.attribution.licence_url}>{path.attribution.licence}</a>. {path.changes}
+        {/* What CC BY-NC-SA asks: the source, its licence, and that it was changed. */}
+        Content: <a href={path.attribution.url}>{path.attribution.title}</a> ·{" "}
+        <a href={path.attribution.licence_url}>{path.attribution.licence}</a> · arranged as a personal path
       </p>
+      )}
     </div>
   );
 }
@@ -759,14 +785,21 @@ function RoadmapNode({
   return (
     <li className={styles.node} data-status={status} data-choice={item.choice} data-open={open}>
       <span className={styles.nodeMark}>
-        <StatusIcon status={path.confirmed_at || status === "skipped" ? status : "todo"} />
+        <StatusIcon status={status} />
       </span>
       <div className={styles.nodeCard}>
-        <div className={styles.nodeHead} onClick={() => setOpen(!open)}>
+        {/* The title's link opens the module and does not fold the card; the click still reaches the panel,
+            which closes when a module is opened. */}
+        <div
+          className={styles.nodeHead}
+          onClick={(event) => {
+            if (!(event.target as Element).closest("a")) setOpen(!open);
+          }}
+        >
           <div className={styles.nodeText}>
             <span className={styles.nodeTitle}>
               {href ? (
-                <Link to={href} onClick={(event) => event.stopPropagation()}>
+                <Link to={href}>
                   {item.module.title}
                 </Link>
               ) : (
@@ -903,17 +936,63 @@ function Proposals({
   onError: (text: string) => void;
 }): ReactNode {
   const proposals = path.proposals ?? [];
-  if (!proposals.length)
-    return path.suggestions_pending ? (
+  const made = path.changed_after_checkpoint ?? [];
+  const titleOf = (id: string) => path.items.find((item) => item.module.id === id)?.module.title ?? id;
+  const what = (proposal: Proposal) =>
+    proposal.topic ? <strong>{proposalAction(proposal)}</strong> : proposal.choice && <ChoiceChip choice={proposal.choice} />;
+  if (made.length)
+    return (
+      <div className={styles.banner} data-tone="warn">
+        <Sparkles size={20} aria-hidden />
+        <div>
+          <strong>Your path changed after the checkpoint</strong>
+          <p>
+            These later parts build on the topics you got wrong, so they now take more of your time. You can still
+            change any of them back.
+          </p>
+          <ul className={styles.proposalList}>
+            {made.map((proposal) => (
+              <li key={`${proposal.module_id}#${proposal.topic ?? ""}`}>
+                <span>
+                  <strong>{titleOf(proposal.module_id)}</strong> → {what(proposal)} {proposal.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className={styles.ghostSm}
+            onClick={() =>
+              void api.changesSeen().then(setPath, (reason) => {
+                if (!handleSignedOut(reason)) onError(message(reason));
+              })
+            }
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    );
+  if (!proposals.length) {
+    if (!path.suggestions_pending) return null;
+    // The key is "module id:attempts"; after a failure the changes are made, after an easy pass suggested.
+    const checked = path.items.find((item) => path.suggestions_pending?.startsWith(`${item.module.id}:`));
+    const failedLast = checked?.progress === "failed";
+    return (
       <div className={styles.banner} data-tone="info">
         <Spinner />
         <div>
           <strong>Checking the rest of your path</strong>
-          <p>Your result is saved. Suggestions for the modules that follow will appear here in a few minutes.</p>
+          <p>
+            Your result is saved.{" "}
+            {failedLast
+              ? "The modules that build on what you got wrong will be adjusted in a few minutes."
+              : "Suggestions for the modules that follow will appear here in a few minutes."}
+          </p>
         </div>
       </div>
-    ) : null;
-  const titleOf = (id: string) => path.items.find((item) => item.module.id === id)?.module.title ?? id;
+    );
+  }
   const failed = proposals.some((proposal) => proposal.after_failure);
   async function answer(action: "accept" | "decline", proposal: Proposal) {
     try {
@@ -937,13 +1016,7 @@ function Proposals({
           {proposals.map((proposal) => (
             <li key={`${proposal.module_id}#${proposal.topic ?? ""}`}>
               <span>
-                <strong>{titleOf(proposal.module_id)}</strong> →{" "}
-                {proposal.topic ? (
-                  <strong>{proposalAction(proposal)}</strong>
-                ) : (
-                  proposal.choice && <ChoiceChip choice={proposal.choice} />
-                )}{" "}
-                {proposal.reason}
+                <strong>{titleOf(proposal.module_id)}</strong> → {what(proposal)} {proposal.reason}
               </span>
               <span className={styles.actions}>
                 <button type="button" className={styles.primarySm} onClick={() => void answer("accept", proposal)}>
@@ -1076,7 +1149,7 @@ function Settings({
         </h3>
         <p className={styles.muted}>
           The rest of your path is planned again for the new goal. Modules you have started keep their
-          decision and progress; you confirm the new path again.
+          decision and progress.
         </p>
         <textarea
           rows={2}

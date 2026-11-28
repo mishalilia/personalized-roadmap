@@ -144,7 +144,7 @@ def test_without_a_model_a_checkpoint_still_counts_but_brings_no_suggestions(
     assert after.proposals == []
 
 
-def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_topics(
+def test_a_failed_checkpoint_makes_later_modules_and_topics_heavier_at_once(
     curriculum, questions
 ):
     from helpers import planner_response
@@ -180,7 +180,7 @@ def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_to
     ]
     for decision in first["decisions"]:
         if decision["module_id"] == vision_id:
-            decision["skim"] = [{"topic": "Intro", "reason": "You know it."}]
+            decision["skim"] = ["Intro"]
     again = study_all(
         course,
         except_for={algebra: (Choice.SKIP, "Lighter, which a failure cannot bring.")},
@@ -202,14 +202,19 @@ def test_a_failed_checkpoint_brings_heavier_suggestions_for_later_modules_and_to
     after = roadmap.after_checkpoint(path, terminal, grade)
 
     assert after.item(terminal).progress == "failed"
-    # In course order; algebra's lighter "skip" is dropped after a failure.
+    # Made without asking, in course order; algebra's lighter "skip" is dropped after a failure.
     assert [
-        (p.module_id, p.choice, p.topic, p.topic_choice) for p in after.proposals
+        (p.module_id, p.choice, p.topic, p.topic_choice)
+        for p in after.changed_after_checkpoint
     ] == [
         (vision, None, "Intro", TopicChoice.STUDY),
         (notes, Choice.STUDY, None, None),
     ]
-    assert all(p.after_failure for p in after.proposals)
+    assert after.proposals == []
+    assert after.item(vision).topic_choice("Intro") is TopicChoice.STUDY
+    assert after.item(notes).choice is Choice.STUDY
+    assert after.item(algebra).choice is Choice.STUDY
+    assert (after.item(notes).adjustment or "").startswith("Changed after a checkpoint")
     assert "failed the checkpoint" in llm.prompts[-1] and "Pipes" in llm.prompts[-1]
     assert f"{vision}: study (skim Intro)" in llm.prompts[-1]
 

@@ -129,6 +129,35 @@ export default function PathDrawer(): ReactNode {
     if (window.matchMedia("(max-width: 996px)").matches) setDrawer(false);
   }, [pathname]);
 
+  // A module or topic opened from the course's own menu at the left closes the panel too, as one opened from the
+  // panel does: the learner has chosen what to read.
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target as Element | null;
+      if (target?.closest?.(".theme-doc-sidebar-container a[href]")) setDrawer(false);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  // The review and report pages are wide tables for the course team: they open with the panel closed.
+  useEffect(() => {
+    if (pathname.startsWith("/review") || pathname.startsWith("/report")) setDrawer(false);
+  }, [pathname]);
+
+  // Opening a module (or the review or report page) from the panel closes it, so the page has the whole width.
+  // Links within the page, links to other sites and links opened in a new tab leave it open.
+  const followLink = (event: React.MouseEvent) => {
+    const link = (event.target as Element).closest?.("a[href]");
+    if (!link || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const href = link.getAttribute("href") ?? "";
+    if (href.startsWith("#") || link.getAttribute("target") === "_blank") return;
+    if (new URL(href, window.location.href).origin !== window.location.origin) return;
+    setDrawer(false);
+  };
+
   if (!api || onPathPage) return null;
   const progress = path?.confirmed_at ? completion(path) : null;
 
@@ -200,7 +229,7 @@ export default function PathDrawer(): ReactNode {
           )}
           <span>{path ? "My path" : "Get your path"}</span>
         </button>
-        <aside ref={panel} className={styles.drawer} aria-label="My path">
+        <aside ref={panel} className={styles.drawer} aria-label="My path" onClick={followLink}>
           <header className={styles.drawerHead}>
             <strong>My path</strong>
             {progress && (

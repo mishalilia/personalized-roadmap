@@ -1,6 +1,7 @@
 """The entry point for interfaces: suggest a level, then build a path, falling back when no model answers."""
 
 import logging
+from collections.abc import Iterator
 
 from .config import Settings
 from .curriculum import Curriculum, Level
@@ -9,7 +10,7 @@ from .llm import LLMClient, LLMUnavailable, connect
 from .onboarding import Answers, Question, load_questions
 from .checkpoints import Grade
 from .path import Choice, LearningPath, PathItem, Proposal
-from .planner import CourseOrderPlanner, LLMPlanner, Planner
+from .planner import CourseOrderPlanner, LLMPlanner, Plan, Planner
 from .source import CurriculumSource, load_curriculum
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,43 @@ class Roadmap:
     ) -> LearningPath:
         """Plan for `level`, the learner's own choice, which may differ from the suggested `assessment`."""
         items, title = self._personal_plan(answers, level)
+        return self._new_path(answers, level, assessment, items, title)
+
+    def build_path_streaming(
+        self,
+        answers: Answers,
+        level: Level | None,
+        assessment: LevelAssessment | None = None,
+    ) -> Iterator[PathItem | LearningPath]:
+        """As `build_path`, with each module's decision as soon as the model has made it, then the path, last.
+        When no model answers, the path follows the course order, as `build_path` does.
+        """
+        streaming = getattr(self._planner, "plan_streaming", None)
+        if streaming is None:
+            yield self.build_path(answers, level, assessment)
+            return
+        try:
+            for event in streaming(answers, level):
+                if isinstance(event, Plan):
+                    yield self._new_path(
+                        answers, level, assessment, event.items, event.title
+                    )
+                    return
+                yield event
+        except LLMUnavailable as error:
+            logger.warning(
+                "Personal planning unavailable, following the course order: %s", error
+            )
+        yield self._new_path(answers, level, assessment, None, None)
+
+    def _new_path(
+        self,
+        answers: Answers,
+        level: Level | None,
+        assessment: LevelAssessment | None,
+        items: list[PathItem] | None,
+        title: str | None,
+    ) -> LearningPath:
         return LearningPath(
             level=level,
             assessment=assessment,
@@ -79,8 +117,8 @@ class Roadmap:
     ) -> LearningPath:
         """The path with the learner's checkpoint result. After a checkpoint passed without a mistake at the
         first try, the model may suggest lightening the modules and topics that follow; after a failed one,
-        making heavier those that build on the topics the learner got wrong. `suggest` False leaves the
-        model out, as when the learner is over their quota."""
+        it makes heavier at once those that build on the topics the learner got wrong. `suggest` False leaves
+        the model out, as when the learner is over their quota."""
         path = path.with_checkpoint_result(
             module_id,
             grade.score,
@@ -91,7 +129,9 @@ class Roadmap:
         )
         if not suggest or not self.wants_suggestions(grade):
             return path
-        return path.with_proposals(self.suggestions_after(path, module_id, grade))
+        return path.with_checkpoint_changes(
+            self.suggestions_after(path, module_id, grade)
+        )
 
     def wants_suggestions(self, grade: Grade) -> bool:
         """Whether a checkpoint result asks the model for changes to the rest of the path."""
@@ -179,6 +219,7 @@ class Roadmap:
             reasons = {
                 marked.topic: marked.reason
                 for marked in [*planned.skim, *planned.skip_topics]
+                if marked.reason
             }
             for topic in current_item.module.topics:
                 old, new = current_item.topic_choice(topic.title), planned.topic_choice(

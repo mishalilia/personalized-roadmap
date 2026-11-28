@@ -4,8 +4,8 @@ import React, { type ReactNode } from "react";
 import Link from "@docusaurus/Link";
 import { useActiveVersion } from "@docusaurus/plugin-content-docs/client";
 import { ArrowRight, Route } from "lucide-react";
-import { completion, nextUp, statusOf, type Status } from "./model";
-import { setDrawer, showConfirmation, usePathState } from "./store";
+import { completion, nextUp, openHref, statusOf, type Status } from "./model";
+import { setDrawer, usePathState } from "./store";
 import { useModulePages } from "./useModulePages";
 import { ProgressBar } from "./ui";
 import styles from "./path.module.css";
@@ -51,8 +51,8 @@ export function SidebarPathCard(): ReactNode {
     );
 
   const { finished, total } = completion(path);
-  const next = path.confirmed_at ? nextUp(path) : undefined;
-  const href = next && pageOf(next.module.id);
+  const next = nextUp(path);
+  const href = next && openHref(next, pageOf(next.module.id));
   return (
     <div className={styles.sideCard}>
       <div className={styles.sideHead}>
@@ -60,15 +60,11 @@ export function SidebarPathCard(): ReactNode {
           My path
         </button>
         <span className={styles.muted}>
-          {path.confirmed_at ? `${finished} of ${total} done` : "Not confirmed yet"}
+          {`${finished} of ${total} done`}
         </span>
       </div>
       <ProgressBar finished={finished} total={total} />
-      {!path.confirmed_at ? (
-        <button type="button" className={styles.sideNext} onClick={showConfirmation}>
-          Review and confirm your path <ArrowRight size={14} aria-hidden />
-        </button>
-      ) : next && href ? (
+      {next && href ? (
         <Link to={href} className={styles.sideNext}>
           <span className={styles.muted}>Next</span> {next.module.title} <ArrowRight size={14} aria-hidden />
         </Link>
@@ -84,9 +80,7 @@ export function useSidebarStatus(docId: string | undefined): Status | null {
   const { path } = usePathOfThisVersion();
   const item = docId ? path?.items.find((candidate) => candidate.module.id === docId) : undefined;
   if (!path || !item) return null;
-  // Before the learner confirms, only what the path leaves out is marked.
-  const status = statusOf(path, item);
-  return path.confirmed_at || status === "skipped" ? status : null;
+  return statusOf(path, item);
 }
 
 // Whether the path leaves out every one of its modules among these docs; false when none of them is a module.

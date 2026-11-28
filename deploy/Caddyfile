@@ -5,7 +5,10 @@
 }
 
 {$API_DOMAIN} {
-	encode gzip
+	# Not the planned path, which arrives module by module as server-sent events: compressed, it could be held
+	# back until the end.
+	@compressed not path /path/stream
+	encode @compressed gzip
 	# Project archives are at most 20 MB; the API refuses larger ones too.
 	request_body {
 		max_size 21MB

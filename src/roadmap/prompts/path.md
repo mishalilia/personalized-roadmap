@@ -22,8 +22,8 @@ How to judge:
 - If you are told what the learner has shown since onboarding, such as a checkpoint passed without a mistake,
   count it as evidence alongside their answers, for that module's content and for what builds on it.
 
-For a module to study or to prove, decide its topics one by one, from the titles you are given, each with a short reason
-tied to the learner's answers:
+For a module to study or to prove, decide its topics one by one, from the titles you are given; list the titles
+only, without reasons:
 - `skip_topics`: topics the answers show the learner already knows, such as algorithm basics for someone who
   regularly solves programming puzzles, or Git for someone who uses it at work. The checkpoint leaves them out.
 - `skim`: topics the learner has met but should refresh; they go through them quickly, and the checkpoint still

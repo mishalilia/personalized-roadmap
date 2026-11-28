@@ -19,9 +19,7 @@ from .path import LearningPath
 
 
 class EventKind(StrEnum):
-    INCLUDED = (
-        "included"  # the learner confirmed a path that studies or proves the module
-    )
+    INCLUDED = "included"  # the learner's path studies or proves the module
     FAILED = "failed"  # a checkpoint attempt that did not pass
     PRACTICE = "practice"  # questions passed, coding problem next
     FINISHED = "finished"  # checkpoint passed, coding problem solved, or marked done
@@ -64,8 +62,8 @@ class EventLog:
         self._insert([(path.id, path.curriculum_version, module_id, kind)])
 
     def record_included(self, path: LearningPath) -> None:
-        """At confirmation: the modules the path asks the learner to work through. A path confirmed again
-        after a change replaces what it included before."""
+        """The modules the path asks the learner to work through. Recorded again after a change, it replaces
+        what the path included before."""
         if not path.share_progress or path.id is None:
             return
         with self._db.transaction() as tx:
@@ -79,6 +77,13 @@ class EventLog:
                 for item in path.included
             ]
         )
+
+    def forget(self, path: LearningPath) -> None:
+        """Removes everything recorded for the path: the learner stopped sharing it."""
+        if path.id is None:
+            return
+        with self._db.transaction() as tx:
+            tx.execute("DELETE FROM events WHERE path_id = ?", (path.id,))
 
     def _insert(self, rows: list[tuple[str, str, str | None, str]]) -> None:
         now = datetime.now(UTC).isoformat(timespec="seconds")

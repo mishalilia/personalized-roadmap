@@ -23,17 +23,17 @@ import {
   type LearningPath,
   type PathItem,
   CHECKPOINT_ANCHOR,
+  openHref,
 } from "./model";
 import {
   handleSignedOut,
   openAuth,
   setDrawer,
   setPath,
-  showConfirmation,
   useCheckpoints,
   usePathState,
 } from "./store";
-import { changePath, withChoice } from "./changes";
+import { canChange, changePath, sendChoice, withChoice } from "./changes";
 import { useModulePages, useVersionLabel } from "./useModulePages";
 import { ChoiceChip, ReviewTopics, STATUS_LABEL, Spinner, StatusIcon } from "./ui";
 import styles from "./path.module.css";
@@ -92,19 +92,13 @@ export function ModulePanel(): ReactNode {
   const blocking = path.items.find((i) => i.module.id === path.blocking_module_id);
   const signedIn = account !== null;
 
-  // A decision made on the module page is the learner's own approval, so a confirmed path stays confirmed.
-  // Changing a module on its page is the learner's own approval: a confirmed path stays confirmed.
   function choose(choice: Choice) {
-    if (!signedIn) return openAuth("sign-up", "Create an account to change and keep your path.");
+    if (!canChange()) return openAuth("sign-up", "Create an account to change and keep your path.");
     if (choice === item!.choice) return;
-    const confirmed = Boolean(path!.confirmed_at);
     changePath(
       api!,
-      (current) => withChoice(current, item!.module.id, choice, confirmed),
-      async () => {
-        const changed = await api!.choose(item!.module.id, choice);
-        return confirmed ? api!.confirm() : changed;
-      },
+      (current) => withChoice(current, item!.module.id, choice),
+      () => sendChoice(api!, item!.module.id, choice),
       setError,
     );
   }
@@ -175,17 +169,13 @@ export function ModulePanel(): ReactNode {
       ))}
 
       <div className={styles.actions}>
-        {!signedIn ? (
+        {!signedIn && item.choice !== "skip" ? (
           <>
             <button type="button" className={styles.primarySm} onClick={() => openAuth("sign-up")}>
               Save my path
             </button>
             <span className={styles.muted}>Create a free account to track your progress.</span>
           </>
-        ) : !path.confirmed_at ? (
-          <button type="button" className={styles.primarySm} onClick={showConfirmation}>
-            Review and confirm your path
-          </button>
         ) : item.choice === "skip" ? (
           <button type="button" className={styles.ghostSm} onClick={() => choose("study")}>
             Add it to my path
@@ -230,11 +220,11 @@ export function ModuleFinish(): ReactNode {
   const pageOf = useModulePages(path?.curriculum_site_version ?? null);
 
   if (!api) return null;
-  if (!path || !item || !account || !path.confirmed_at) return <CheckpointWaiting />;
+  if (!path || !item || !account) return <CheckpointWaiting />;
   if (item.choice === "skip" || isLocked(path, item.module.id)) return null;
 
   const next = nextAfter(path, item.module.id);
-  const nextHref = next && pageOf(next.module.id);
+  const nextHref = next && openHref(next, pageOf(next.module.id));
   const summary = checkpoints[item.module.id];
 
   return (
@@ -296,14 +286,14 @@ function CheckpointWaiting(): ReactNode {
       ]
     : !account
       ? [
-          "Create a free account to keep your path; the checkpoint opens once your path is saved and confirmed.",
+          "Create a free account to keep your path; the checkpoint opens once your path is saved.",
           "Create an account",
           () => openAuth("sign-up", "Create an account to take checkpoints and keep your progress."),
         ]
       : [
-          "Confirm your path to open this checkpoint: review what to study, prove or skip, then confirm.",
-          "Review and confirm my path",
-          showConfirmation,
+          "This module is not in your path yet: open your path to add it.",
+          "Open my path",
+          () => setDrawer(true),
         ];
 
   return (

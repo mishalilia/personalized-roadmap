@@ -6,7 +6,7 @@ import { askAssistant, handleSignedOut, setOpenProblem, setPath } from "./store"
 import { Spinner } from "./ui";
 import { Reply } from "./PathChat";
 import { headingAnchor, type CodingProblem as Problem, type LearningPath } from "./model";
-import { onCodeKey } from "./codeKeys";
+import CodeEditor from "./CodeEditor";
 import { noteError } from "./pageErrors";
 import styles from "./path.module.css";
 
@@ -242,16 +242,7 @@ export default function CodingProblem({
           <span>solution.py</span>
           <span className={styles.muted}>Runs in your browser; your code is not sent anywhere.</span>
         </span>
-        <textarea
-          className={styles.code}
-          spellCheck={false}
-          aria-label="Your code"
-          rows={Math.max(8, code.split("\n").length + 1)}
-          value={code}
-          disabled={state === "solved"}
-          onChange={(event) => setCode(event.target.value)}
-          onKeyDown={onCodeKey}
-        />
+        <CodeEditor value={code} onChange={setCode} disabled={state === "solved"} label="Your code" />
       </label>
       {state === "solved" ? (
         <p className={styles.success} role="status">

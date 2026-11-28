@@ -1,11 +1,12 @@
 """The generated path. Its JSON form is what every interface reads, and what a learner keeps.
 
-The planner only suggests. The learner can change any decision and confirms the path before using it.
+The planner only suggests. The path is in use as soon as it is planned; the learner can change any decision
+along the way.
 
 Once the learner works through the path, it also keeps their progress. A failed checkpoint locks the modules
-after it until the learner passes it; it also turns "prove" into "study", since the learner could not prove
-the module. A checkpoint passed without a mistake at the first try may bring suggestions to lighten the
-modules that follow; the learner accepts or declines each.
+after it until the learner passes it, except those to prove, which need no earlier module; it also turns
+"prove" into "study", since the learner could not prove the module. A checkpoint passed without a mistake at
+the first try may bring suggestions to lighten the modules that follow; the learner accepts or declines each.
 """
 
 import re
@@ -84,7 +85,9 @@ class SkimTopic(BaseModel):
     The module's checkpoint still asks about it."""
 
     topic: str  # one of the module's topic titles
-    reason: Reason
+    reason: str | None = (
+        None  # paths planned before 27 November have one; the planner no longer writes it
+    )
     chosen: bool = False  # the learner marked it, rather than the planner
 
 
@@ -175,8 +178,9 @@ class PathItem(BaseModel):
 
 
 class Proposal(BaseModel):
-    """A change to a module the learner has not started, suggested after a checkpoint; the learner accepts or
-    declines it. Lighter after a checkpoint passed without a mistake, heavier after a failed one. It changes
+    """A change to a module the learner has not started, worked out after a checkpoint. Lighter after a
+    checkpoint passed without a mistake, which the learner accepts or declines; heavier after a failed one,
+    which the path makes at once (see LearningPath.with_checkpoint_changes). It changes
     either the module's choice or, for a module the learner studies, how they take one of its topics.
     """
 
@@ -232,18 +236,28 @@ class LearningPath(BaseModel):
     attribution: Attribution
     changes: str = CHANGES_NOTICE
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    # When the learner approved the path; any later change clears it.
+    # When the path came into use. Paths no longer wait for the learner's approval: a stored path from before
+    # that has none counts from when it was planned (see in_use).
     confirmed_at: datetime | None = None
     # The onboarding answers, so the rest of the path can be planned again after a checkpoint.
     answers: Answers = {}
     # A short name for the path, after the learner's goal, written by the planner; None without a model.
     title: str | None = None
     proposals: list[Proposal] = []
+    # What the path changed by itself after the last failed checkpoint, so the learner is told; cleared once
+    # they have seen it, or by the next checkpoint.
+    changed_after_checkpoint: list[Proposal] = []
     # Set while the model works out suggestions after a checkpoint, as "module id:attempts", so that they land
     # only if the learner has not taken that checkpoint again meanwhile.
     suggestions_pending: str | None = None
     # Anonymous progress events (see roadmap.events) count this path; on unless the learner turns it off.
     share_progress: bool = True
+
+    @model_validator(mode="after")
+    def in_use(self) -> "LearningPath":
+        if self.confirmed_at is None:
+            self.confirmed_at = self.generated_at
+        return self
 
     @property
     def included(self) -> list[PathItem]:
@@ -277,15 +291,13 @@ class LearningPath(BaseModel):
             for item in self.items
         ]
         proposals = [p for p in self.proposals if p.module_id != module_id]
-        return self.model_copy(
-            update={"items": items, "confirmed_at": None, "proposals": proposals}
-        )
+        return self.model_copy(update={"items": items, "proposals": proposals})
 
     def with_topic(
         self, module_id: str, topic: str, choice: TopicChoice
     ) -> "LearningPath":
         """The learner's own decision for a topic of a module they study: study it in full, skim it, or skip
-        it, which leaves it out of the checkpoint. The path stays confirmed: the learner decided it.
+        it, which leaves it out of the checkpoint.
         """
         item = self.item(module_id)
         order = [candidate.title for candidate in item.module.topics]
@@ -399,21 +411,28 @@ class LearningPath(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def locked_module_ids(self) -> list[str]:
-        """The modules after the first failed checkpoint, until the learner passes it."""
+        """The modules after the first failed checkpoint, until the learner passes it. A module to prove stays
+        open: proving it needs no earlier module."""
         for index, item in enumerate(self.items):
             if item.included and item.progress is Progress.FAILED:
-                return [later.module.id for later in self.items[index + 1 :]]
+                return [
+                    later.module.id
+                    for later in self.items[index + 1 :]
+                    if later.choice is not Choice.PROVE
+                ]
         return []
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def blocking_module_id(self) -> str | None:
         """The failed module that locks the rest, if any."""
-        locked = self.locked_module_ids
-        if not locked:
+        if not self.locked_module_ids:
             return None
-        position = [item.module.id for item in self.items].index(locked[0])
-        return self.items[position - 1].module.id
+        return next(
+            item.module.id
+            for item in self.items
+            if item.included and item.progress is Progress.FAILED
+        )
 
     def item(self, module_id: str) -> PathItem:
         for item in self.items:
@@ -427,8 +446,6 @@ class LearningPath(BaseModel):
 
     def _check_open(self, module_id: str) -> PathItem:
         item = self.item(module_id)
-        if not self.confirmed:
-            raise PathStateError("Confirm the path before working through it")
         if module_id in self.locked_module_ids:
             raise PathStateError(
                 f"'{module_id}' is locked until the checkpoint of "
@@ -447,8 +464,7 @@ class LearningPath(BaseModel):
         problem_pending: bool = False,
         missed_topics: list[str] | None = None,
     ) -> "LearningPath":
-        """The path after a checkpoint attempt. A failed "prove" becomes "study"; the path stays
-        confirmed, since the rule is the one the learner saw when they confirmed it. Passed questions
+        """The path after a checkpoint attempt. A failed "prove" becomes "study". Passed questions
         with a coding problem still to solve leave the module in practice."""
         item = self._check_open(module_id)
         if passed:
@@ -505,7 +521,11 @@ class LearningPath(BaseModel):
             if not passed
             else [p for p in self.proposals if p.module_id != module_id]
         )
-        return self._replace(item.model_copy(update=update), proposals=proposals)
+        return self._replace(
+            item.model_copy(update=update),
+            proposals=proposals,
+            changed_after_checkpoint=[],
+        )
 
     def with_problem_solved(self, module_id: str) -> "LearningPath":
         """The learner's code passed the module's coding problem, after its questions."""
@@ -518,8 +538,7 @@ class LearningPath(BaseModel):
         self, goal: str, items: list[PathItem], title: str | None = None
     ) -> "LearningPath":
         """The path for a new goal: `items` are the planner's new decisions. Modules the learner has
-        started keep their decision and progress; the rest take the new decision. The learner confirms
-        the path again, since the planner changed it."""
+        started keep their decision and progress; the rest take the new decision."""
         planned = {item.module.id: item for item in items}
         kept = [
             (
@@ -536,7 +555,7 @@ class LearningPath(BaseModel):
                 "answers": {**self.answers, "goal": goal},
                 "title": title,
                 "proposals": [],
-                "confirmed_at": None,
+                "changed_after_checkpoint": [],
             }
         )
 
@@ -631,9 +650,48 @@ class LearningPath(BaseModel):
         """The suggestions worked out after the checkpoint `key` names; ignored if the path has moved on."""
         if self.suggestions_pending != key:
             return self
-        return self.with_proposals(proposals).model_copy(
+        return self.with_checkpoint_changes(proposals).model_copy(
             update={"suggestions_pending": None}
         )
+
+    def with_checkpoint_changes(self, proposals: list["Proposal"]) -> "LearningPath":
+        """The changes worked out after a checkpoint. After a failure they are made at once: the modules that
+        build on the gaps need more, and asking first only delays it; the learner is told what changed and can
+        still change any of it back. After an easy pass they stay suggestions, since doing less is the
+        learner's call."""
+        path = self.with_proposals(proposals)
+        made = [p for p in path.proposals if p.after_failure]
+        if not made:
+            return path
+        for proposal in made:
+            path = path._made(proposal)
+        return path.model_copy(
+            update={
+                "proposals": [p for p in path.proposals if not p.after_failure],
+                "changed_after_checkpoint": made,
+            }
+        )
+
+    def _made(self, proposal: "Proposal") -> "LearningPath":
+        note = f"Changed after a checkpoint showed gaps: {proposal.reason}"
+        if proposal.topic is not None:
+            assert proposal.topic_choice is not None  # nosec B101: checked by the model
+            changed = self.with_topic(
+                proposal.module_id, proposal.topic, proposal.topic_choice
+            )
+        else:
+            assert proposal.choice is not None  # nosec B101: checked by the model
+            changed = self._replace(
+                self.item(proposal.module_id).model_copy(
+                    update={"choice": proposal.choice}
+                )
+            )
+        item = changed.item(proposal.module_id).model_copy(update={"adjustment": note})
+        return changed._replace(item)
+
+    def changes_seen(self) -> "LearningPath":
+        """The learner has read what the path changed after the checkpoint."""
+        return self.model_copy(update={"changed_after_checkpoint": []})
 
     def _proposal(self, module_id: str, topic: str | None) -> "Proposal":
         proposal = next(
@@ -647,8 +705,7 @@ class LearningPath(BaseModel):
         return proposal
 
     def accept(self, module_id: str, topic: str | None = None) -> "LearningPath":
-        """The learner takes the suggestion; their acceptance is their approval, so the path stays
-        confirmed."""
+        """The learner takes the suggestion."""
         proposal = self._proposal(module_id, topic)
         rest = [p for p in self.proposals if p is not proposal]
         note = f"You accepted a suggestion after a checkpoint: {proposal.reason}"
